@@ -1,0 +1,13 @@
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+    themes: dim;
+}
+
+.q-answered > .q-translation {
+    @apply line-through;
+}
+
+.q-hidden {
+    @apply opacity-50;
+}

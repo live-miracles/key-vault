@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Key Vault</title>
+
+    <link rel="icon" type="image/png" href="./logo.png" />
+    <link rel="stylesheet" href="./output.css" />
+    <script crossorigin src="./script.js" defer></script>
+
+    <!--
+    <link rel="icon" type="image/png" href="https://live-miracles.github.io/key-vault/logo.png" />
+    <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.0/output.css" />
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/script.js" defer></script>
+    -->
+  </head>
+  <body class="bg-base-100 text-base-content flex min-h-screen min-w-[620px] flex-col">
+    <div class="navbar focus bg-base-100">
+      <div class="flex-1">
+        <a class="btn btn-ghost text-xl" href="https://live-miracles.github.io/">Key Vault</a>
+      </div>
+      <div class="flex-none">
+        <ul class="menu menu-horizontal px-1">
+          <li><a href="https://github.com/live-miracles/key-vault/" target="_blank">GitHub</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="loading-alert" role="alert" class="alert alert-info fixed top-3 left-1/2 z-20 hidden w-fit -translate-x-1/2 transform">
+      <span class="loading loading-infinity loading-md"></span>
+      <span class="msg">Loading...</span>
+    </div>
+
+    <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-20 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="msg"></span>
+    </div>
+
+    <div id="error-alert" role="alert" class="alert alert-error fixed top-3 left-1/2 z-20 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span class="msg"></span>
+    </div>
+
+    <div class="border-primary rounded-box bg-base-100 fixed right-0 bottom-0 z-100 m-1 w-fit border p-1">
+      <div class="badge font-semibold">
+        <label class="swap">
+          <input id="saving-badge" type="checkbox" class="" disabled />
+          <div class="swap-off"></div>
+          <div class="swap-on"><span class="loading loading-infinity loading-xs"></span> Saving</div>
+        </label>
+      </div>
+    </div>
+
+    <dialog id="edit-q-modal" class="q-form modal">
+      <div class="modal-box max-w-[800px]">
+        <input type="text" class="q-timestamp hidden" />
+        <div class="focus q-form mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
+          <!-- First Row -->
+          <div class="grid grid-cols-3 items-center gap-4">
+            <!-- Left: Dropdown + Input -->
+            <div class="flex flex-row gap-2">
+              <select class="q-language language-select select select-primary text-primary select-sm w-fit">
+                <option disabled value="">*Language</option>
+              </select>
+              <input type="text" placeholder="Person's Name" class="q-name input input-primary text-primary input-sm max-w-40 min-w-32" />
+            </div>
+
+            <!-- Center: Button -->
+            <div class="flex justify-center"></div>
+
+            <!-- Right: Dropdown + Input -->
+            <div class="flex flex-row justify-end gap-2">
+              <select class="q-translation-language select select-sm w-fit">
+                <option disabled value="">*Language</option>
+                <option selected value="English">English</option>
+              </select>
+              <input type="text" placeholder="Name Translation" class="q-name-translation input input-sm max-w-40 min-w-32" />
+            </div>
+          </div>
+
+          <!-- Second Row: Two Textareas -->
+          <div class="grid grid-cols-2 gap-4">
+            <textarea class="q-text textarea textarea-primary text-primary h-40 w-full resize-none" placeholder="*Question Text"></textarea>
+            <textarea class="q-translation textarea h-40 w-full resize-none" placeholder="Question Translation (leave empty for English)"></textarea>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn">Cancel</button>
+            <button id="update-q-btn" class="btn btn-primary">Update</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="delete-q-modal" class="modal">
+      <div class="modal-box">
+        <input type="text" class="q-timestamp hidden" />
+        <p class="py-4">Do you want to delete this question?</p>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn">Cancel</button>
+            <button id="delete-q-btn" class="btn btn-error">Yes</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="delete-all-q-modal" class="modal">
+      <div class="modal-box">
+        <p class="py-4">Are you sure you want to delete all the questions? You won't be able to restore them.</p>
+        <p class="py-4">Please type <strong>Delete all questions</strong> to confirm:</p>
+        <input type="text" placeholder="" class="confirm-text input input-sm w-64" />
+
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute top-2 right-2">✕</button>
+        </form>
+        <form method="dialog">
+          <button id="delete-all-q-btn" class="btn btn-error btn-soft mt-5 w-full">I understand the consequences, delete all questions</button>
+        </form>
+      </div>
+    </dialog>
+
+    <div class="prose focus mx-auto max-w-[700px] px-2">
+      <ul>
+        <li>
+          In Chrome, you can enter <b>full-screen mode</b> by pressing <kbd class="kbd">F11</kbd> on Windows or
+          <span class="whitespace-nowrap"><kbd class="kbd">⌘</kbd> + <kbd class="kbd">⇧</kbd> + <kbd class="kbd">F</kbd></span> on a Mac.
+        </li>
+        <li>
+          To enlarge the text, hold down the <kbd class="kbd">Ctrl</kbd> or <kbd class="kbd">⌘</kbd> key and press plus <kbd class="kbd">+</kbd> or
+          minus <kbd class="kbd">-</kbd>.
+        </li>
+      </ul>
+    </div>
+
+    <div class="focus q-form mx-auto mt-2 w-full max-w-[900px] space-y-3 px-4">
+      <!-- First Row -->
+      <div class="grid grid-cols-3 items-center gap-4">
+        <!-- Left: Dropdown + Input -->
+        <div class="flex flex-row gap-2">
+          <select class="q-language language-select select select-primary text-primary select-sm w-fit">
+            <option disabled value="">*Language</option>
+          </select>
+          <input type="text" placeholder="Person's Name" class="q-name input input-primary text-primary input-sm max-w-40 min-w-32" />
+        </div>
+
+        <!-- Center: Button -->
+        <div class="flex justify-center">
+          <button id="translate-q-btn" class="btn btn-primary btn-soft btn-sm">Translate</button>
+        </div>
+
+        <!-- Right: Dropdown + Input -->
+        <div class="flex flex-row justify-end gap-2">
+          <select class="q-translation-language select select-sm w-fit">
+            <option disabled value="">*Language</option>
+            <option selected value="English">English</option>
+          </select>
+          <input type="text" placeholder="Name Translation" class="q-name-translation input input-sm max-w-40 min-w-32" />
+        </div>
+      </div>
+
+      <!-- Second Row: Two Textareas -->
+      <div class="grid grid-cols-2 gap-4">
+        <textarea class="q-text textarea textarea-primary text-primary h-40 w-full resize-none" placeholder="*Question Text"></textarea>
+        <textarea class="q-translation textarea h-40 w-full resize-none" placeholder="Question Translation (leave empty for English)"></textarea>
+      </div>
+
+      <div class="flex justify-center">
+        <button id="add-q-btn" class="btn btn-primary btn-sm ml-1">Add Question</button>
+      </div>
+    </div>
+
+    <div class="divider focus"></div>
+
+    <div id="no-questions" class="prose mx-auto mt-2 hidden w-full max-w-[700px] flex-1 px-2">
+      <blockquote class="relative z-10 mx-auto w-fit">No Questions For The Day</blockquote>
+      <img class="mx-auto -mt-10 h-64 w-64" src="https://live-miracles.github.io/multi-lang-qa/funny-cat.svg" />
+    </div>
+
+    <div id="questions" class="mx-auto mt-2 w-full max-w-[700px] flex-1 px-2">
+      <div class="skeleton mb-5 h-32 w-full"></div>
+      <div class="skeleton mb-5 h-32 w-full"></div>
+      <div class="skeleton mb-5 h-32 w-full"></div>
+    </div>
+
+    <button id="delete-all" class="focus btn btn-sm btn-error mx-auto w-fit" style="display: none" onclick="showDeleteAllQuestionsForm()">
+      Delete All Questions
+    </button>
+
+    <footer class="footer footer-center focus bg-base-300 text-base-content mt-5 pt-4 pb-13">
+      <aside>
+        <p>
+          For any bug / feature requests, please open an issue in our
+          <a class="link" href="https://github.com/live-miracles/multi-lang-qa/">GitHub</a> repo (ʃƪ˶˘ ﻬ ˘˶).
+        </p>
+        <p>Check out our <a class="link" href="https://live-miracles.github.io/">homepage</a> for more streaming tools (=ↀωↀ=).</p>
+      </aside>
+    </footer>
+  </body>
+</html>

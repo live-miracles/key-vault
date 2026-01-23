@@ -7,13 +7,18 @@
 
     <link rel="icon" type="image/png" href="./logo.png" />
     <link rel="stylesheet" href="./output.css" />
-    <script crossorigin src="./utils.js" defer></script>
-    <script crossorigin src="./script.js" defer></script>
+    <script src="./bundle.umd.min.js"></script>
+    <script src="./utils.js"></script>
+    <script src="./api.js"></script>
+    <script src="./test-utils.js" defer></script>
+    <script src="./script.js" defer></script>
 
     <!--
     <link rel="icon" type="image/png" href="https://live-miracles.github.io/key-vault/logo.png" />
     <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.0/output.css" />
+    <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/utils.js" defer></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/api.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/script.js" defer></script>
     -->
   </head>
@@ -92,11 +97,7 @@
 
       <div class="flex flex-shrink-0 items-center">
         <button class="btn btn-accent btn-sm mx-3" title="Add">+</button>
-        <div role="tablist" class="tabs tabs-box">
-          <a role="tab" class="tab">Event 1</a>
-          <a role="tab" class="tab tab-active">Event 2</a>
-          <a role="tab" class="tab">Event 3</a>
-        </div>
+        <div role="tablist" class="tabs tabs-box"></div>
       </div>
     </div>
   </body>

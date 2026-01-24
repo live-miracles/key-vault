@@ -39,10 +39,16 @@ function withLock(fn, name) {
     }
 }
 
+// ===== Other =====
+function getUserEmail() {
+    console.log(Session.getActiveUser().getEmail());
+    return Session.getActiveUser().getEmail();
+}
+
 // ===== Events API =====
 function getEvents() {
     try {
-        const { rows } = getAllRows(getSheet(SHEETS.EVENTS));
+        const { rows } = getAllRows(getSheet(SHEETS.EVENT));
         return rows.map((r) => ({
             id: r[0],
             name: r[1],
@@ -78,7 +84,7 @@ function updateEvent(id, newName) {
 
 function deleteEvent(id) {
     return withLock(() => {
-        const sheet = getSheet(SHEETS.EVENTS);
+        const sheet = getSheet(SHEETS.EVENT);
         const rows = sheet.getDataRange().getValues();
 
         for (let i = 1; i < rows.length; i++) {
@@ -93,7 +99,7 @@ function deleteEvent(id) {
 
 // ===== Roles API =====
 function getRolesByEvent(eventId) {
-    const { rows } = getAllRows(getSheet(SHEETS.ROLES));
+    const { rows } = getAllRows(getSheet(SHEETS.ROLE));
     return rows
         .filter((r) => r[1] === eventId)
         .map((r) => ({
@@ -105,14 +111,14 @@ function getRolesByEvent(eventId) {
 }
 
 function createRole(eventId, email, role) {
-    const sheet = getSheet(SHEETS.ROLES);
+    const sheet = getSheet(SHEETS.ROLE);
     const id = generateId('ROLE');
     sheet.appendRow([id, eventId, email, role]);
     return { id, eventId, email, role };
 }
 
 function updateRole(id, newRole) {
-    const sheet = getSheet(SHEETS.ROLES);
+    const sheet = getSheet(SHEETS.ROLE);
     const rows = sheet.getDataRange().getValues();
 
     for (let i = 1; i < rows.length; i++) {
@@ -125,7 +131,7 @@ function updateRole(id, newRole) {
 }
 
 function deleteRole(id) {
-    const sheet = getSheet(SHEETS.ROLES);
+    const sheet = getSheet(SHEETS.ROLE);
     const rows = sheet.getDataRange().getValues();
 
     for (let i = 1; i < rows.length; i++) {
@@ -138,7 +144,7 @@ function deleteRole(id) {
 }
 
 function deleteRole(id) {
-    const sheet = getSheet(SHEETS.ROLES);
+    const sheet = getSheet(SHEETS.ROLE);
     const rows = sheet.getDataRange().getValues();
 
     for (let i = 1; i < rows.length; i++) {
@@ -152,7 +158,7 @@ function deleteRole(id) {
 
 // ===== Keys API =====
 function getKeysByEvent(eventId) {
-    const { rows } = getAllRows(getSheet(SHEETS.KEYS));
+    const { rows } = getAllRows(getSheet(SHEETS.KEY));
     return rows
         .filter((r) => r[1] === eventId)
         .map((r) => ({
@@ -165,14 +171,14 @@ function getKeysByEvent(eventId) {
 }
 
 function createKey(eventId, serverUrl, key, remarks) {
-    const sheet = getSheet(SHEETS.KEYS);
+    const sheet = getSheet(SHEETS.KEY);
     const id = generateId('KEY');
     sheet.appendRow([id, eventId, serverUrl, key, remarks || '']);
     return { id };
 }
 
 function updateKey(id, data) {
-    const sheet = getSheet(SHEETS.KEYS);
+    const sheet = getSheet(SHEETS.KEY);
     const rows = sheet.getDataRange().getValues();
 
     for (let i = 1; i < rows.length; i++) {
@@ -187,7 +193,7 @@ function updateKey(id, data) {
 }
 
 function deleteKey(id) {
-    const sheet = getSheet(SHEETS.KEYS);
+    const sheet = getSheet(SHEETS.KEY);
     const rows = sheet.getDataRange().getValues();
 
     for (let i = 1; i < rows.length; i++) {
@@ -197,4 +203,9 @@ function deleteKey(id) {
         }
     }
     throw new Error('Key entry not found');
+}
+
+// ===== Serve Webpage =====
+function doGet() {
+    return HtmlService.createHtmlOutputFromFile('Index');
 }

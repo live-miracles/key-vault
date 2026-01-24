@@ -1,47 +1,111 @@
-function renderTabBar(selected = null) {
+function processResponse(response) {
+    if (response.success === false) {
+        showErrorAlert(response.error);
+        return null;
+    }
+    return response.data;
+}
+
+function maskKey(key) {
+    if (!key || key.length === 0) {
+        return '';
+    }
+    if (key.length <= 6) {
+        if (key.length === 1) {
+            return key;
+        }
+        return key[0] + ' ... ' + key[key.length - 1];
+    }
+    return key.substring(0, 3) + ' ... ' + key.substring(key.length - 3);
+}
+
+let alertCount = 0;
+function showErrorAlert(error, log = true) {
+    const errorAlertElem = document.getElementById('error-alert');
+    if (!errorAlertElem) return;
+    errorAlertElem.classList.remove('hidden');
+    document.getElementById('error-msg').innerText = error;
+    console.error(error);
+    const alertId = ++alertCount;
+    setTimeout(() => {
+        if (alertId !== alertCount) return;
+        errorAlertElem.classList.add('hidden');
+    }, 5000);
+}
+
+function renderTabBar(eventId = null) {
     const tabsElem = document.querySelector('.tabs');
-    tabsElem.innerHTML = events
+    tabsElem.innerHTML = config.events
         .map(
             (e) => `
-        <a role="tab" class="tab ${selected === e.id ? 'tab-active' : ''}"
+        <a role="tab" class="tab ${eventId === e.id ? 'tab-active' : ''}"
           onclick="selectEvent('${e.id}')">${e.name}</a>`,
         )
         .join('');
 }
 
-function selectEvent(id) {
-    renderTabBar(id);
-
-    const event = events.find((e) => e.id === id);
+function renderTable(eventId = null) {
+    const event = config.events.find((e) => e.id === eventId);
     if (!event) {
         document.querySelector('.table').classList.add('hidden');
+        return;
     }
     document.querySelector('.table').classList.remove('hidden');
-    console.log(event);
+
+    const keys = config.keys
+        .filter((k) => k.event === eventId)
+        .sort((a, b) => {
+            // First, sort by language (lexicographical order)
+            const langCompare = a.language.localeCompare(b.language);
+            if (langCompare !== 0) return langCompare;
+
+            // If language is same, sort by type (primary before backup)
+            if (a.type === 'primary' && b.type === 'backup') return -1;
+            if (a.type === 'backup' && b.type === 'primary') return 1;
+            if (a.type !== b.type) return a.type.localeCompare(b.type);
+
+            // If language and type are same, sort by row number
+            return (a.row || 0) - (b.row || 0);
+        });
+    document.querySelector('#key-rows').innerHTML = keys
+        .map(
+            (k, i) => `
+            <tr>
+                <th>${i + 1}</th>
+                <td>${k.name}</td>
+                <td>${k.type}</td>
+                <td>${k.language}</td>
+                <td>${k.server}</td>
+                <td>${maskKey(k.key)}</td>
+                <td>${k.remarks}</td>
+            </tr>`,
+        )
+        .join('');
 }
 
-let events = [];
-let roles = [];
-let keys = [];
+function selectEvent(id) {
+    setUrlParam('event', id);
+    renderTabBar(id);
+    renderTable(id);
+}
+
+let config = {
+    events: [],
+    roles: [],
+    keys: [],
+};
 
 (async () => {
     if (typeof google === 'undefined') {
         window.google = googleMock;
     }
 
-    let res = await getEvents();
+    const email = processResponse(await getUserEmail());
+    document.querySelector('#user-email').innerText = email;
 
-    if (res.success === true) {
-        events = res.data;
-    } else {
-        showErrorAlert(res.error);
-        events = [];
-    }
+    config = processResponse(await getAllDetails());
 
-    // roles = getRoles();
-    // keys = getKeys();
-
-    if (events.length > 0) {
-        selectEvent(events[0].id);
+    if (config.events.length > 0) {
+        selectEvent(config.events[0].id);
     }
 })();

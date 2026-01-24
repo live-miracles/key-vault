@@ -1,26 +1,36 @@
-async function getEvents() {
+async function withTry(functionName, ...params) {
     try {
-        const res = await new Promise((resolve, reject) => {
+        const res = await new Promise((resolve, reject) =>
             window.google.script.run
-                .withFailureHandler((error) => reject(error))
-                .withSuccessHandler((data) => resolve(data))
-                .getEvents();
-        });
+                .withFailureHandler(reject)
+                .withSuccessHandler(resolve)
+                [functionName](...params),
+        );
         if (res.success === false) {
-            return { success: false, error: res.error };
+            return { success: false, error: functionName + ': ' + res.error };
         }
         return { success: true, data: res.data };
     } catch (error) {
-        return { success: false, error: error };
+        return { success: false, error: functionName + ': ' + error };
     }
 }
 
-function selectEvent() {}
+async function getUserEmail() {
+    return withTry('getUserEmail');
+}
 
-function editEventName() {}
+async function getAllDetails() {
+    return withTry('getAllDetails');
+}
 
-function renderEvent(id) {}
+async function editEvent(updated) {
+    return withTry('getKeys', updated);
+}
 
-function getRoles() {}
+async function deleteEvent(id) {
+    return withTry('getKeys', id);
+}
 
-function getKeys() {}
+async function getKeys() {
+    return withTry('getKeys');
+}

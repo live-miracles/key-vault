@@ -12,8 +12,8 @@ you will be able to:
 ## How to use
 
 1. Create a Spreadsheet with tabs:
-    - Role: "ID", "Event", "Email", "Role", "Language", "Remarks"
-    - Event: "ID", "Name"
-    - Key: "ID", "Event", "Name", "Type", "Language", "Server URL", "Key", "Remarks"
+    - Role: "id", "event", "email", "role", "language", "remarks"
+    - Event: "id", "name"
+    - Key: "id", "event", "name", "type", "language", "server", "key", "remarks"
 2. Create an AppScript and add a `SPREADSHEET_ID` property.
 3. Create "Code.gs", "and "Index.html" files in the project and copy this code.

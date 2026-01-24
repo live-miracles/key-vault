@@ -17,3 +17,12 @@ you will be able to:
     - Key: "id", "event", "name", "type", "language", "server", "key", "remarks"
 2. Create an AppScript and add a `SPREADSHEET_ID` property.
 3. Create "Code.gs", "and "Index.html" files in the project and copy this code.
+
+## Roles
+
+- Super Admin - can edit any event and assign Global Admins.
+- Global Admin - can edit any event and assign Event Admins.
+- Event Admin - can edit and add other Event Admins for one event.
+- Event Editor - can edit one event.
+- Language Editor - access only to one language of one event.
+- Event/Language Viewer - can view one event, but not edit.

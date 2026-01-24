@@ -10,6 +10,7 @@
     <script src="./bundle.umd.min.js"></script>
     <script src="./utils.js"></script>
     <script src="./api.js"></script>
+    <script src="./keys.js"></script>
     <script src="./test-utils.js" defer></script>
     <script src="./script.js" defer></script>
 
@@ -19,6 +20,7 @@
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/utils.js" defer></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/api.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/keys.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/script.js" defer></script>
     -->
   </head>
@@ -67,10 +69,55 @@
     <!-- Context Menu -->
     <div id="context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
       <ul class="menu w-32 p-2">
-        <li><a onclick="editKey()">Edit</a></li>
-        <li><a onclick="deleteKey()" class="text-error">Delete</a></li>
+        <li><a onclick="editKeyRow()">Edit</a></li>
+        <li><a onclick="deleteKeyRow()" class="text-error">Delete</a></li>
       </ul>
     </div>
+
+    <dialog id="key-modal" class="modal">
+      <div class="modal-box max-w-[800px]">
+        <input type="text" id="out-pipe-id-input" class="hidden" />
+        <input type="text" id="out-id-input" class="hidden" />
+
+        <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
+          <fieldset class="fieldset inline-block w-64">
+            <legend class="fieldset-legend">Key Name</legend>
+            <input type="text" id="key-name-input" class="input" placeholder="Type here" />
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-40">
+            <legend class="fieldset-legend">Server URL</legend>
+
+            <select class="select" id="server-url-input">
+              <option selected="" value="">Custom</option>
+              <option value="rtmp://a.rtmp.youtube.com/live2/">YouTube</option>
+              <option value="rtmp://b.rtmp.youtube.com/live2?backup=1/">YT Backup</option>
+              <option value="rtmps://live-api-s.facebook.com:443/rtmp/">Facebook</option>
+              <option value="rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/">Instagram</option>
+              <option value="rtmp://live-ingest-01.vd0.co:1935/livestream/">VDO Cipher</option>
+              <option value="rtmp://ovsu.okcdn.ru/input/">VK Video</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Custom URL</legend>
+            <input type="text" id="custom-url-input" class="input w-full" placeholder="Type here" />
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Stream Key</legend>
+            <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" />
+          </fieldset>
+        </div>
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn mx-2">Cancel</button>
+            <button class="btn btn-accent" onclick="editKeyFormBtn(event)">Update</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
 
     <div class="flex min-h-0 flex-1 flex-col">
       <div class="hidden overflow-x-auto" id="role-table">

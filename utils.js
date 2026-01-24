@@ -1,3 +1,7 @@
+function capitalize(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
 function isValidUrl(str) {
     // YouTube backup URL is a little funny
     const text = str.replaceAll(

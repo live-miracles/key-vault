@@ -47,10 +47,10 @@ function renderTabBar(eventId = null) {
 function renderTable(eventId = null) {
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
-        document.querySelector('.table').classList.add('hidden');
+        document.querySelector('#key-table').classList.add('hidden');
         return;
     }
-    document.querySelector('.table').classList.remove('hidden');
+    document.querySelector('#key-table').classList.remove('hidden');
 
     const keys = config.keys
         .filter((k) => k.event === eventId)
@@ -70,17 +70,61 @@ function renderTable(eventId = null) {
     document.querySelector('#key-rows').innerHTML = keys
         .map(
             (k, i) => `
-            <tr>
+            <tr class="hover:bg-base-300" data-key-id="${k.id}">
                 <th>${i + 1}</th>
                 <td>${k.name}</td>
-                <td>${k.type}</td>
-                <td>${k.language}</td>
+                <td>${capitalize(k.type)}</td>
+                <td>${capitalize(k.language)}</td>
                 <td>${k.server}</td>
                 <td>${maskKey(k.key)}</td>
                 <td>${k.remarks}</td>
             </tr>`,
         )
         .join('');
+
+    // Add right-click event listeners to rows
+    document.querySelectorAll('#key-rows tr').forEach((row) => {
+        row.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showContextMenu(e, row.dataset.keyId);
+        });
+    });
+}
+
+let selectedKeyId = null;
+function showContextMenu(event, keyId) {
+    selectedKeyId = keyId;
+    const contextMenu = document.getElementById('context-menu');
+    contextMenu.style.left = `${event.pageX}px`;
+    contextMenu.style.top = `${event.pageY}px`;
+    contextMenu.classList.remove('hidden');
+
+    // Hide context menu when clicking elsewhere
+    const hideMenu = (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.classList.add('hidden');
+            document.removeEventListener('click', hideMenu);
+        }
+    };
+    setTimeout(() => document.addEventListener('click', hideMenu), 0);
+}
+
+function editKey() {
+    if (!selectedKeyId) return;
+    console.log('Edit key:', selectedKeyId);
+    // TODO: Implement edit functionality
+    document.getElementById('context-menu').classList.add('hidden');
+}
+
+function deleteKey() {
+    if (!selectedKeyId) return;
+    console.log('Delete key:', selectedKeyId);
+    // TODO: Implement delete functionality
+    document.getElementById('context-menu').classList.add('hidden');
+}
+
+function showHideRoles() {
+    document.querySelector('#role-table').classList.toggle('hidden');
 }
 
 function selectEvent(id) {

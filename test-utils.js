@@ -1,5 +1,5 @@
 function getRandomWaitTime() {
-    return parseInt((2 + Math.random()) * 1000);
+    return parseInt((1 + Math.random()) * 1000);
 }
 
 function getUserEmailMock() {

@@ -26,8 +26,8 @@
     <div class="flex items-center px-5 pt-3">
       <span class="text-xl">Event 2</span>
       <button title="Edit" class="btn btn-accent btn-xs ml-3">✎</button>
-      <button title="Delete" class="btn btn-accent btn-xs ml-2">✖</button>
-      <button title="Share" class="btn btn-accent btn-xs ml-2">👥</button>
+      <button title="Delete" class="btn btn-error btn-xs ml-2">✖</button>
+      <button title="Share" class="btn btn-accent btn-xs ml-2" onclick="showHideRoles()">👥</button>
 
       <div class="ml-auto flex items-center gap-3">
         <label class="swap">
@@ -64,8 +64,41 @@
       <span class="msg"></span>
     </div>
 
+    <!-- Context Menu -->
+    <div id="context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
+      <ul class="menu w-32 p-2">
+        <li><a onclick="editKey()">Edit</a></li>
+        <li><a onclick="deleteKey()" class="text-error">Delete</a></li>
+      </ul>
+    </div>
+
     <div class="flex min-h-0 flex-1 flex-col">
-      <div class="min-h-0 flex-1 overflow-y-auto">
+      <div class="hidden overflow-x-auto" id="role-table">
+        <div class="overflow-x-auto">
+          <table class="table">
+            <!-- head -->
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Language</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="role-rows">
+              <tr>
+                <th><span class="loading loading-dots loading-xs"></span></th>
+                <td><span class="loading loading-dots loading-xs"></span></td>
+                <td><span class="loading loading-dots loading-xs"></span></td>
+                <td><span class="loading loading-dots loading-xs"></span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="divider"></div>
+      </div>
+
+      <div class="min-h-0 flex-1 overflow-y-auto" id="key-table">
         <div class="overflow-x-auto">
           <table class="table">
             <!-- head -->

@@ -6,19 +6,6 @@ function processResponse(response) {
     return response.data;
 }
 
-function maskKey(key) {
-    if (!key || key.length === 0) {
-        return '';
-    }
-    if (key.length <= 6) {
-        if (key.length === 1) {
-            return key;
-        }
-        return key[0] + ' ... ' + key[key.length - 1];
-    }
-    return key.substring(0, 3) + ' ... ' + key.substring(key.length - 3);
-}
-
 let alertCount = 0;
 function showErrorAlert(error, log = true) {
     const errorAlertElem = document.getElementById('error-alert');
@@ -44,14 +31,40 @@ function renderEventTabBar(eventId = null) {
         .join('');
 }
 
+function selectEvent(id) {
+    setUrlParam('event', id);
+    renderEventTabBar(id);
+    renderRoleTable(id);
+    renderKeyTable(id);
+}
+
 function showHideRoles() {
     document.querySelector('#role-table').classList.toggle('hidden');
 }
 
-function selectEvent(id) {
-    setUrlParam('event', id);
-    renderEventTabBar(id);
-    renderKeyTable(id);
+function renderRoleTable(eventId = null) {
+    document.querySelector('#role-rows').innerHTML = config.roles
+        .filter((r) => (r.event = eventId))
+        .sort((r1, r2) => {
+            if (r1.role === 'admin' && r2.role !== 'admin') return -1;
+            if (r1.role !== 'admin' && r2.role === 'admin') return 1;
+            if (r1.role === 'editor' && r2.role !== 'editor') return -1;
+            if (r1.role !== 'editor' && r2.role === 'editor') return 1;
+            if (r1.role === 'viewer' && r2.role !== 'viewer') return -1;
+            if (r1.role !== 'viewer' && r2.role === 'viewer') return 1;
+            return r1.email.localeCompare(r2.email);
+        })
+        .map(
+            (r) => `
+            <tr>
+                <th>${r.email}</th>
+                <td>${capitalize(r.role)}</td>
+                <td>${capitalize(r.language)}</td>
+                <td>${r.remarks}</td>
+            </tr>
+        `,
+        )
+        .join('');
 }
 
 let config = {
@@ -73,4 +86,13 @@ let config = {
     if (config.events.length > 0) {
         selectEvent(config.events[0].id);
     }
+
+    document.querySelector('#server-url-input').addEventListener('change', (event) => {
+        const customUrlElem = document.querySelector('#custom-url');
+        if (event.target.value === '') {
+            customUrlElem.classList.remove('hidden');
+        } else {
+            customUrlElem.classList.add('hidden');
+        }
+    });
 })();

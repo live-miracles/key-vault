@@ -93,6 +93,7 @@ const testKeys = [
         language: 'english',
         server: 'rtmp://a.rtmp.youtube.com/live2/',
         key: 'abc-123-abc-123-abc-123',
+        color: '',
         remarks: '',
     },
     {
@@ -104,6 +105,7 @@ const testKeys = [
         language: 'german',
         server: 'rtmps://live-api-s.facebook.com:443/rtmp/',
         key: 'FB-abc-123-abc-123-abc-123',
+        color: '',
         remarks: '',
     },
     {
@@ -115,6 +117,7 @@ const testKeys = [
         language: 'english',
         server: 'rtmp://b.rtmp.youtube.com/live2?backup=1/',
         key: 'abc-123-abc-123-abc-123',
+        color: '',
         remarks: '',
     },
     {
@@ -126,6 +129,7 @@ const testKeys = [
         language: 'english',
         server: 'rtmp://b.rtmp.youtube.com/live2?backup=1/',
         key: 'abc-123-abc-123-abc-123',
+        color: '',
         remarks: '',
     },
 ];
@@ -136,6 +140,8 @@ const testRoles = [
         event: 'EVT000001',
         email: testEmail1,
         role: 'admin',
+        language: '*',
+        remarks: '',
     },
 ];
 

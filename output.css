@@ -1380,6 +1380,12 @@
   .w-6 {
     width: calc(var(--spacing) * 6);
   }
+  .w-24 {
+    width: calc(var(--spacing) * 24);
+  }
+  .w-28 {
+    width: calc(var(--spacing) * 28);
+  }
   .w-32 {
     width: calc(var(--spacing) * 32);
   }
@@ -1441,6 +1447,9 @@
   }
   .overflow-y-auto {
     overflow-y: auto;
+  }
+  .overflow-y-scroll {
+    overflow-y: scroll;
   }
   .tabs-box {
     background-color: var(--color-base-200);
@@ -1536,11 +1545,26 @@
     --tw-font-weight: var(--font-weight-extrabold);
     font-weight: var(--font-weight-extrabold);
   }
+  .text-accent {
+    color: var(--color-accent);
+  }
   .text-base-content {
     color: var(--color-base-content);
   }
   .text-error {
     color: var(--color-error);
+  }
+  .text-info {
+    color: var(--color-info);
+  }
+  .text-primary {
+    color: var(--color-primary);
+  }
+  .text-secondary {
+    color: var(--color-secondary);
+  }
+  .text-warning {
+    color: var(--color-warning);
   }
   .shadow-lg {
     --tw-shadow: 0 10px 15px -3px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 4px 6px -4px var(--tw-shadow-color, rgb(0 0 0 / 0.1));

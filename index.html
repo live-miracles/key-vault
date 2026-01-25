@@ -85,13 +85,37 @@
 
     <dialog id="key-modal" class="modal">
       <div class="modal-box max-w-[800px]">
-        <input type="text" id="out-pipe-id-input" class="hidden" />
-        <input type="text" id="out-id-input" class="hidden" />
+        <input type="text" id="event-id-input" class="hidden" />
+        <input type="text" id="key-id-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
-          <fieldset class="fieldset inline-block w-64">
+          <fieldset class="fieldset inline-block w-28">
+            <legend class="fieldset-legend">Color</legend>
+
+            <select class="select" id="key-color-input">
+              <option value="" selected="">None</option>
+
+              <option value="accent" class="text-accent">🟣 Purple</option>
+              <option value="info" class="text-info">🔵 Blue</option>
+              <option value="primary" class="text-primary">🟢 Green</option>
+              <option value="warning" class="text-warning">🟡 Yellow</option>
+              <option value="secondary" class="text-secondary">🟠 Orange</option>
+              <option value="error" class="text-error">🔴 Error</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-64">
             <legend class="fieldset-legend">Key Name</legend>
             <input type="text" id="key-name-input" class="input" placeholder="Type here" />
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-24">
+            <legend class="fieldset-legend">Type</legend>
+
+            <select class="select" id="key-type-input">
+              <option value="primary" selected="">Primary</option>
+              <option value="backup">Backup</option>
+            </select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-40">
@@ -108,7 +132,7 @@
             </select>
           </fieldset>
 
-          <fieldset class="fieldset">
+          <fieldset class="fieldset" id="custom-url">
             <legend class="fieldset-legend">Custom URL</legend>
             <input type="text" id="custom-url-input" class="input w-full" placeholder="Type here" />
           </fieldset>
@@ -158,7 +182,7 @@
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto" id="key-table">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto overflow-y-scroll">
           <table class="table">
             <!-- head -->
             <thead>

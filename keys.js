@@ -1,3 +1,16 @@
+function maskKey(key) {
+    if (!key || key.length === 0) {
+        return '';
+    }
+    if (key.length <= 6) {
+        if (key.length === 1) {
+            return key;
+        }
+        return key[0] + ' ... ' + key[key.length - 1];
+    }
+    return key.substring(0, 3) + ' ... ' + key.substring(key.length - 3);
+}
+
 function renderKeyTable(eventId = null) {
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
@@ -65,10 +78,40 @@ function showContextMenu(event, keyId) {
 
 function editKeyRow() {
     if (!selectedKeyId) return;
-    console.log('Edit key:', selectedKeyId);
-    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    console.log(selectedKeyId);
+    const key = config.keys.find((k) => k.id === selectedKeyId);
+    console.log(key);
+
+    document.querySelector('#key-id-input').value = key.id;
+    document.querySelector('#event-id-input').value = key.event;
+    document.querySelector('#key-color-input').value = key.color;
+    document.querySelector('#key-type-input').value = key.type;
+    document.querySelector('#key-name-input').value = key.name;
+
+    if (isKnownServer(key.server)) {
+        document.querySelector('#server-url-input').value = key.server;
+        document.querySelector('#custom-url').value = '';
+        document.querySelector('#custom-url').classList.add('hidden');
+    } else {
+        document.querySelector('#server-url-input').value = '';
+        document.querySelector('#custom-url').value = key.server;
+        document.querySelector('#custom-url').classList.remove('hidden');
+    }
+
+    document.querySelector('#stream-key-input').value = key.key;
+
     document.getElementById('key-modal').showModal();
     document.getElementById('context-menu').classList.add('hidden');
+}
+
+function isKnownServer(server) {
+    const serverSelect = document.querySelector('#server-url-input');
+    for (const option of serverSelect.options) {
+        if (option.value === server) {
+            return true;
+        }
+    }
+    return false;
 }
 
 async function editKeyFormBtn(event) {
@@ -122,7 +165,7 @@ async function editKeyFormBtn(event) {
 
 async function deleteKeyRow() {
     if (!selectedKeyId) return;
-    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
     }
@@ -148,7 +191,7 @@ function showCopiedNotification() {
 
 async function copyKeyBtn() {
     if (!selectedKeyId) return;
-    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
     }
@@ -161,7 +204,7 @@ async function copyKeyBtn() {
 
 async function copyRtmpBtn() {
     if (!selectedKeyId) return;
-    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
     }
@@ -170,4 +213,25 @@ async function copyRtmpBtn() {
         showCopiedNotification();
     }
     document.getElementById('context-menu').classList.add('hidden');
+}
+
+async function addKeyBtn() {
+    const eventId = getUrlParam('event');
+    const event = config.events.find((e) => e.id === eventId);
+    if (!event) {
+        console.error('Event not found:', eventId);
+        return;
+    }
+
+    document.querySelector('#key-id-input').value = '';
+    document.querySelector('#event-id-input').value = eventId;
+    document.querySelector('#key-color-input').value = '';
+    document.querySelector('#key-type-input').value = 'primary';
+    document.querySelector('#key-name-input').value = '';
+    document.querySelector('#server-url-input').value = 'rtmp://a.rtmp.youtube.com/live2/';
+    document.querySelector('#custom-url').classList.add('hidden');
+    document.querySelector('#custom-url-input').value = '';
+    document.querySelector('#stream-key-input').value = '';
+
+    document.querySelector('#key-modal').showModal();
 }

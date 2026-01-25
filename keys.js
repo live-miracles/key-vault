@@ -135,3 +135,39 @@ async function deleteKeyRow() {
 
     document.getElementById('context-menu').classList.add('hidden');
 }
+
+function showCopiedNotification() {
+    const notification = document.getElementById('copied-notification');
+    if (!notification) return;
+
+    notification.classList.remove('hidden');
+    setTimeout(() => {
+        notification.classList.add('hidden');
+    }, 2000);
+}
+
+async function copyKeyBtn() {
+    if (!selectedKeyId) return;
+    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+    }
+
+    if (copyText(key.key)) {
+        showCopiedNotification();
+    }
+    document.getElementById('context-menu').classList.add('hidden');
+}
+
+async function copyRtmpBtn() {
+    if (!selectedKeyId) return;
+    const key = config.keys.find((k) => (k.id = selectedKeyId));
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+    }
+
+    if (copyText(key.server + key.key)) {
+        showCopiedNotification();
+    }
+    document.getElementById('context-menu').classList.add('hidden');
+}

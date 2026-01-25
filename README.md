@@ -24,5 +24,5 @@ you will be able to:
 - Global Admin - can edit any event and assign Event Admins.
 - Event Admin - can edit and add other Event Admins for one event.
 - Event Editor - can edit one event.
-- Language Editor - access only to one language of one event.
-- Event/Language Viewer - can view one event, but not edit.
+- Language Editor - can edit one event, but can't share access with others.
+- Event/Language Viewer - can only view one event.

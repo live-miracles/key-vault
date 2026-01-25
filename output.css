@@ -944,6 +944,9 @@
   .top-3 {
     top: calc(var(--spacing) * 3);
   }
+  .bottom-3 {
+    bottom: calc(var(--spacing) * 3);
+  }
   .left-1\/2 {
     left: calc(1/2 * 100%);
   }

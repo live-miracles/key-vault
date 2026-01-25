@@ -47,10 +47,7 @@ function legacyCopy(text) {
     return success;
 }
 
-async function copyData(id) {
-    const elem = document.getElementById(id);
-    const text = elem.dataset.copy;
-
+async function copyText(text) {
     if (navigator.clipboard) {
         try {
             await navigator.clipboard.writeText(text);

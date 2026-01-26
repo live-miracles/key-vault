@@ -61,7 +61,7 @@ function renderKeyTable(eventId = null) {
 let selectedKeyId = null;
 function showContextMenu(event, keyId) {
     selectedKeyId = keyId;
-    const contextMenu = document.getElementById('context-menu');
+    const contextMenu = document.getElementById('key-context-menu');
     contextMenu.style.left = `${event.pageX}px`;
     contextMenu.style.top = `${event.pageY}px`;
     contextMenu.classList.remove('hidden');
@@ -83,7 +83,7 @@ function editKeyRow() {
     console.log(key);
 
     document.querySelector('#key-id-input').value = key.id;
-    document.querySelector('#event-id-input').value = key.event;
+    document.querySelector('#key-event-id-input').value = key.event;
     document.querySelector('#key-color-input').value = key.color;
     document.querySelector('#key-type-input').value = key.type;
     document.querySelector('#key-name-input').value = key.name;
@@ -101,7 +101,7 @@ function editKeyRow() {
     document.querySelector('#stream-key-input').value = key.key;
 
     document.getElementById('key-modal').showModal();
-    document.getElementById('context-menu').classList.add('hidden');
+    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 function isKnownServer(server) {
@@ -176,7 +176,7 @@ async function deleteKeyRow() {
 
     processResponse(await deleteKey(key.id));
 
-    document.getElementById('context-menu').classList.add('hidden');
+    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 function showCopiedNotification() {
@@ -199,7 +199,7 @@ async function copyKeyBtn() {
     if (copyText(key.key)) {
         showCopiedNotification();
     }
-    document.getElementById('context-menu').classList.add('hidden');
+    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 async function copyRtmpBtn() {
@@ -212,7 +212,7 @@ async function copyRtmpBtn() {
     if (copyText(key.server + key.key)) {
         showCopiedNotification();
     }
-    document.getElementById('context-menu').classList.add('hidden');
+    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 async function addKeyBtn() {
@@ -224,7 +224,7 @@ async function addKeyBtn() {
     }
 
     document.querySelector('#key-id-input').value = '';
-    document.querySelector('#event-id-input').value = eventId;
+    document.querySelector('#key-event-id-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-type-input').value = 'primary';
     document.querySelector('#key-name-input').value = '';

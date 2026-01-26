@@ -139,7 +139,7 @@ const testRoles = [
         id: 'ROLE01',
         event: 'EVT000001',
         email: testEmail1,
-        role: 'admin',
+        type: 'admin',
         language: '*',
         remarks: '',
     },

@@ -12,7 +12,7 @@ you will be able to:
 ## How to use
 
 1. Create a Spreadsheet with tabs:
-    - Role: "id", "event", "email", "role", "language", "remarks"
+    - Role: "id", "event", "email", "type", "language", "remarks"
     - Event: "id", "name"
     - Key: "id", "event", "name", "type", "language", "server", "key", "color", "remarks"
 2. Create an AppScript and add a `SPREADSHEET_ID` property.

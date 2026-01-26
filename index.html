@@ -10,6 +10,8 @@
     <script src="./bundle.umd.min.js"></script>
     <script src="./utils.js"></script>
     <script src="./api.js"></script>
+    <script src="./access.js"></script>
+    <script src="./roles.js"></script>
     <script src="./keys.js"></script>
     <script src="./test-utils.js" defer></script>
     <script src="./script.js" defer></script>
@@ -20,6 +22,7 @@
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/utils.js" defer></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/api.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/roles.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/keys.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/script.js" defer></script>
     -->
@@ -74,7 +77,60 @@
     </div>
 
     <!-- Context Menu -->
-    <div id="context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
+    <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
+      <ul class="menu w-32 p-2">
+        <li><a onclick="editRoleRow()">Edit</a></li>
+        <li><a onclick="deleteRoleRow()" class="text-error">Delete</a></li>
+      </ul>
+    </div>
+
+    <dialog id="role-modal" class="modal">
+      <div class="modal-box max-w-[800px]">
+        <input type="text" id="role-event-id-input" class="hidden" />
+        <input type="text" id="role-id-input" class="hidden" />
+
+        <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
+          <fieldset class="fieldset ml-2 inline-block w-64">
+            <legend class="fieldset-legend">Email</legend>
+            <input type="text" id="role-email-input" class="input" placeholder="Type here" />
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-24">
+            <legend class="fieldset-legend">Role</legend>
+
+            <select class="select" id="role-type-input">
+              <option value="primary">Admin</option>
+              <option value="backup">Editor</option>
+              <option value="backup" selected="">Viewer</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-40">
+            <legend class="fieldset-legend">Language</legend>
+
+            <select class="select" id="role-language-input">
+              <option value="*" selected="">*</option>
+              <option value="english">English</option>
+            </select>
+          </fieldset>
+
+          <fieldset class="fieldset" id="role-remarks-input">
+            <legend class="fieldset-legend">Remarks</legend>
+            <input type="text" id="remarks-input" class="input w-full" placeholder="Type here" />
+          </fieldset>
+        </div>
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn mx-2">Cancel</button>
+            <button class="btn btn-accent" onclick="editRoleFormBtn(event)">Save</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Context Menu -->
+    <div id="key-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
       <ul class="menu w-32 p-2">
         <li><a onclick="copyKeyBtn()">Copy Key</a></li>
         <li><a onclick="copyRtmpBtn()">Copy Full URL</a></li>
@@ -85,7 +141,7 @@
 
     <dialog id="key-modal" class="modal">
       <div class="modal-box max-w-[800px]">
-        <input type="text" id="event-id-input" class="hidden" />
+        <input type="text" id="key-event-id-input" class="hidden" />
         <input type="text" id="key-id-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
@@ -94,7 +150,6 @@
 
             <select class="select" id="key-color-input">
               <option value="" selected="">None</option>
-
               <option value="accent" class="text-accent">🟣 Purple</option>
               <option value="info" class="text-info">🔵 Blue</option>
               <option value="primary" class="text-primary">🟢 Green</option>
@@ -122,7 +177,7 @@
             <legend class="fieldset-legend">Server URL</legend>
 
             <select class="select" id="server-url-input">
-              <option selected="" value="">Custom</option>
+              <option value="" selected="">Custom</option>
               <option value="rtmp://a.rtmp.youtube.com/live2/">YouTube</option>
               <option value="rtmp://b.rtmp.youtube.com/live2?backup=1/">YT Backup</option>
               <option value="rtmps://live-api-s.facebook.com:443/rtmp/">Facebook</option>
@@ -141,12 +196,17 @@
             <legend class="fieldset-legend">Stream Key</legend>
             <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" />
           </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Remarks</legend>
+            <input type="text" id="key-remarks-input" class="input w-full" placeholder="Type here" />
+          </fieldset>
         </div>
 
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="editKeyFormBtn(event)">Update</button>
+            <button class="btn btn-accent" onclick="editKeyFormBtn(event)">Save</button>
           </form>
         </div>
       </div>

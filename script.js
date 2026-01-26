@@ -42,31 +42,6 @@ function showHideRoles() {
     document.querySelector('#role-table').classList.toggle('hidden');
 }
 
-function renderRoleTable(eventId = null) {
-    document.querySelector('#role-rows').innerHTML = config.roles
-        .filter((r) => (r.event = eventId))
-        .sort((r1, r2) => {
-            if (r1.role === 'admin' && r2.role !== 'admin') return -1;
-            if (r1.role !== 'admin' && r2.role === 'admin') return 1;
-            if (r1.role === 'editor' && r2.role !== 'editor') return -1;
-            if (r1.role !== 'editor' && r2.role === 'editor') return 1;
-            if (r1.role === 'viewer' && r2.role !== 'viewer') return -1;
-            if (r1.role !== 'viewer' && r2.role === 'viewer') return 1;
-            return r1.email.localeCompare(r2.email);
-        })
-        .map(
-            (r) => `
-            <tr>
-                <th>${r.email}</th>
-                <td>${capitalize(r.role)}</td>
-                <td>${capitalize(r.language)}</td>
-                <td>${r.remarks}</td>
-            </tr>
-        `,
-        )
-        .join('');
-}
-
 let config = {
     events: [],
     roles: [],

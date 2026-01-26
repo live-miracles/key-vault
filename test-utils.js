@@ -5,7 +5,7 @@ function getRandomWaitTime() {
 function getUserEmailMock() {
     return {
         success: true,
-        data: testEmail1,
+        data: testEmail2,
     };
 }
 
@@ -137,10 +137,26 @@ const testKeys = [
 const testRoles = [
     {
         id: 'ROLE01',
-        event: 'EVT000001',
+        event: 'EVT01',
         email: testEmail1,
         type: 'admin',
         language: '*',
+        remarks: '',
+    },
+    {
+        id: 'ROLE02',
+        event: '*',
+        email: testEmail2,
+        type: 'admin',
+        language: '*',
+        remarks: '',
+    },
+    {
+        id: 'ROLE03',
+        event: 'EVT02',
+        email: testEmail3,
+        type: 'viewer',
+        language: 'English',
         remarks: '',
     },
 ];

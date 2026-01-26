@@ -12,6 +12,12 @@ function maskKey(key) {
 }
 
 function renderKeyTable(eventId = null) {
+    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId)) {
+        document.querySelector('#add-key-btn').classList.remove('hidden');
+    } else {
+        document.querySelector('#add-key-btn').classList.add('hidden');
+    }
+
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
         document.querySelector('#key-table').classList.add('hidden');
@@ -83,7 +89,7 @@ function editKeyRow() {
     console.log(key);
 
     document.querySelector('#key-id-input').value = key.id;
-    document.querySelector('#key-event-id-input').value = key.event;
+    document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-color-input').value = key.color;
     document.querySelector('#key-type-input').value = key.type;
     document.querySelector('#key-name-input').value = key.name;
@@ -224,14 +230,16 @@ async function addKeyBtn() {
     }
 
     document.querySelector('#key-id-input').value = '';
-    document.querySelector('#key-event-id-input').value = eventId;
+    document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
-    document.querySelector('#key-type-input').value = 'primary';
     document.querySelector('#key-name-input').value = '';
+    document.querySelector('#key-type-input').value = 'primary';
+    document.querySelector('#key-language-input').value = '';
     document.querySelector('#server-url-input').value = 'rtmp://a.rtmp.youtube.com/live2/';
     document.querySelector('#custom-url').classList.add('hidden');
     document.querySelector('#custom-url-input').value = '';
     document.querySelector('#stream-key-input').value = '';
+    document.querySelector('#key-remarks-input').value = '';
 
     document.querySelector('#key-modal').showModal();
 }

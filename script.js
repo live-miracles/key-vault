@@ -21,6 +21,10 @@ function showErrorAlert(error, log = true) {
 }
 
 function renderEventTabBar(eventId = null) {
+    const event = config.events.find((e) => e.id === eventId);
+    const name = event ? event.name : '';
+    document.getElementById('event-name').innerText = name;
+
     const tabsElem = document.querySelector('.tabs');
     tabsElem.innerHTML = config.events
         .map(
@@ -47,6 +51,7 @@ let config = {
     roles: [],
     keys: [],
 };
+let eventRoles = {};
 
 (async () => {
     if (typeof google === 'undefined') {
@@ -57,6 +62,13 @@ let config = {
     document.querySelector('#user-email').innerText = email;
 
     config = processResponse(await getAllDetails());
+    eventRoles = getEventRoles(email, config.events, config.roles);
+
+    if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
+        document.querySelector('#add-event-btn').classList.remove('hidden');
+        document.querySelector('#edit-event-btn').classList.remove('hidden');
+        document.querySelector('#delete-event-btn').classList.remove('hidden');
+    }
 
     if (config.events.length > 0) {
         selectEvent(config.events[0].id);

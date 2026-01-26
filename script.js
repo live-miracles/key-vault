@@ -35,15 +35,22 @@ function renderEventTabBar(eventId = null) {
         .join('');
 }
 
+async function addEventBtn() {
+    const maxNumber =
+        Math.max(...config.events.map((e) => parseInt(e.name.split(' ')[1], 10))) || 0;
+    const nextNumber = maxNumber + 1;
+    const res = await addEvent({ name: `Event ${nextNumber}` });
+
+    const data = processResponse(res);
+    if (data === null) return;
+    selectEvent(data.id);
+}
+
 function selectEvent(id) {
     setUrlParam('event', id);
     renderEventTabBar(id);
     renderRoleTable(id);
     renderKeyTable(id);
-}
-
-function showHideRoles() {
-    document.querySelector('#role-table').classList.toggle('hidden');
 }
 
 let config = {
@@ -73,6 +80,10 @@ let eventRoles = {};
     if (config.events.length > 0) {
         selectEvent(config.events[0].id);
     }
+
+    document.querySelector('#role-language-input').innerHTML =
+        '<option value="*">* (All)</option>' +
+        LANGUAGES.map((role) => `<option value="${role}">${capitalize(role)}</option>`).join('');
 
     document.querySelector('#server-url-input').addEventListener('change', (event) => {
         const customUrlElem = document.querySelector('#custom-url');

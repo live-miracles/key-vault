@@ -73,27 +73,24 @@
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
           <fieldset class="fieldset inline-block w-64">
-            <legend class="fieldset-legend">Email</legend>
+            <legend class="fieldset-legend">Email<span class="text-error">*</span></legend>
             <input type="text" id="role-email-input" class="input" placeholder="Type here" />
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-24">
-            <legend class="fieldset-legend">Role</legend>
+            <legend class="fieldset-legend">Role<span class="text-error">*</span></legend>
 
             <select class="select" id="role-type-input">
-              <option value="primary">Admin</option>
-              <option value="backup">Editor</option>
-              <option value="backup" selected="">Viewer</option>
+              <option value="admin">Admin</option>
+              <option value="editor">Editor</option>
+              <option value="viewer" selected="">Viewer</option>
             </select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-28">
-            <legend class="fieldset-legend">Language</legend>
+            <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
 
-            <select class="select" id="role-language-input">
-              <option value="*" selected="">*</option>
-              <option value="english">English</option>
-            </select>
+            <select class="select" id="role-language-input"></select>
           </fieldset>
 
           <fieldset class="fieldset" id="role-remarks-input">
@@ -142,12 +139,12 @@
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-60">
-            <legend class="fieldset-legend">Key Name</legend>
+            <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
             <input type="text" id="key-name-input" class="input" placeholder="Type here" />
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-24">
-            <legend class="fieldset-legend">Type</legend>
+            <legend class="fieldset-legend">Type<span class="text-error">*</span></legend>
 
             <select class="select" id="key-type-input">
               <option value="primary" selected="">Primary</option>
@@ -156,16 +153,13 @@
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-28">
-            <legend class="fieldset-legend">Language</legend>
+            <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
 
-            <select class="select" id="key-language-input">
-              <option value="*" selected="">*</option>
-              <option value="english">English</option>
-            </select>
+            <select class="select" id="key-language-input"></select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-28">
-            <legend class="fieldset-legend">Server URL</legend>
+            <legend class="fieldset-legend">Server URL<span class="text-error">*</span></legend>
 
             <select class="select" id="server-url-input">
               <option value="" selected="">Custom</option>
@@ -179,12 +173,12 @@
           </fieldset>
 
           <fieldset class="fieldset" id="custom-url">
-            <legend class="fieldset-legend">Custom URL</legend>
+            <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
             <input type="text" id="custom-url-input" class="input w-full" placeholder="Type here" />
           </fieldset>
 
           <fieldset class="fieldset">
-            <legend class="fieldset-legend">Stream Key</legend>
+            <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
             <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" />
           </fieldset>
 

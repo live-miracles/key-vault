@@ -73,3 +73,29 @@ function getUrlParam(param) {
     const url = new URL(window.location);
     return url.searchParams.get(param);
 }
+
+const LANGUAGES = [
+    'english',
+    'hindi',
+    'tamil',
+    'telugu',
+    'kannada',
+    'malayalam',
+    'marathi',
+    'bangla',
+    'gujarati',
+    'assamese',
+    'odia',
+    'nepali',
+    'russian',
+    'spanish',
+    'mandarin',
+    'french',
+    'italian',
+    'german',
+    'arabic',
+    'portuguese',
+    'romanian',
+    'indonesian',
+    'persian',
+].sort();

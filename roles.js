@@ -41,11 +41,27 @@ async function addRoleBtn() {
     document.querySelector('#role-id-input').value = '';
     document.querySelector('#role-event-input').value = eventId;
     document.querySelector('#role-email-input').value = '';
-    document.querySelector('#role-type-input').value = 'Viewer';
+    renderRoleTypes(eventId);
+    document.querySelector('#role-type-input').value = 'viewer';
     document.querySelector('#role-language-input').value = '*';
-    document.querySelector('#role-remarks-input').value = '*';
+    document.querySelector('#role-remarks-input').value = '';
 
     document.querySelector('#role-modal').showModal();
+}
+
+function renderRoleTypes(eventId) {
+    document.querySelector('#role-type-input').innerHTML = ['viewer', 'editor', 'admin']
+        .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))
+        .map((role) => `<option value="${role}">${capitalize(role)}</option>`)
+        .join('');
+}
+
+function editRoleFormBtn(event) {
+    event.preventDefault();
+}
+
+function showHideRoles() {
+    document.querySelector('#role-table').classList.toggle('hidden');
 }
 
 const ROLE_MAP = {

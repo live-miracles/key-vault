@@ -36,7 +36,7 @@ function hasRoleAccess(eventRoles, action, event, role = null) {
     } else if (action === ACTIONS.CREATE && role === null) {
         // Admins can add roles
         return eventRoles[event].some((r) => r.type === 'admin' && event !== '*');
-    } else if (role === 'editor') {
+    } else if (role === 'viewer' || role === 'editor') {
         // Admins can add editors
         return eventRoles[event].some((r) => r.type === 'admin' && event !== '*');
     } else if (role === 'admin') {

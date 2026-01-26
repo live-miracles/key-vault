@@ -234,7 +234,8 @@ async function addKeyBtn() {
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-name-input').value = '';
     document.querySelector('#key-type-input').value = 'primary';
-    document.querySelector('#key-language-input').value = '';
+    renderKeyLanguages(eventId);
+    document.querySelector('#key-language-input').value = 'english';
     document.querySelector('#server-url-input').value = 'rtmp://a.rtmp.youtube.com/live2/';
     document.querySelector('#custom-url').classList.add('hidden');
     document.querySelector('#custom-url-input').value = '';
@@ -242,4 +243,12 @@ async function addKeyBtn() {
     document.querySelector('#key-remarks-input').value = '';
 
     document.querySelector('#key-modal').showModal();
+}
+
+function renderKeyLanguages(eventId) {
+    document.querySelector('#key-language-input').innerHTML = LANGUAGES.filter((lang) =>
+        hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId, lang),
+    )
+        .map((lang) => `<option value="${lang}">${capitalize(lang)}</option>`)
+        .join('');
 }

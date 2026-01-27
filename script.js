@@ -11,7 +11,7 @@ function showErrorAlert(error, log = true) {
     const errorAlertElem = document.getElementById('error-alert');
     if (!errorAlertElem) return;
     errorAlertElem.classList.remove('hidden');
-    document.getElementById('error-msg').innerText = error;
+    errorAlertElem.querySelector('.msg').innerText = error;
     console.error(error);
     const alertId = ++alertCount;
     setTimeout(() => {
@@ -68,8 +68,11 @@ let eventRoles = {};
     const email = processResponse(await getUserEmail());
     document.querySelector('#user-email').innerText = email;
 
-    config = processResponse(await getAllDetails());
+    config = processResponse(await getAllData());
     eventRoles = getEventRoles(email, config.events, config.roles);
+    const storageStatus = Math.round(new Blob([JSON.stringify(config)]).size / 1000);
+    document.querySelector('#storage-progress').value = String(storageStatus);
+    document.querySelector('#storage-progress').title = storageStatus + '%';
 
     if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         document.querySelector('#add-event-btn').classList.remove('hidden');

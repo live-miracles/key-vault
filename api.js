@@ -19,8 +19,8 @@ async function getUserEmail() {
     return withTry('getUserEmail');
 }
 
-async function getAllDetails() {
-    return withTry('getAllDetails');
+async function getAllData() {
+    return withTry('getAllData');
 }
 
 // ===== Events =====

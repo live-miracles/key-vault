@@ -96,12 +96,7 @@ let eventRoles = {};
         .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
         .join('');
 
-    document.querySelector('#key-server-input').addEventListener('change', (event) => {
-        const customUrlElem = document.querySelector('#custom-url');
-        if (event.target.value === '') {
-            customUrlElem.classList.remove('hidden');
-        } else {
-            customUrlElem.classList.add('hidden');
-        }
-    });
+    document
+        .querySelector('#key-server-input')
+        .addEventListener('change', (event) => renderServerInput(event.target.value));
 })();

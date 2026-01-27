@@ -9,22 +9,34 @@ function getUserEmailMock() {
     };
 }
 
-function getAllDetailsMock() {
+function getAllDataMock(etag) {
+    const serverEtag = String(etagMock);
+    if (etag === serverEtag) {
+        return {
+            success: true,
+            data: {
+                etag: serverEtag,
+            },
+        };
+    }
+
     return {
         success: true,
         data: {
             events: structuredClone(testEvents), // important to return copy
             keys: structuredClone(testKeys),
             roles: structuredClone(testRoles),
+            etag: serverEtag,
         },
     };
 }
 
-function addQuestionMock(q) {
-    if (!q) {
+function addEventMock(data) {
+    if (!data) {
         return {
             success: false,
             error: 'Invalid parameters',
+            etag: String(etagMock),
         };
     }
 
@@ -132,6 +144,18 @@ const testKeys = [
         color: '',
         remarks: '',
     },
+    {
+        row: 5,
+        id: 'KEY05',
+        event: 'EVT01',
+        name: 'Channel 1',
+        type: 'p',
+        language: 'en',
+        server: 'rtmp://123:123:123:123/live/',
+        key: 'abc-123-abc-123-abc-123',
+        color: '',
+        remarks: '',
+    },
 ];
 
 const testRoles = [
@@ -169,11 +193,40 @@ googleMock.script.run.withFailureHandler = (_) => ({
         getUserEmail: () => {
             setTimeout(() => f(getUserEmailMock()), getRandomWaitTime());
         },
-        getAllDetails: () => {
-            setTimeout(() => f(getAllDetailsMock()), getRandomWaitTime());
+        getAllData: () => {
+            setTimeout(() => f(getAllDataMock()), getRandomWaitTime());
+        },
+        addEvent: (data) => {
+            setTimeout(() => f(addEventMock(data)), getRandomWaitTime());
+        },
+        updateEvent: (updated) => {
+            setTimeout(() => f(updateEventMock(updated)), getRandomWaitTime());
+        },
+        deleteEvent: (id) => {
+            setTimeout(() => f(deleteEventMock(id)), getRandomWaitTime());
+        },
+        addRole: (data) => {
+            setTimeout(() => f(addRoleMock(data)), getRandomWaitTime());
+        },
+        updateRole: (updated) => {
+            setTimeout(() => f(updateRoleMock(updated)), getRandomWaitTime());
+        },
+        deleteRole: (id) => {
+            setTimeout(() => f(deleteRoleMock(id)), getRandomWaitTime());
+        },
+        addKey: (data) => {
+            setTimeout(() => f(addKeyMock(data)), getRandomWaitTime());
+        },
+        updateKey: (updated) => {
+            setTimeout(() => f(updateKeyMock(updated)), getRandomWaitTime());
+        },
+        deleteKey: (id) => {
+            setTimeout(() => f(deleteKeyMock(id)), getRandomWaitTime());
         },
         deleteQuestion: (id) => {
             setTimeout(() => f(deleteQuestionMock(id)), getRandomWaitTime());
         },
     }),
 });
+
+let etagMock = 1;

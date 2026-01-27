@@ -86,7 +86,6 @@ function editKeyRow() {
     if (!selectedKeyId) return;
     console.log(selectedKeyId);
     const key = config.keys.find((k) => k.id === selectedKeyId);
-    console.log(key);
 
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
@@ -94,15 +93,7 @@ function editKeyRow() {
     document.querySelector('#key-type-input').value = key.type;
     document.querySelector('#key-name-input').value = key.name;
 
-    if (isKnownServer(key.server)) {
-        document.querySelector('#key-server-input').value = key.server;
-        document.querySelector('#custom-url').value = '';
-        document.querySelector('#custom-url').classList.add('hidden');
-    } else {
-        document.querySelector('#key-server-input').value = '';
-        document.querySelector('#custom-url').value = key.server;
-        document.querySelector('#custom-url').classList.remove('hidden');
-    }
+    renderServerInput(key.server);
 
     document.querySelector('#stream-key-input').value = key.key;
 
@@ -110,31 +101,29 @@ function editKeyRow() {
     document.getElementById('key-context-menu').classList.add('hidden');
 }
 
-function isKnownServer(server) {
-    const serverSelect = document.querySelector('#key-server-input');
-    for (const option of serverSelect.options) {
-        if (option.value === server) {
-            return true;
-        }
-    }
-    return false;
-}
-
-async function editKeyFormBtn(event) {
-    const pipeId = document.getElementById('out-pipe-id-input').value;
-    const serverUrl = document.getElementById('out-key-server-input').value;
-    const rtmpKey = document.getElementById('out-rtmp-key-input').value;
-    const outId = document.getElementById('out-id-input').value;
+async function saveKeyFormBtn(event) {
     const data = {
-        name: document.getElementById('out-name-input').value,
-        encoding: document.getElementById('out-encoding-input').value,
-        url: serverUrl + rtmpKey,
+        id: document.getElementById('key-id-input').value,
+        event: document.getElementById('key-event-input').value,
+        color: document.getElementById('key-color-input').value,
+        name: document.getElementById('key-name-input').value,
+        type: document.getElementById('key-type-input').value,
+        language: document.getElementById('key-language-input').value,
+        server:
+            document.getElementById('key-server-input').value ||
+            document.getElementById('key-custom-server-input').value,
+        key: document.getElementById('stream-key-input').value,
+        remarks: document.getElementById('key-remarks-input').value,
     };
 
-    if (serverUrl.includes('${s_prp}')) {
-        // Instagram
-        const params = new URLSearchParams(rtmpKey.split('?')[1]);
-        data.url = data.url.replaceAll('${s_prp}', params.get('s_prp'));
+    // Validation
+    if (data.name === '') {
+        const errorElem = document.querySelector('#key-name-input').nextElementSibling;
+        errorElem.innerText = "Name can't be empty";
+        event.preventDefault();
+        return;
+    } else {
+        errorElem.classList.add('hidden');
     }
 
     const isUrlValid = isValidUrl(data.url);
@@ -215,7 +204,14 @@ async function copyRtmpBtn() {
         console.error('Key not found:', selectedKeyId);
     }
 
-    if (copyText(key.server + key.key)) {
+    let serverUrl = SERVERS[key.server]?.value || key.server;
+    if (serverUrl.includes('${s_prp}')) {
+        // Instagram
+        const params = new URLSearchParams(key.key.split('?')[1]);
+        serverUrl = serverUrl.replaceAll('${s_prp}', params.get('s_prp'));
+    }
+
+    if (copyText(serverUrl + key.key)) {
         showCopiedNotification();
     }
     document.getElementById('key-context-menu').classList.add('hidden');
@@ -236,9 +232,8 @@ async function addKeyBtn() {
     document.querySelector('#key-type-input').value = 'p';
     renderKeyLanguages(eventId);
     document.querySelector('#key-language-input').value = 'en';
-    document.querySelector('#key-server-input').value = 'yt';
-    document.querySelector('#custom-url').classList.add('hidden');
-    document.querySelector('#custom-url-input').value = '';
+    renderServerInput('yt');
+    document.querySelector('#key-custom-server-input').value = '';
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
 
@@ -251,6 +246,20 @@ function renderKeyLanguages(eventId) {
     )
         .map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`)
         .join('');
+}
+
+function renderServerInput(server) {
+    if (server && Object.keys(SERVERS).includes(server)) {
+        document.querySelector('#key-server-input').value = server;
+        document.querySelector('#custom-url').value = '';
+        document.querySelector('#custom-url').classList.remove('inline-block');
+        document.querySelector('#custom-url').classList.add('hidden');
+    } else {
+        document.querySelector('#key-server-input').value = '';
+        document.querySelector('#custom-url').value = server;
+        document.querySelector('#custom-url').classList.add('inline-block');
+        document.querySelector('#custom-url').classList.remove('hidden');
+    }
 }
 
 const COLORS = {

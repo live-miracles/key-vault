@@ -101,7 +101,7 @@
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="editRoleFormBtn(event)">Save</button>
+            <button class="btn btn-accent" onclick="saveRoleFormBtn(event)">Save</button>
           </form>
         </div>
       </div>
@@ -123,44 +123,52 @@
         <input type="text" id="key-id-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
-          <fieldset class="fieldset inline-block w-24">
-            <legend class="fieldset-legend">Color</legend>
-
-            <select class="select" id="key-color-input"></select>
-          </fieldset>
-
-          <fieldset class="fieldset ml-2 inline-block w-60">
+          <fieldset class="fieldset inline-block w-60">
             <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
             <input type="text" id="key-name-input" class="input" placeholder="Type here" maxlength="50" />
+            <p class="label text-error"></p>
           </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-24">
+          <fieldset class="fieldset ml-2 inline-block w-32">
+            <legend class="fieldset-legend">Color</legend>
+            <select class="select" id="key-color-input"></select>
+            <p class="label text-error"></p>
+          </fieldset>
+
+          <fieldset class="fieldset ml-2 inline-block w-32">
             <legend class="fieldset-legend">Type<span class="text-error">*</span></legend>
 
             <select class="select" id="key-type-input">
               <option value="p" selected="">Primary</option>
               <option value="b">Backup</option>
             </select>
+            <p class="label text-error"></p>
           </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-28">
+          <fieldset class="fieldset ml-2 inline-block w-32">
             <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
             <select class="select" id="key-language-input"></select>
+            <p class="label text-error"></p>
           </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-28">
-            <legend class="fieldset-legend">Server URL<span class="text-error">*</span></legend>
-            <select class="select" id="key-server-input"></select>
-          </fieldset>
+          <div class="flex items-center">
+            <fieldset class="fieldset inline-block w-32">
+              <legend class="fieldset-legend">Server URL<span class="text-error">*</span></legend>
+              <select class="select" id="key-server-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
 
-          <fieldset class="fieldset" id="custom-url">
-            <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
-            <input type="text" id="custom-url-input" class="input w-full" placeholder="Type here" />
-          </fieldset>
+            <fieldset class="fieldset ml-2 inline-block flex-grow" id="custom-url">
+              <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
+              <input type="text" id="key-custom-server-input" class="input w-full" placeholder="Type here" />
+              <p class="label text-error"></p>
+            </fieldset>
+          </div>
 
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
             <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" maxlength="200" />
+            <p class="label text-error"></p>
           </fieldset>
 
           <fieldset class="fieldset">
@@ -172,7 +180,7 @@
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="editKeyFormBtn(event)">Save</button>
+            <button class="btn btn-accent" onclick="saveKeyFormBtn(event)">Save</button>
           </form>
         </div>
       </div>

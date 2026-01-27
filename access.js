@@ -25,24 +25,24 @@ function hasEventAccess(eventRoles, action, event = null) {
     }
     // Only global Admins can manage events
     if (!eventRoles['*']) return false;
-    return eventRoles['*'].some((r) => r.type === 'admin' && r.event === '*');
+    return eventRoles['*'].some((r) => r.type === ROLES.ADMIN && r.event === '*');
 }
 
 function hasRoleAccess(eventRoles, action, event, role = null) {
     if (!eventRoles[event]) return false;
     if (action === ACTIONS.VIEW) {
         // Only editors or admins can view roles
-        return eventRoles[event].some((r) => r.type === 'editor' || r.type === 'admin');
+        return eventRoles[event].some((r) => r.type === ROLES.EDITOR || r.type === ROLES.ADMIN);
     } else if (action === ACTIONS.CREATE && role === null) {
         // Admins can add roles
-        return eventRoles[event].some((r) => r.type === 'admin' && event !== '*');
-    } else if (role === 'viewer' || role === 'editor') {
+        return eventRoles[event].some((r) => r.type === ROLES.ADMIN && event !== '*');
+    } else if (role === ROLES.VIEWER || role === ROLES.EDITOR) {
         // Admins can add editors
-        return eventRoles[event].some((r) => r.type === 'admin' && event !== '*');
-    } else if (role === 'admin') {
+        return eventRoles[event].some((r) => r.type === ROLES.ADMIN && event !== '*');
+    } else if (role === ROLES.ADMIN) {
         // Global Admins can add Event Admins
         return eventRoles[event].some(
-            (r) => r.type === 'admin' && r.event === '*' && event !== '*',
+            (r) => r.type === ROLES.ADMIN && r.event === '*' && event !== '*',
         );
     }
     console.error('Unexpected error, this code should not be reachable.');
@@ -56,7 +56,7 @@ function hasKeyAccess(eventRoles, action, event, language = null) {
     }
     return eventRoles[event].some(
         (r) =>
-            (r.type === 'viewer' || r.type === 'admin') &&
+            (r.type === ROLES.EDITOR || r.type === ROLES.ADMIN) &&
             (r.language === '*' || r.language === language || language === null),
     );
 }
@@ -66,4 +66,16 @@ const ACTIONS = {
     CREATE: 'create',
     UPDATE: 'update',
     DELETE: 'delete',
+};
+
+const ROLES = {
+    VIEWER: 0,
+    EDITOR: 1,
+    ADMIN: 2,
+};
+
+const ROLE_MAP = {
+    [ROLES.VIEWER]: 'Viewer',
+    [ROLES.EDITOR]: 'Editor',
+    [ROLES.ADMIN]: 'Admin',
 };

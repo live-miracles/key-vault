@@ -46,8 +46,11 @@ function getUserEmail() {
 }
 
 // ===== Events API =====
-function getEvents() {
+function getAllData() {
     try {
+        const cache = CacheService.getScriptCache();
+        const data = cache.get(data);
+
         const { rows } = getAllRows(getSheet(SHEETS.EVENT));
         return rows.map((r) => ({
             id: r[0],

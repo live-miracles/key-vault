@@ -46,9 +46,9 @@ function renderKeyTable(eventId = null) {
             <tr class="hover:bg-base-300" data-key-id="${k.id}">
                 <th>${i + 1}</th>
                 <td>${k.name}</td>
-                <td>${capitalize(k.type)}</td>
-                <td>${capitalize(k.language)}</td>
-                <td>${k.server}</td>
+                <td>${KEY_TYPE_MAP[k.type]}</td>
+                <td>${LANGUAGE_MAP[k.language]}</td>
+                <td>${SERVERS[k.server]?.value || k.server}</td>
                 <td>${maskKey(k.key)}</td>
                 <td>${k.remarks}</td>
             </tr>`,
@@ -95,11 +95,11 @@ function editKeyRow() {
     document.querySelector('#key-name-input').value = key.name;
 
     if (isKnownServer(key.server)) {
-        document.querySelector('#server-url-input').value = key.server;
+        document.querySelector('#key-server-input').value = key.server;
         document.querySelector('#custom-url').value = '';
         document.querySelector('#custom-url').classList.add('hidden');
     } else {
-        document.querySelector('#server-url-input').value = '';
+        document.querySelector('#key-server-input').value = '';
         document.querySelector('#custom-url').value = key.server;
         document.querySelector('#custom-url').classList.remove('hidden');
     }
@@ -111,7 +111,7 @@ function editKeyRow() {
 }
 
 function isKnownServer(server) {
-    const serverSelect = document.querySelector('#server-url-input');
+    const serverSelect = document.querySelector('#key-server-input');
     for (const option of serverSelect.options) {
         if (option.value === server) {
             return true;
@@ -122,7 +122,7 @@ function isKnownServer(server) {
 
 async function editKeyFormBtn(event) {
     const pipeId = document.getElementById('out-pipe-id-input').value;
-    const serverUrl = document.getElementById('out-server-url-input').value;
+    const serverUrl = document.getElementById('out-key-server-input').value;
     const rtmpKey = document.getElementById('out-rtmp-key-input').value;
     const outId = document.getElementById('out-id-input').value;
     const data = {
@@ -233,10 +233,10 @@ async function addKeyBtn() {
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-name-input').value = '';
-    document.querySelector('#key-type-input').value = 'primary';
+    document.querySelector('#key-type-input').value = 'p';
     renderKeyLanguages(eventId);
-    document.querySelector('#key-language-input').value = 'english';
-    document.querySelector('#server-url-input').value = 'rtmp://a.rtmp.youtube.com/live2/';
+    document.querySelector('#key-language-input').value = 'en';
+    document.querySelector('#key-server-input').value = 'yt';
     document.querySelector('#custom-url').classList.add('hidden');
     document.querySelector('#custom-url-input').value = '';
     document.querySelector('#stream-key-input').value = '';
@@ -249,6 +249,31 @@ function renderKeyLanguages(eventId) {
     document.querySelector('#key-language-input').innerHTML = LANGUAGES.filter((lang) =>
         hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId, lang),
     )
-        .map((lang) => `<option value="${lang}">${capitalize(lang)}</option>`)
+        .map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`)
         .join('');
 }
+
+const COLORS = {
+    '': { name: 'None', css: '' },
+    1: { name: '🔴 Red', css: 'text-error' },
+    2: { name: '🟠 Orange', css: 'text-secondary' },
+    3: { name: '🟡 Yellow', css: 'text-warning' },
+    4: { name: '🟢 Green', css: 'text-primary' },
+    5: { name: '🔵 Blue', css: 'text-info' },
+    6: { name: '🟣 Purple', css: 'text-accent' },
+};
+
+const SERVERS = {
+    '': { name: 'Custom', value: '' },
+    yt: { name: 'YouTube', value: 'rtmp://a.rtmp.youtube.com/live2/' },
+    yb: { name: 'YT Backup', value: 'rtmp://b.rtmp.youtube.com/live2?backup=1/' },
+    fb: { name: 'Facebook', value: 'rtmps://live-api-s.facebook.com:443/rtmp/' },
+    ig: { name: 'Instagram', value: 'rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/' },
+    vc: { name: 'VDO Cipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },
+    vk: { name: 'VK Video', value: 'rtmp://ovsu.okcdn.ru/input/' },
+};
+
+const KEY_TYPE_MAP = {
+    p: 'Primary',
+    b: 'Backup',
+};

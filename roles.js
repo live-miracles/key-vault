@@ -21,8 +21,8 @@ function renderRoleTable(eventId = null) {
             (r) => `
             <tr>
                 <th>${r.email}</th>
-                <td>${capitalize(r.type)}</td>
-                <td>${capitalize(r.language)}</td>
+                <td>${ROLE_MAP[r.type]}</td>
+                <td>${LANGUAGE_MAP[r.language] || r.language}</td>
                 <td>${r.remarks}</td>
             </tr>
         `,
@@ -42,7 +42,7 @@ async function addRoleBtn() {
     document.querySelector('#role-event-input').value = eventId;
     document.querySelector('#role-email-input').value = '';
     renderRoleTypes(eventId);
-    document.querySelector('#role-type-input').value = 'viewer';
+    document.querySelector('#role-type-input').value = ROLES.VIEWER;
     document.querySelector('#role-language-input').value = '*';
     document.querySelector('#role-remarks-input').value = '';
 
@@ -50,9 +50,9 @@ async function addRoleBtn() {
 }
 
 function renderRoleTypes(eventId) {
-    document.querySelector('#role-type-input').innerHTML = ['viewer', 'editor', 'admin']
+    document.querySelector('#role-type-input').innerHTML = Object.values(ROLES)
         .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))
-        .map((role) => `<option value="${role}">${capitalize(role)}</option>`)
+        .map((role) => `<option value="${role}">${ROLE_MAP[role]}</option>`)
         .join('');
 }
 
@@ -63,9 +63,3 @@ function editRoleFormBtn(event) {
 function showHideRoles() {
     document.querySelector('#role-table').classList.toggle('hidden');
 }
-
-const ROLE_MAP = {
-    viewer: 0,
-    editor: 1,
-    admin: 2,
-};

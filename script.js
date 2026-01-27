@@ -83,9 +83,17 @@ let eventRoles = {};
 
     document.querySelector('#role-language-input').innerHTML =
         '<option value="*">* (All)</option>' +
-        LANGUAGES.map((role) => `<option value="${role}">${capitalize(role)}</option>`).join('');
+        LANGUAGES.map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`).join('');
 
-    document.querySelector('#server-url-input').addEventListener('change', (event) => {
+    document.querySelector('#key-color-input').innerHTML = Object.keys(COLORS)
+        .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)
+        .join('');
+
+    document.querySelector('#key-server-input').innerHTML = Object.keys(SERVERS)
+        .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
+        .join('');
+
+    document.querySelector('#key-server-input').addEventListener('change', (event) => {
         const customUrlElem = document.querySelector('#custom-url');
         if (event.target.value === '') {
             customUrlElem.classList.remove('hidden');

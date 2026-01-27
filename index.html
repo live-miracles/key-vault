@@ -74,7 +74,7 @@
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
           <fieldset class="fieldset inline-block w-64">
             <legend class="fieldset-legend">Email<span class="text-error">*</span></legend>
-            <input type="text" id="role-email-input" class="input" placeholder="Type here" />
+            <input type="text" id="role-email-input" class="input" placeholder="Type here" maxlength="100" />
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-24">
@@ -89,13 +89,12 @@
 
           <fieldset class="fieldset ml-2 inline-block w-28">
             <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
-
             <select class="select" id="role-language-input"></select>
           </fieldset>
 
           <fieldset class="fieldset" id="role-remarks-input">
             <legend class="fieldset-legend">Remarks</legend>
-            <input type="text" id="remarks-input" class="input w-full" placeholder="Type here" />
+            <input type="text" id="remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
           </fieldset>
         </div>
 
@@ -127,49 +126,31 @@
           <fieldset class="fieldset inline-block w-24">
             <legend class="fieldset-legend">Color</legend>
 
-            <select class="select" id="key-color-input">
-              <option value="" selected="">None</option>
-              <option value="accent" class="text-accent">🟣 Purple</option>
-              <option value="info" class="text-info">🔵 Blue</option>
-              <option value="primary" class="text-primary">🟢 Green</option>
-              <option value="warning" class="text-warning">🟡 Yellow</option>
-              <option value="secondary" class="text-secondary">🟠 Orange</option>
-              <option value="error" class="text-error">🔴 Error</option>
-            </select>
+            <select class="select" id="key-color-input"></select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-60">
             <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
-            <input type="text" id="key-name-input" class="input" placeholder="Type here" />
+            <input type="text" id="key-name-input" class="input" placeholder="Type here" maxlength="50" />
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-24">
             <legend class="fieldset-legend">Type<span class="text-error">*</span></legend>
 
             <select class="select" id="key-type-input">
-              <option value="primary" selected="">Primary</option>
-              <option value="backup">Backup</option>
+              <option value="p" selected="">Primary</option>
+              <option value="b">Backup</option>
             </select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-28">
             <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
-
             <select class="select" id="key-language-input"></select>
           </fieldset>
 
           <fieldset class="fieldset ml-2 inline-block w-28">
             <legend class="fieldset-legend">Server URL<span class="text-error">*</span></legend>
-
-            <select class="select" id="server-url-input">
-              <option value="" selected="">Custom</option>
-              <option value="rtmp://a.rtmp.youtube.com/live2/">YouTube</option>
-              <option value="rtmp://b.rtmp.youtube.com/live2?backup=1/">YT Backup</option>
-              <option value="rtmps://live-api-s.facebook.com:443/rtmp/">Facebook</option>
-              <option value="rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/">Instagram</option>
-              <option value="rtmp://live-ingest-01.vd0.co:1935/livestream/">VDO Cipher</option>
-              <option value="rtmp://ovsu.okcdn.ru/input/">VK Video</option>
-            </select>
+            <select class="select" id="key-server-input"></select>
           </fieldset>
 
           <fieldset class="fieldset" id="custom-url">
@@ -179,12 +160,12 @@
 
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
-            <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" />
+            <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" maxlength="200" />
           </fieldset>
 
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Remarks</legend>
-            <input type="text" id="key-remarks-input" class="input w-full" placeholder="Type here" />
+            <input type="text" id="key-remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
           </fieldset>
         </div>
 

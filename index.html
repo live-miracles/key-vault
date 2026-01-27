@@ -158,7 +158,7 @@
               <p class="label text-error"></p>
             </fieldset>
 
-            <fieldset class="fieldset ml-2 inline-block flex-grow" id="custom-url">
+            <fieldset class="fieldset ml-2 inline-block flex-grow" id="custom-server">
               <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
               <input type="text" id="key-custom-server-input" class="input w-full" placeholder="Type here" />
               <p class="label text-error"></p>
@@ -186,22 +186,33 @@
       </div>
     </dialog>
 
-    <div class="flex items-center px-5 pt-3">
+    <div class="relative flex items-center px-5 pt-3">
+      <!-- LEFT -->
       <span class="text-xl" id="event-name"></span>
       <button title="Edit" class="btn btn-accent btn-xs ml-3 hidden" id="edit-event-btn" onclick="editEventBtn()">✎</button>
       <button title="Delete" class="btn btn-error btn-xs ml-2 hidden" id="delete-event-btn" onclick="deleteEventBtn()">✖</button>
       <button title="Share" class="btn btn-accent btn-xs ml-2 hidden" id="show-roles-btn" onclick="showHideRoles()">👥</button>
 
-      <div class="ml-auto flex items-center gap-3">
+      <!-- CENTER -->
+      <div class="absolute left-1/2 -translate-x-1/2">
         <label class="swap">
-          <input id="saving-badge" type="checkbox" class="" disabled />
+          <input id="saving-badge" type="checkbox" disabled />
           <div class="swap-off"></div>
-          <div class="swap-on"><span class="loading loading-infinity loading-xs"></span> Saving</div>
+          <div class="swap-on flex items-center gap-2">
+            <span class="loading loading-infinity loading-xs"></span>
+            Saving
+          </div>
         </label>
-        <span class="text-xl" id="user-email"><span class="loading loading-dots"></span></span>
       </div>
-      <span class="mx-3">|</span>
-      <progress class="progress progress-accent w-12" max="100" id="storage-progress"></progress>
+
+      <!-- RIGHT -->
+      <div class="ml-auto flex items-center gap-3">
+        <span class="text-xl" id="user-email">
+          <span class="loading loading-dots"></span>
+        </span>
+        <span class="mx-3">|</span>
+        <progress class="progress progress-accent w-12" max="100" id="storage-progress"></progress>
+      </div>
     </div>
 
     <div class="divider"></div>

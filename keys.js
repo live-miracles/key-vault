@@ -24,6 +24,7 @@ function renderKeyTable(eventId = null) {
         return;
     }
     document.querySelector('#key-table').classList.remove('hidden');
+    renderKeyLanguages(eventId);
 
     const keys = config.keys
         .filter((k) => k.event === eventId)
@@ -82,16 +83,38 @@ function showContextMenu(event, keyId) {
     setTimeout(() => document.addEventListener('click', hideMenu), 0);
 }
 
+async function addKeyBtn() {
+    const eventId = getUrlParam('event');
+    const event = config.events.find((e) => e.id === eventId);
+    if (!event) {
+        console.error('Event not found:', eventId);
+        return;
+    }
+
+    document.querySelector('#key-id-input').value = '';
+    document.querySelector('#key-event-input').value = eventId;
+    document.querySelector('#key-color-input').value = '';
+    document.querySelector('#key-name-input').value = '';
+    document.querySelector('#key-type-input').value = 'p';
+    document.querySelector('#key-language-input').value = 'en';
+    renderServerInput('yt');
+    document.querySelector('#key-custom-server-input').value = '';
+    document.querySelector('#stream-key-input').value = '';
+    document.querySelector('#key-remarks-input').value = '';
+
+    document.querySelector('#key-modal').showModal();
+}
+
 function editKeyRow() {
     if (!selectedKeyId) return;
-    console.log(selectedKeyId);
     const key = config.keys.find((k) => k.id === selectedKeyId);
 
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
+    document.querySelector('#key-name-input').value = key.name;
     document.querySelector('#key-color-input').value = key.color;
     document.querySelector('#key-type-input').value = key.type;
-    document.querySelector('#key-name-input').value = key.name;
+    document.querySelector('#key-language-input').value = key.language;
 
     renderServerInput(key.server);
 
@@ -102,60 +125,85 @@ function editKeyRow() {
 }
 
 async function saveKeyFormBtn(event) {
+    const server = document.getElementById('key-server-input').value;
     const data = {
-        id: document.getElementById('key-id-input').value,
-        event: document.getElementById('key-event-input').value,
-        color: document.getElementById('key-color-input').value,
-        name: document.getElementById('key-name-input').value,
-        type: document.getElementById('key-type-input').value,
-        language: document.getElementById('key-language-input').value,
+        id: document.getElementById('key-id-input').value.trim(),
+        event: document.getElementById('key-event-input').value.trim(),
+        color: document.getElementById('key-color-input').value.trim(),
+        name: document.getElementById('key-name-input').value.trim(),
+        type: document.getElementById('key-type-input').value.trim(),
+        language: document.getElementById('key-language-input').value.trim(),
         server:
-            document.getElementById('key-server-input').value ||
-            document.getElementById('key-custom-server-input').value,
-        key: document.getElementById('stream-key-input').value,
-        remarks: document.getElementById('key-remarks-input').value,
+            SERVERS[server]?.value ||
+            document.getElementById('key-custom-server-input').value.trim(),
+        key: document.getElementById('stream-key-input').value.trim(),
+        remarks: document.getElementById('key-remarks-input').value.trim(),
     };
 
     // Validation
+    let errorElem = document.querySelector('#key-name-input').nextElementSibling;
     if (data.name === '') {
-        const errorElem = document.querySelector('#key-name-input').nextElementSibling;
         errorElem.innerText = "Name can't be empty";
         event.preventDefault();
         return;
-    } else {
-        errorElem.classList.add('hidden');
-    }
-
-    const isUrlValid = isValidUrl(data.url);
-    if (isUrlValid) {
-        document.getElementById('out-rtmp-key-input').classList.remove('input-error');
-    } else {
-        document.getElementById('out-rtmp-key-input').classList.add('input-error');
-    }
-
-    const isOutNameValid = /^[a-zA-Z0-9_]*$/.test(data.name);
-    if (isOutNameValid) {
-        document.getElementById('out-name-input').classList.remove('input-error');
-    } else {
-        document.getElementById('out-name-input').classList.add('input-error');
-    }
-
-    if (!isUrlValid || !isOutNameValid) {
+    } else if (!/^[a-zA-Z0-9_\- ]*$/.test(data.name)) {
+        errorElem.innerText = 'Only letters, numbers, spaces, -, _';
         event.preventDefault();
         return;
+    } else {
+        errorElem.innerText = '';
     }
 
-    const res = await setOut(pipeId, outId, data);
-
-    if (res.error) {
+    errorElem = document.querySelector('#key-server-input').nextElementSibling;
+    if (!data.server.startsWith('rtmp://') && !data.server.startsWith('rtmps://')) {
+        errorElem.innerText = 'Invalid RTMP';
+        event.preventDefault();
         return;
+    } else {
+        errorElem.innerText = '';
     }
 
-    streamOutsConfig[pipeId][outId].name = data.name;
-    streamOutsConfig[pipeId][outId].encoding = data.encoding;
-    streamOutsConfig[pipeId][outId].url = data.url;
-    pipelines = getPipelinesInfo();
-    renderPipelines();
+    if (!data.server.endsWith('/')) {
+        data.server += '/';
+    }
+
+    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
+    if (data.key === '') {
+        errorElem.innerText = "Key can't be empty";
+        event.preventDefault();
+        return;
+    } else {
+        errorElem.innerText = '';
+    }
+
+    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
+    if (data.key === '') {
+        errorElem.innerText = "Key can't be empty";
+        event.preventDefault();
+        return;
+    } else {
+        errorElem.innerText = '';
+    }
+
+    // Sending request
+    showLoading();
+    if (data.id === '') {
+        // Adding new key
+        console.assert(data.event);
+
+        const newKey = processResponse(await addKey(data));
+        if (newKey === null) return;
+        config.keys.push(newKey);
+    } else {
+        // Updating existing key
+        const newKey = processResponse(await editKey(data));
+        if (newKey === null) return;
+        const oldKey = config.keys.find((k) => k.id === newKey.id);
+        console.assert(oldKey);
+        config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
+    }
+    renderKeyTable(data.event);
+    hideLoading();
 }
 
 async function deleteKeyRow() {
@@ -217,29 +265,6 @@ async function copyRtmpBtn() {
     document.getElementById('key-context-menu').classList.add('hidden');
 }
 
-async function addKeyBtn() {
-    const eventId = getUrlParam('event');
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        console.error('Event not found:', eventId);
-        return;
-    }
-
-    document.querySelector('#key-id-input').value = '';
-    document.querySelector('#key-event-input').value = eventId;
-    document.querySelector('#key-color-input').value = '';
-    document.querySelector('#key-name-input').value = '';
-    document.querySelector('#key-type-input').value = 'p';
-    renderKeyLanguages(eventId);
-    document.querySelector('#key-language-input').value = 'en';
-    renderServerInput('yt');
-    document.querySelector('#key-custom-server-input').value = '';
-    document.querySelector('#stream-key-input').value = '';
-    document.querySelector('#key-remarks-input').value = '';
-
-    document.querySelector('#key-modal').showModal();
-}
-
 function renderKeyLanguages(eventId) {
     document.querySelector('#key-language-input').innerHTML = LANGUAGES.filter((lang) =>
         hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId, lang),
@@ -251,14 +276,14 @@ function renderKeyLanguages(eventId) {
 function renderServerInput(server) {
     if (server && Object.keys(SERVERS).includes(server)) {
         document.querySelector('#key-server-input').value = server;
-        document.querySelector('#custom-url').value = '';
-        document.querySelector('#custom-url').classList.remove('inline-block');
-        document.querySelector('#custom-url').classList.add('hidden');
+        document.querySelector('#key-custom-server-input').value = '';
+        document.querySelector('#custom-server').classList.remove('inline-block');
+        document.querySelector('#custom-server').classList.add('hidden');
     } else {
         document.querySelector('#key-server-input').value = '';
-        document.querySelector('#custom-url').value = server;
-        document.querySelector('#custom-url').classList.add('inline-block');
-        document.querySelector('#custom-url').classList.remove('hidden');
+        document.querySelector('#key-custom-server-input').value = server;
+        document.querySelector('#custom-server').classList.add('inline-block');
+        document.querySelector('#custom-server').classList.remove('hidden');
     }
 }
 

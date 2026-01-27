@@ -31,23 +31,60 @@ function getAllDataMock(etag) {
     };
 }
 
-function addEventMock(data) {
-    if (!data) {
+function addEventMock(event) {
+    if (!event) {
         return {
             success: false,
             error: 'Invalid parameters',
-            etag: String(etagMock),
         };
     }
 
-    q.status = 'none';
-    q.timestamp = String(Date.now());
-    testQuestions.push(q);
+    etagMock += 1;
+    event.id = String(Date.now());
+    testEvents.push(event);
 
-    return { success: true };
+    return { success: true, data: data };
 }
 
-function updateQuestionMock(newQ) {
+function addKeyMock(key) {
+    if (!key) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    etagMock += 1;
+    key.id = String(Date.now());
+    key.row = testKeys.length;
+    testKeys.push(key);
+
+    return { success: true, data: key };
+}
+
+function editKeyMock(key) {
+    if (!key || !key.id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const oldKey = testKeys.find((k) => k.id === key.id);
+    if (!oldKey) {
+        return {
+            success: false,
+            error: 'Key not found',
+        };
+    }
+
+    etagMock += 1;
+    Object.assign(oldKey, key);
+
+    return { success: true, data: oldKey };
+}
+
+function editQuestionMock(newQ) {
     for (let i = 0; i < testQuestions.length; i++) {
         const q = testQuestions[i];
         if (q.timestamp !== newQ.timestamp) {
@@ -199,26 +236,26 @@ googleMock.script.run.withFailureHandler = (_) => ({
         addEvent: (data) => {
             setTimeout(() => f(addEventMock(data)), getRandomWaitTime());
         },
-        updateEvent: (updated) => {
-            setTimeout(() => f(updateEventMock(updated)), getRandomWaitTime());
+        editEvent: (event) => {
+            setTimeout(() => f(editEventMock(event)), getRandomWaitTime());
         },
         deleteEvent: (id) => {
             setTimeout(() => f(deleteEventMock(id)), getRandomWaitTime());
         },
-        addRole: (data) => {
-            setTimeout(() => f(addRoleMock(data)), getRandomWaitTime());
+        addRole: (role) => {
+            setTimeout(() => f(addRoleMock(role)), getRandomWaitTime());
         },
-        updateRole: (updated) => {
-            setTimeout(() => f(updateRoleMock(updated)), getRandomWaitTime());
+        editRole: (role) => {
+            setTimeout(() => f(editRoleMock(role)), getRandomWaitTime());
         },
         deleteRole: (id) => {
             setTimeout(() => f(deleteRoleMock(id)), getRandomWaitTime());
         },
-        addKey: (data) => {
-            setTimeout(() => f(addKeyMock(data)), getRandomWaitTime());
+        addKey: (key) => {
+            setTimeout(() => f(addKeyMock(key)), getRandomWaitTime());
         },
-        updateKey: (updated) => {
-            setTimeout(() => f(updateKeyMock(updated)), getRandomWaitTime());
+        editKey: (key) => {
+            setTimeout(() => f(editKeyMock(key)), getRandomWaitTime());
         },
         deleteKey: (id) => {
             setTimeout(() => f(deleteKeyMock(id)), getRandomWaitTime());

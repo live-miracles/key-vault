@@ -24,40 +24,40 @@ async function getAllData() {
 }
 
 // ===== Events =====
-async function addEvent(data) {
-    return withTry('addEvent', data);
+async function addEvent(event) {
+    return withTry('addEvent', event);
 }
 
-async function editEvent(updated) {
-    return withTry('editEvent', updated);
+async function editEvent(event) {
+    return withTry('editEvent', event);
 }
 
 async function deleteEvent(id) {
     return withTry('deleteEvent', id);
 }
 
-// ===== Keys =====
-async function addKey(data) {
-    return withTry('addKey', data);
-}
-
-async function editKey(updated) {
-    return withTry('editKey', updated);
-}
-
-async function deleteKey(id) {
-    return withTry('deleteKey', id);
-}
-
 // ===== Roles =====
-async function addRole(data) {
-    return withTry('addRole', data);
+async function addRole(role) {
+    return withTry('addRole', role);
 }
 
-async function editRole(updated) {
-    return withTry('editRole', updated);
+async function editRole(role) {
+    return withTry('editRole', role);
 }
 
 async function deleteRole(id) {
     return withTry('deleteRole', id);
+}
+
+// ===== Keys =====
+async function addKey(key) {
+    return withTry('addKey', key);
+}
+
+async function editKey(key) {
+    return withTry('editKey', key);
+}
+
+async function deleteKey(id) {
+    return withTry('deleteKey', id);
 }

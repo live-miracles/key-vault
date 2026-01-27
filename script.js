@@ -8,16 +8,24 @@ function processResponse(response) {
 
 let alertCount = 0;
 function showErrorAlert(error, log = true) {
-    const errorAlertElem = document.getElementById('error-alert');
-    if (!errorAlertElem) return;
-    errorAlertElem.classList.remove('hidden');
-    errorAlertElem.querySelector('.msg').innerText = error;
-    console.error(error);
+    const elem = document.getElementById('error-alert');
+    if (!elem) return;
+    elem.classList.remove('hidden');
+    elem.querySelector('.msg').innerText = error;
+    if (log) console.error(error);
     const alertId = ++alertCount;
     setTimeout(() => {
         if (alertId !== alertCount) return;
-        errorAlertElem.classList.add('hidden');
+        elem.classList.add('hidden');
     }, 5000);
+}
+
+function showLoading() {
+    document.getElementById('saving-badge').checked = true;
+}
+
+function hideLoading() {
+    document.getElementById('saving-badge').checked = false;
 }
 
 function renderEventTabBar(eventId = null) {
@@ -72,7 +80,7 @@ let eventRoles = {};
     eventRoles = getEventRoles(email, config.events, config.roles);
     const storageStatus = Math.round(new Blob([JSON.stringify(config)]).size / 1000);
     document.querySelector('#storage-progress').value = String(storageStatus);
-    document.querySelector('#storage-progress').title = storageStatus + '%';
+    document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
 
     if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         document.querySelector('#add-event-btn').classList.remove('hidden');

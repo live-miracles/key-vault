@@ -84,6 +84,31 @@ function editKeyMock(key) {
     return { success: true, data: oldKey };
 }
 
+function deleteKeyMock(id) {
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const key = testKeys.find((k) => k.id === id);
+    if (!key) {
+        return {
+            success: false,
+            error: 'Key not found',
+        };
+    }
+
+    etagMock += 1;
+    const index = testKeys.findIndex((k) => k.id === id);
+    if (index !== -1) {
+        testKeys.splice(index, 1);
+    }
+
+    return { success: true, data: key };
+}
+
 function editQuestionMock(newQ) {
     for (let i = 0; i < testQuestions.length; i++) {
         const q = testQuestions[i];

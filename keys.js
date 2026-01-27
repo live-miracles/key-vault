@@ -129,7 +129,7 @@ function editKeyRow() {
 
 async function saveKeyFormBtn(event) {
     const server = document.getElementById('key-server-input').value;
-    const data = {
+    const key = {
         id: document.getElementById('key-id-input').value.trim(),
         event: document.getElementById('key-event-input').value.trim(),
         color: document.getElementById('key-color-input').value.trim(),
@@ -145,11 +145,11 @@ async function saveKeyFormBtn(event) {
 
     // Validation
     let errorElem = document.querySelector('#key-name-input').nextElementSibling;
-    if (data.name === '') {
+    if (key.name === '') {
         errorElem.innerText = "Name can't be empty";
         event.preventDefault();
         return;
-    } else if (!/^[a-zA-Z0-9_\- ]*$/.test(data.name)) {
+    } else if (!/^[a-zA-Z0-9_\- ]*$/.test(key.name)) {
         errorElem.innerText = 'Only letters, numbers, spaces, -, _';
         event.preventDefault();
         return;
@@ -158,7 +158,7 @@ async function saveKeyFormBtn(event) {
     }
 
     errorElem = document.querySelector('#key-server-input').nextElementSibling;
-    if (!data.server.startsWith('rtmp://') && !data.server.startsWith('rtmps://')) {
+    if (!key.server.startsWith('rtmp://') && !key.server.startsWith('rtmps://')) {
         errorElem.innerText = 'Invalid RTMP';
         event.preventDefault();
         return;
@@ -166,12 +166,12 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    if (!data.server.endsWith('/')) {
-        data.server += '/';
+    if (!key.server.endsWith('/')) {
+        key.server += '/';
     }
 
     errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (data.key === '') {
+    if (key.key === '') {
         errorElem.innerText = "Key can't be empty";
         event.preventDefault();
         return;
@@ -180,7 +180,7 @@ async function saveKeyFormBtn(event) {
     }
 
     errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (data.key === '') {
+    if (key.key === '') {
         errorElem.innerText = "Key can't be empty";
         event.preventDefault();
         return;
@@ -190,22 +190,24 @@ async function saveKeyFormBtn(event) {
 
     // Sending request
     showLoading();
-    if (data.id === '') {
+    if (key.id === '') {
         // Adding new key
-        console.assert(data.event);
+        console.assert(key.event);
 
-        const newKey = processResponse(await addKey(data));
-        if (newKey === null) return;
-        config.keys.push(newKey);
+        const newKey = processResponse(await addKey(key));
+        if (newKey !== null) {
+            config.keys.push(newKey);
+        }
     } else {
         // Updating existing key
-        const newKey = processResponse(await editKey(data));
-        if (newKey === null) return;
-        const oldKey = config.keys.find((k) => k.id === newKey.id);
-        console.assert(oldKey);
-        config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
+        const newKey = processResponse(await editKey(key));
+        if (newKey !== null) {
+            const oldKey = config.keys.find((k) => k.id === newKey.id);
+            console.assert(oldKey);
+            config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
+        }
     }
-    renderKeyTable(data.event);
+    renderKeyTable(key.event);
     hideLoading();
 }
 
@@ -216,11 +218,23 @@ async function deleteKeyRow() {
         console.error('Key not found:', selectedKeyId);
     }
 
-    if (!confirm('Are you sure you want to delete key "' + key.name + '"?')) {
+    if (
+        !confirm(
+            `Are you sure you want to delete ${KEY_TYPE_MAP[key.type]} ` +
+                `${SERVERS[key.server]?.name || 'Custom'} key for ` +
+                `${key.name} ${LANGUAGE_MAP[key.language]}?`,
+        )
+    ) {
         return;
     }
 
-    processResponse(await deleteKey(key.id));
+    showLoading();
+    const res = processResponse(await deleteKey(key.id));
+    if (res !== null) {
+        config.keys = config.keys.filter((k) => k.id !== key.id);
+    }
+    renderKeyTable(key.event);
+    hideLoading();
 }
 
 function showCopiedNotification() {

@@ -7,8 +7,12 @@ function renderRoleTable(eventId = null) {
 
     if (hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId)) {
         document.querySelector('#add-role-btn').classList.remove('hidden');
+        document.querySelector('#edit-role-btn').classList.remove('hidden');
+        document.querySelector('#delete-role-btn').classList.remove('hidden');
     } else {
         document.querySelector('#add-role-btn').classList.add('hidden');
+        document.querySelector('#edit-role-btn').classList.add('hidden');
+        document.querySelector('#delete-role-btn').classList.add('hidden');
     }
 
     document.querySelector('#role-rows').innerHTML = config.roles
@@ -19,15 +23,40 @@ function renderRoleTable(eventId = null) {
         })
         .map(
             (r) => `
-            <tr>
+            <tr class="hover:bg-base-300" data-role-id="${r.id}">
                 <th>${r.email}</th>
-                <td>${ROLE_MAP[r.type]}</td>
+                <td>${(r.event === '*' ? '*' : '') + ROLE_MAP[r.type]}</td>
                 <td>${LANGUAGE_MAP[r.language] || r.language}</td>
                 <td>${r.remarks}</td>
             </tr>
         `,
         )
         .join('');
+
+    // Add right-click event listeners to rows
+    document.querySelectorAll('#role-rows tr').forEach((row) => {
+        row.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const roleId = row.dataset.roleId;
+            const role = config.roles.find((r) => r.id === roleId);
+            if (!role) {
+                console.error('Role not found');
+                return;
+            }
+            if (hasRoleAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type)) {
+                showRoleContextMenu(e, roleId);
+            }
+        });
+    });
+}
+
+let selectedRowId = null;
+function showRoleContextMenu(event, roleId) {
+    selectedRowId = roleId;
+    const contextMenu = document.getElementById('role-context-menu');
+    contextMenu.style.left = `${event.pageX}px`;
+    contextMenu.style.top = `${event.pageY}px`;
+    contextMenu.classList.remove('hidden');
 }
 
 async function addRoleBtn() {

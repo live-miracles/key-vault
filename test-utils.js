@@ -193,6 +193,18 @@ const testKeys = [
         color: '',
         remarks: '',
     },
+    {
+        row: 6,
+        id: 'KEY06',
+        event: 'EVT02',
+        name: 'Channel 5',
+        type: 'p',
+        language: 'de',
+        server: 'yt',
+        key: 'abc-123-abc-123-abc-123',
+        color: '',
+        remarks: '',
+    },
 ];
 
 const testRoles = [
@@ -218,6 +230,14 @@ const testRoles = [
         email: testEmail3,
         type: ROLES.VIEWER,
         language: 'en',
+        remarks: '',
+    },
+    {
+        id: 'ROLE04',
+        event: 'EVT02',
+        email: testEmail1,
+        type: ROLES.EDITOR,
+        language: 'de',
         remarks: '',
     },
 ];

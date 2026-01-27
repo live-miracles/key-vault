@@ -61,8 +61,8 @@
     <!-- Context Menu -->
     <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
       <ul class="menu w-32 p-2">
-        <li><a onclick="editRoleRow()">Edit</a></li>
-        <li><a onclick="deleteRoleRow()" class="text-error">Delete</a></li>
+        <li><a onclick="editRoleRow()" id="edit-role-btn" class="hidden">Edit</a></li>
+        <li><a onclick="deleteRoleRow()" id="delete-role-btn" class="text-error hidden">Delete</a></li>
       </ul>
     </div>
 
@@ -112,8 +112,8 @@
       <ul class="menu w-32 p-2">
         <li><a onclick="copyKeyBtn()">Copy Key</a></li>
         <li><a onclick="copyRtmpBtn()">Copy Full URL</a></li>
-        <li><a onclick="editKeyRow()">Edit</a></li>
-        <li><a onclick="deleteKeyRow()" class="text-error">Delete</a></li>
+        <li><a onclick="editKeyRow()" id="edit-key-btn" class="hidden">Edit</a></li>
+        <li><a onclick="deleteKeyRow()" id="delete-key-btn" class="text-error hidden">Delete</a></li>
       </ul>
     </div>
 

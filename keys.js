@@ -60,27 +60,31 @@ function renderKeyTable(eventId = null) {
     document.querySelectorAll('#key-rows tr').forEach((row) => {
         row.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            showContextMenu(e, row.dataset.keyId);
+            const keyId = row.dataset.keyId;
+            const key = config.keys.find((k) => k.id === keyId);
+            if (!key) {
+                console.error('Key not found');
+                return;
+            }
+            if (hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language)) {
+                document.querySelector('#edit-key-btn').classList.remove('hidden');
+                document.querySelector('#delete-key-btn').classList.remove('hidden');
+            } else {
+                document.querySelector('#edit-key-btn').classList.add('hidden');
+                document.querySelector('#delete-key-btn').classList.add('hidden');
+            }
+            showKeyContextMenu(e, keyId);
         });
     });
 }
 
 let selectedKeyId = null;
-function showContextMenu(event, keyId) {
+function showKeyContextMenu(event, keyId) {
     selectedKeyId = keyId;
     const contextMenu = document.getElementById('key-context-menu');
     contextMenu.style.left = `${event.pageX}px`;
     contextMenu.style.top = `${event.pageY}px`;
     contextMenu.classList.remove('hidden');
-
-    // Hide context menu when clicking elsewhere
-    const hideMenu = (e) => {
-        if (!contextMenu.contains(e.target)) {
-            contextMenu.classList.add('hidden');
-            document.removeEventListener('click', hideMenu);
-        }
-    };
-    setTimeout(() => document.addEventListener('click', hideMenu), 0);
 }
 
 async function addKeyBtn() {
@@ -121,7 +125,6 @@ function editKeyRow() {
     document.querySelector('#stream-key-input').value = key.key;
 
     document.getElementById('key-modal').showModal();
-    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 async function saveKeyFormBtn(event) {
@@ -218,8 +221,6 @@ async function deleteKeyRow() {
     }
 
     processResponse(await deleteKey(key.id));
-
-    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 function showCopiedNotification() {
@@ -242,7 +243,6 @@ async function copyKeyBtn() {
     if (copyText(key.key)) {
         showCopiedNotification();
     }
-    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 async function copyRtmpBtn() {
@@ -262,7 +262,6 @@ async function copyRtmpBtn() {
     if (copyText(serverUrl + key.key)) {
         showCopiedNotification();
     }
-    document.getElementById('key-context-menu').classList.add('hidden');
 }
 
 function renderKeyLanguages(eventId) {

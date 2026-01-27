@@ -78,10 +78,13 @@ let eventRoles = {};
 
     config = processResponse(await getAllData());
     eventRoles = getEventRoles(email, config.events, config.roles);
+
+    // ===== Storage status =====
     const storageStatus = Math.round(new Blob([JSON.stringify(config)]).size / 1000);
     document.querySelector('#storage-progress').value = String(storageStatus);
     document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
 
+    // ===== Events =====
     if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         document.querySelector('#add-event-btn').classList.remove('hidden');
         document.querySelector('#edit-event-btn').classList.remove('hidden');
@@ -92,9 +95,18 @@ let eventRoles = {};
         selectEvent(config.events[0].id);
     }
 
+    // ===== Roles =====
+    document.addEventListener('click', () =>
+        document.getElementById('role-context-menu').classList.add('hidden'),
+    );
     document.querySelector('#role-language-input').innerHTML =
         '<option value="*">* (All)</option>' +
         LANGUAGES.map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`).join('');
+
+    // ===== Keys =====
+    document.addEventListener('click', () =>
+        document.getElementById('key-context-menu').classList.add('hidden'),
+    );
 
     document.querySelector('#key-color-input').innerHTML = Object.keys(COLORS)
         .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)

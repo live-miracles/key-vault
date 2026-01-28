@@ -11,6 +11,7 @@
     <script src="./utils.js"></script>
     <script src="./api.js"></script>
     <script src="./access.js"></script>
+    <script src="./events.js"></script>
     <script src="./roles.js"></script>
     <script src="./keys.js"></script>
     <script src="./test-utils.js" defer></script>
@@ -22,6 +23,7 @@
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/utils.js" defer></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/api.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/events.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/roles.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/keys.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/script.js" defer></script>
@@ -57,6 +59,27 @@
       </svg>
       <span>Copied</span>
     </div>
+
+    <dialog id="event-modal" class="modal">
+      <div class="modal-box max-w-[800px]">
+        <input type="text" id="event-id-input" class="hidden" />
+
+        <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Event Name<span class="text-error">*</span></legend>
+            <input type="text" id="event-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
+            <p class="label text-error"></p>
+          </fieldset>
+        </div>
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn mx-2">Cancel</button>
+            <button class="btn btn-accent" onclick="saveEventFormBtn(event)">Save</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
 
     <!-- Context Menu -->
     <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">

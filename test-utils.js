@@ -43,7 +43,54 @@ function addEventMock(event) {
     event.id = String(Date.now());
     testEvents.push(event);
 
-    return { success: true, data: data };
+    return { success: true, data: event };
+}
+
+function editEventMock(event) {
+    if (!event || !event.id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const old = testEvents.find((e) => e.id === event.id);
+    if (!old) {
+        return {
+            success: false,
+            error: 'Eve t not found',
+        };
+    }
+
+    etagMock += 1;
+    Object.assign(old, event);
+
+    return { success: true, data: old };
+}
+
+function deleteEventMock(id) {
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const event = testEvents.find((e) => e.id === id);
+    if (!event) {
+        return {
+            success: false,
+            error: 'Key not found',
+        };
+    }
+
+    etagMock += 1;
+    testEvents.splice(
+        testEvents.findIndex((e) => e.id === id),
+        1,
+    );
+
+    return { success: true, data: true };
 }
 
 function addKeyMock(key) {
@@ -101,10 +148,10 @@ function deleteKeyMock(id) {
     }
 
     etagMock += 1;
-    const index = testKeys.findIndex((k) => k.id === id);
-    if (index !== -1) {
-        testKeys.splice(index, 1);
-    }
+    testKeys.splice(
+        testKeys.findIndex((k) => k.id === id),
+        1,
+    );
 
     return { success: true, data: true };
 }

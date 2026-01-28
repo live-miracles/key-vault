@@ -28,39 +28,11 @@ function hideLoading() {
     document.getElementById('saving-badge').checked = false;
 }
 
-function renderEventTabBar(eventId = null) {
-    const event = config.events.find((e) => e.id === eventId);
-    const name = event ? event.name : '';
-    document.getElementById('event-name').innerText = name;
-
-    const tabsElem = document.querySelector('.tabs');
-    tabsElem.innerHTML = config.events
-        .map(
-            (e) => `
-        <a role="tab" class="tab ${eventId === e.id ? 'tab-active' : ''}"
-          onclick="selectEvent('${e.id}')">${e.name}</a>`,
-        )
-        .join('');
+function updateEventRoles(userEmail, config) {
+    eventRoles = getEventRoles(userEmail, config.events, config.roles);
 }
 
-async function addEventBtn() {
-    const maxNumber =
-        Math.max(...config.events.map((e) => parseInt(e.name.split(' ')[1], 10))) || 0;
-    const nextNumber = maxNumber + 1;
-    const res = await addEvent({ name: `Event ${nextNumber}` });
-
-    const data = processResponse(res);
-    if (data === null) return;
-    selectEvent(data.id);
-}
-
-function selectEvent(id) {
-    setUrlParam('event', id);
-    renderEventTabBar(id);
-    renderRoleTable(id);
-    renderKeyTable(id);
-}
-
+let userEmail = null;
 let config = {
     events: [],
     roles: [],
@@ -73,11 +45,11 @@ let eventRoles = {};
         window.google = googleMock;
     }
 
-    const email = processResponse(await getUserEmail());
-    document.querySelector('#user-email').innerText = email;
+    userEmail = processResponse(await getUserEmail());
+    document.querySelector('#user-email').innerText = userEmail;
 
     config = processResponse(await getAllData());
-    eventRoles = getEventRoles(email, config.events, config.roles);
+    updateEventRoles(userEmail, config);
 
     // ===== Storage status =====
     const storageStatus = Math.round(new Blob([JSON.stringify(config)]).size / 1000);
@@ -88,7 +60,6 @@ let eventRoles = {};
     if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         document.querySelector('#add-event-btn').classList.remove('hidden');
         document.querySelector('#edit-event-btn').classList.remove('hidden');
-        document.querySelector('#delete-event-btn').classList.remove('hidden');
     }
 
     if (config.events.length > 0) {

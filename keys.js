@@ -238,7 +238,7 @@ async function deleteKeyRow() {
         console.error('Key not found:', selectedKeyId);
     }
 
-    if (!confirm(`Are you sure you want to delete "${key.name}" key?`)) {
+    if (!confirm(`Are you sure you want to delete key "${key.name}"?`)) {
         return;
     }
 

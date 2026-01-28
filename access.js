@@ -69,9 +69,9 @@ const ACTIONS = {
 };
 
 const ROLES = {
-    VIEWER: 0,
-    EDITOR: 1,
-    ADMIN: 2,
+    VIEWER: '0',
+    EDITOR: '1',
+    ADMIN: '2',
 };
 
 const ROLE_MAP = {

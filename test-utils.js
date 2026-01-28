@@ -20,15 +20,15 @@ function getAllDataMock(etag) {
         };
     }
 
-    return {
-        success: true,
-        data: {
-            events: structuredClone(testEvents), // important to return copy
-            keys: structuredClone(testKeys),
-            roles: structuredClone(testRoles),
-            etag: serverEtag,
-        },
+    const data = {
+        etag: serverEtag,
+        events: structuredClone(testEvents), // important to return copy
+        keys: structuredClone(testKeys),
+        roles: structuredClone(testRoles),
     };
+    data.size = JSON.stringify(data).length;
+
+    return { success: true, data: data };
 }
 
 function addEventMock(event) {
@@ -204,6 +204,41 @@ const testEvents = [
     },
 ];
 
+const testRoles = [
+    {
+        id: 'ROLE01',
+        event: 'EVT01',
+        email: testEmail1,
+        type: ROLES.ADMIN,
+        language: '*',
+        remarks: '',
+    },
+    {
+        id: 'ROLE02',
+        event: '*',
+        email: testEmail2,
+        type: ROLES.ADMIN,
+        language: '*',
+        remarks: '',
+    },
+    {
+        id: 'ROLE03',
+        event: 'EVT02',
+        email: testEmail3,
+        type: ROLES.VIEWER,
+        language: 'en',
+        remarks: '',
+    },
+    {
+        id: 'ROLE04',
+        event: 'EVT02',
+        email: testEmail1,
+        type: ROLES.EDITOR,
+        language: 'de',
+        remarks: '',
+    },
+];
+
 const testKeys = [
     {
         row: 1,
@@ -215,7 +250,7 @@ const testKeys = [
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
         key2: 'abc-123-abc-123-abc-123',
-        color: '1',
+        color: '',
         link: '',
         remarks: 'Some random information about the key',
     },
@@ -241,9 +276,9 @@ const testKeys = [
         language: 'en',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
-        server2: 'yt',
+        server2: 'yb',
         key2: 'abc-123-abc-123-abc-123',
-        color: '',
+        color: '6',
         link: '',
         remarks: '',
     },
@@ -287,41 +322,6 @@ const testKeys = [
         key2: '',
         color: '',
         link: '',
-        remarks: '',
-    },
-];
-
-const testRoles = [
-    {
-        id: 'ROLE01',
-        event: 'EVT01',
-        email: testEmail1,
-        type: ROLES.ADMIN,
-        language: '*',
-        remarks: '',
-    },
-    {
-        id: 'ROLE02',
-        event: '*',
-        email: testEmail2,
-        type: ROLES.ADMIN,
-        language: '*',
-        remarks: '',
-    },
-    {
-        id: 'ROLE03',
-        event: 'EVT02',
-        email: testEmail3,
-        type: ROLES.VIEWER,
-        language: 'en',
-        remarks: '',
-    },
-    {
-        id: 'ROLE04',
-        event: 'EVT02',
-        email: testEmail1,
-        type: ROLES.EDITOR,
-        language: 'de',
         remarks: '',
     },
 ];

@@ -37,7 +37,7 @@ function renderKeyTable(eventId = null) {
     document.querySelector('#key-rows').innerHTML = keys
         .map(
             (k, i) => `
-            <tr class="hover:bg-base-300" data-key-id="${k.id}">
+            <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss}" data-key-id="${k.id}">
                 <th>${i + 1}</th>
                 <td>${k.name}</td>
                 <td>${LANGUAGE_MAP[k.language]}</td>
@@ -102,6 +102,7 @@ async function addKeyBtn() {
     renderServerInput('', '2');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
+    document.querySelector('#key-link-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
 
     document.querySelector('#key-modal').showModal();
@@ -110,13 +111,18 @@ async function addKeyBtn() {
 function editKeyRow() {
     if (!selectedKeyId) return;
     const key = config.keys.find((k) => k.id === selectedKeyId);
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+        return;
+    }
 
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
     document.querySelector('#key-color-input').value = key.color;
-    document.querySelector('#key-type-input').value = key.type;
     document.querySelector('#key-language-input').value = key.language;
+    document.querySelector('#key-link-input').value = key.link;
+    document.querySelector('#key-remarks-input').value = key.remarks;
 
     renderServerInput(key.server);
     renderServerInput(key.server2, '2');
@@ -327,13 +333,13 @@ function renderServerInput(server, suffix = '') {
 }
 
 const COLORS = {
-    '': { name: 'None', css: '' },
-    1: { name: '🔴 Red', css: 'text-error' },
-    2: { name: '🟠 Orange', css: 'text-secondary' },
-    3: { name: '🟡 Yellow', css: 'text-warning' },
-    4: { name: '🟢 Green', css: 'text-primary' },
-    5: { name: '🔵 Blue', css: 'text-info' },
-    6: { name: '🟣 Purple', css: 'text-accent' },
+    '': { name: 'None', css: '', bgCss: '' },
+    1: { name: '🔴 Red', css: 'text-error', bgCss: 'bg-error/10' },
+    2: { name: '🟠 Orange', css: 'text-secondary', bgCss: 'bg-secondary/10' },
+    3: { name: '🟡 Yellow', css: 'text-warning', bgCss: 'bg-warning/10' },
+    4: { name: '🟢 Green', css: 'text-primary', bgCss: 'bg-primary/10' },
+    5: { name: '🔵 Blue', css: 'text-info', bgCss: 'bg-info/10' },
+    6: { name: '🟣 Purple', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
 
 const SERVERS = {

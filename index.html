@@ -95,26 +95,26 @@
         <input type="text" id="role-id-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
-          <fieldset class="fieldset inline-block w-64">
-            <legend class="fieldset-legend">Email<span class="text-error">*</span></legend>
-            <input type="text" id="role-email-input" class="input" placeholder="Type here" maxlength="100" />
-          </fieldset>
+          <div class="flex items-center">
+            <fieldset class="fieldset inline-block flex-grow">
+              <legend class="fieldset-legend">Email<span class="text-error">*</span></legend>
+              <input type="text" id="role-email-input" class="input w-full" placeholder="Type here" maxlength="100" />
+              <p class="label text-error"></p>
+            </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-24">
-            <legend class="fieldset-legend">Role<span class="text-error">*</span></legend>
+            <fieldset class="fieldset ml-2 inline-block w-32">
+              <legend class="fieldset-legend">Role<span class="text-error">*</span></legend>
 
-            <select class="select" id="role-type-input">
-              <option value="admin">Admin</option>
-              <option value="editor">Editor</option>
-              <option value="viewer" selected="">Viewer</option>
-            </select>
-          </fieldset>
+              <select class="select" id="role-type-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-28">
-            <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
-            <select class="select" id="role-language-input"></select>
-          </fieldset>
-
+            <fieldset class="fieldset ml-2 inline-block w-32">
+              <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
+              <select class="select" id="role-language-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
+          </div>
           <fieldset class="fieldset" id="role-remarks-input">
             <legend class="fieldset-legend">Remarks</legend>
             <input type="text" id="remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
@@ -160,14 +160,15 @@
               <p class="label text-error"></p>
             </fieldset>
 
-            <!-- <fieldset class="fieldset ml-2 inline-block flex-grow">
-              <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
-              <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="200" />
-              <p class="label text-error"></p>
-            </fieldset> -->
             <fieldset class="fieldset ml-2 inline-block flex-grow">
               <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
               <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
+              <p class="label text-error"></p>
+            </fieldset>
+
+            <fieldset class="fieldset ml-2 inline-block flex-grow">
+              <legend class="fieldset-legend">Link</legend>
+              <input type="text" id="key-link-input" class="input w-full" placeholder="Type here" maxlength="200" />
               <p class="label text-error"></p>
             </fieldset>
           </div>

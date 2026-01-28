@@ -50,9 +50,9 @@ function renderRoleTable(eventId = null) {
     });
 }
 
-let selectedRowId = null;
+let selectedRoleId = null;
 function showRoleContextMenu(event, roleId) {
-    selectedRowId = roleId;
+    selectedRoleId = roleId;
     const contextMenu = document.getElementById('role-context-menu');
     contextMenu.style.left = `${event.pageX}px`;
     contextMenu.style.top = `${event.pageY}px`;
@@ -76,6 +76,25 @@ async function addRoleBtn() {
     document.querySelector('#role-remarks-input').value = '';
 
     document.querySelector('#role-modal').showModal();
+}
+
+async function editRoleRow() {
+    if (!selectedRoleId) return;
+    const role = config.roles.find((r) => r.id === selectedRoleId);
+    if (!role) {
+        console.error('Role not found:', selectedRoleId);
+        return;
+    }
+
+    renderRoleTypes(role.event);
+    document.querySelector('#role-id-input').value = role.id;
+    document.querySelector('#role-event-input').value = role.event;
+    document.querySelector('#role-email-input').value = role.email;
+    document.querySelector('#role-type-input').value = role.type;
+    document.querySelector('#role-language-input').value = role.language;
+    document.querySelector('#role-remarks-input').value = role.remarks;
+
+    document.getElementById('role-modal').showModal();
 }
 
 function renderRoleTypes(eventId) {

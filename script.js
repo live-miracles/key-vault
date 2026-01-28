@@ -34,6 +34,7 @@ function updateEventRoles(userEmail, config) {
 
 let userEmail = null;
 let config = {
+    size: 0,
     events: [],
     roles: [],
     keys: [],
@@ -52,7 +53,7 @@ let eventRoles = {};
     updateEventRoles(userEmail, config);
 
     // ===== Storage status =====
-    const storageStatus = Math.round(new Blob([JSON.stringify(config)]).size / 1000);
+    const storageStatus = Math.round(config.size / 1000);
     document.querySelector('#storage-progress').value = String(storageStatus);
     document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
 

@@ -110,6 +110,7 @@
     <!-- Context Menu -->
     <div id="key-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
       <ul class="menu w-32 p-2">
+        <li><a onclick="copyLinkBtn()" id="copy-link-btn">Copy Link</a></li>
         <li><a onclick="copyKeyBtn()">Copy Key</a></li>
         <li><a onclick="copyRtmpBtn()">Copy Full URL</a></li>
         <li><a onclick="editKeyRow()" id="edit-key-btn" class="hidden">Edit</a></li>
@@ -123,33 +124,30 @@
         <input type="text" id="key-id-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
-          <fieldset class="fieldset inline-block w-60">
-            <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
-            <input type="text" id="key-name-input" class="input" placeholder="Type here" maxlength="50" />
-            <p class="label text-error"></p>
-          </fieldset>
+          <div class="flex items-center">
+            <fieldset class="fieldset inline-block w-32">
+              <legend class="fieldset-legend">Color</legend>
+              <select class="select" id="key-color-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-32">
-            <legend class="fieldset-legend">Color</legend>
-            <select class="select" id="key-color-input"></select>
-            <p class="label text-error"></p>
-          </fieldset>
+            <fieldset class="fieldset ml-2 inline-block w-32">
+              <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
+              <select class="select" id="key-language-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
 
-          <fieldset class="fieldset ml-2 inline-block w-32">
-            <legend class="fieldset-legend">Type<span class="text-error">*</span></legend>
-
-            <select class="select" id="key-type-input">
-              <option value="p" selected="">Primary</option>
-              <option value="b">Backup</option>
-            </select>
-            <p class="label text-error"></p>
-          </fieldset>
-
-          <fieldset class="fieldset ml-2 inline-block w-32">
-            <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
-            <select class="select" id="key-language-input"></select>
-            <p class="label text-error"></p>
-          </fieldset>
+            <!-- <fieldset class="fieldset ml-2 inline-block flex-grow">
+              <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
+              <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <p class="label text-error"></p>
+            </fieldset> -->
+            <fieldset class="fieldset ml-2 inline-block flex-grow">
+              <legend class="fieldset-legend">Key Name<span class="text-error">*</span></legend>
+              <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
+              <p class="label text-error"></p>
+            </fieldset>
+          </div>
 
           <div class="flex items-center">
             <fieldset class="fieldset inline-block w-32">
@@ -160,16 +158,36 @@
 
             <fieldset class="fieldset ml-2 inline-block flex-grow" id="custom-server">
               <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
-              <input type="text" id="key-custom-server-input" class="input w-full" placeholder="Type here" />
+              <input type="text" id="key-custom-server-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <p class="label text-error"></p>
+            </fieldset>
+
+            <fieldset class="fieldset ml-2 inline-block flex-grow">
+              <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
+              <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" maxlength="200" />
               <p class="label text-error"></p>
             </fieldset>
           </div>
 
-          <fieldset class="fieldset">
-            <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
-            <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" maxlength="200" />
-            <p class="label text-error"></p>
-          </fieldset>
+          <div class="flex items-center">
+            <fieldset class="fieldset inline-block w-32">
+              <legend class="fieldset-legend">Backup Server URL</legend>
+              <select class="select" id="key-server2-input"></select>
+              <p class="label text-error"></p>
+            </fieldset>
+
+            <fieldset class="fieldset ml-2 inline-block flex-grow" id="custom-server2">
+              <legend class="fieldset-legend">Backup Custom URL</legend>
+              <input type="text" id="key-custom-server2-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <p class="label text-error"></p>
+            </fieldset>
+
+            <fieldset class="fieldset ml-2 inline-block flex-grow">
+              <legend class="fieldset-legend">Backup Stream Key</legend>
+              <input type="text" id="stream-key2-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <p class="label text-error"></p>
+            </fieldset>
+          </div>
 
           <fieldset class="fieldset">
             <legend class="fieldset-legend">Remarks</legend>
@@ -254,10 +272,10 @@
               <tr>
                 <th></th>
                 <th>Name</th>
-                <th>Type</th>
                 <th>Language</th>
-                <th>Server URL</th>
-                <th>Key</th>
+                <th>Full URL</th>
+                <th>Backup URL</th>
+                <th>Link</th>
                 <th>Remarks</th>
               </tr>
             </thead>

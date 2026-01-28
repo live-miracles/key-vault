@@ -106,7 +106,7 @@ function deleteKeyMock(id) {
         testKeys.splice(index, 1);
     }
 
-    return { success: true, data: key };
+    return { success: true, data: true };
 }
 
 function editQuestionMock(newQ) {
@@ -163,23 +163,27 @@ const testKeys = [
         id: 'KEY01',
         event: 'EVT01',
         name: 'Channel 1',
-        type: 'p',
         language: 'en',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
-        color: '',
-        remarks: '',
+        server2: 'yb',
+        key2: 'abc-123-abc-123-abc-123',
+        color: '1',
+        link: '',
+        remarks: 'Some random information about the key',
     },
     {
         row: 2,
         id: 'KEY02',
         event: 'EVT01',
         name: 'Channel 2',
-        type: 'p',
         language: 'de',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
+        server2: 'fb',
+        key2: 'B-abc-123-abc-123-abc-123',
         color: '',
+        link: 'https://youtube.com/live/abc123abc123',
         remarks: '',
     },
     {
@@ -187,11 +191,13 @@ const testKeys = [
         id: 'KEY03',
         event: 'EVT01',
         name: 'Channel 1',
-        type: 'b',
         language: 'en',
-        server: 'yb',
+        server: 'yt',
         key: 'abc-123-abc-123-abc-123',
+        server2: 'yt',
+        key2: 'abc-123-abc-123-abc-123',
         color: '',
+        link: '',
         remarks: '',
     },
     {
@@ -199,11 +205,13 @@ const testKeys = [
         id: 'KEY04',
         event: 'EVT02',
         name: 'Channel 3',
-        type: 'b',
         language: 'en',
-        server: 'yb',
+        server: 'yt',
         key: 'abc-123-abc-123-abc-123',
+        server2: '',
+        key2: '',
         color: '',
+        link: '',
         remarks: '',
     },
     {
@@ -211,11 +219,13 @@ const testKeys = [
         id: 'KEY05',
         event: 'EVT01',
         name: 'Channel 1',
-        type: 'p',
         language: 'en',
         server: 'rtmp://123:123:123:123/live/',
         key: 'abc-123-abc-123-abc-123',
+        server2: '',
+        key2: '',
         color: '',
+        link: '',
         remarks: '',
     },
     {
@@ -223,11 +233,13 @@ const testKeys = [
         id: 'KEY06',
         event: 'EVT02',
         name: 'Channel 5',
-        type: 'p',
         language: 'de',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
+        server2: '',
+        key2: '',
         color: '',
+        link: '',
         remarks: '',
     },
 ];

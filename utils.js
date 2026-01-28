@@ -2,6 +2,10 @@ function capitalize(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
+function getShortText(str, len) {
+    return str.length > len ? str.slice(0, len / 2) + '...' + str.slice(-len / 2) : str;
+}
+
 function isValidUrl(str) {
     // YouTube backup URL is a little funny
     const text = str.replaceAll(

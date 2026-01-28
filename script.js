@@ -116,7 +116,15 @@ let eventRoles = {};
         .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
         .join('');
 
+    document.querySelector('#key-server2-input').innerHTML = Object.keys(SERVERS)
+        .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
+        .join('');
+
     document
         .querySelector('#key-server-input')
         .addEventListener('change', (event) => renderServerInput(event.target.value));
+
+    document
+        .querySelector('#key-server2-input')
+        .addEventListener('change', (event) => renderServerInput(event.target.value, '2'));
 })();

@@ -6,9 +6,9 @@ function maskKey(key) {
         if (key.length === 1) {
             return key;
         }
-        return key[0] + ' ... ' + key[key.length - 1];
+        return key[0] + '...' + key[key.length - 1];
     }
-    return key.substring(0, 3) + ' ... ' + key.substring(key.length - 3);
+    return key.substring(0, 3) + '...' + key.substring(key.length - 3);
 }
 
 function renderKeyTable(eventId = null) {
@@ -32,14 +32,7 @@ function renderKeyTable(eventId = null) {
             // First, sort by language (lexicographical order)
             const langCompare = a.language.localeCompare(b.language);
             if (langCompare !== 0) return langCompare;
-
-            // If language is same, sort by type (primary before backup)
-            if (a.type === 'primary' && b.type === 'backup') return -1;
-            if (a.type === 'backup' && b.type === 'primary') return 1;
-            if (a.type !== b.type) return a.type.localeCompare(b.type);
-
-            // If language and type are same, sort by row number
-            return (a.row || 0) - (b.row || 0);
+            return a.row - b.row;
         });
     document.querySelector('#key-rows').innerHTML = keys
         .map(
@@ -47,10 +40,10 @@ function renderKeyTable(eventId = null) {
             <tr class="hover:bg-base-300" data-key-id="${k.id}">
                 <th>${i + 1}</th>
                 <td>${k.name}</td>
-                <td>${KEY_TYPE_MAP[k.type]}</td>
                 <td>${LANGUAGE_MAP[k.language]}</td>
-                <td>${SERVERS[k.server]?.value || k.server}</td>
-                <td>${maskKey(k.key)}</td>
+                <td>${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
+                <td>${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
+                <td>${k.link ? `<a href="${k.link}" class="link" target="_blank">${getShortText(k.link, 25)}</a>` : k.link}</td>
                 <td>${k.remarks}</td>
             </tr>`,
         )
@@ -72,6 +65,11 @@ function renderKeyTable(eventId = null) {
             } else {
                 document.querySelector('#edit-key-btn').classList.add('hidden');
                 document.querySelector('#delete-key-btn').classList.add('hidden');
+            }
+            if (key.link) {
+                document.querySelector('#copy-link-btn').classList.remove('hidden');
+            } else {
+                document.querySelector('#copy-link-btn').classList.add('hidden');
             }
             showKeyContextMenu(e, keyId);
         });
@@ -99,11 +97,11 @@ async function addKeyBtn() {
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-name-input').value = '';
-    document.querySelector('#key-type-input').value = 'p';
     document.querySelector('#key-language-input').value = 'en';
     renderServerInput('yt');
-    document.querySelector('#key-custom-server-input').value = '';
+    renderServerInput('', '2');
     document.querySelector('#stream-key-input').value = '';
+    document.querySelector('#stream-key2-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
 
     document.querySelector('#key-modal').showModal();
@@ -121,8 +119,10 @@ function editKeyRow() {
     document.querySelector('#key-language-input').value = key.language;
 
     renderServerInput(key.server);
+    renderServerInput(key.server2, '2');
 
     document.querySelector('#stream-key-input').value = key.key;
+    document.querySelector('#stream-key2-input').value = key.key2;
 
     document.getElementById('key-modal').showModal();
 }
@@ -134,12 +134,15 @@ async function saveKeyFormBtn(event) {
         event: document.getElementById('key-event-input').value.trim(),
         color: document.getElementById('key-color-input').value.trim(),
         name: document.getElementById('key-name-input').value.trim(),
-        type: document.getElementById('key-type-input').value.trim(),
         language: document.getElementById('key-language-input').value.trim(),
         server:
             SERVERS[server]?.value ||
             document.getElementById('key-custom-server-input').value.trim(),
         key: document.getElementById('stream-key-input').value.trim(),
+        server2:
+            SERVERS[server]?.value ||
+            document.getElementById('key-custom-server2-input').value.trim(),
+        key2: document.getElementById('stream-key2-input').value.trim(),
         remarks: document.getElementById('key-remarks-input').value.trim(),
     };
 
@@ -170,6 +173,15 @@ async function saveKeyFormBtn(event) {
         key.server += '/';
     }
 
+    errorElem = document.querySelector('#key-server2-input').nextElementSibling;
+    if (key.server2 && !key.server2.startsWith('rtmp://') && !key.server2.startsWith('rtmps://')) {
+        errorElem.innerText = 'Invalid RTMP';
+        event.preventDefault();
+        return;
+    } else {
+        errorElem.innerText = '';
+    }
+
     errorElem = document.querySelector('#stream-key-input').nextElementSibling;
     if (key.key === '') {
         errorElem.innerText = "Key can't be empty";
@@ -177,6 +189,14 @@ async function saveKeyFormBtn(event) {
         return;
     } else {
         errorElem.innerText = '';
+    }
+
+    if (!key.server.endsWith('/')) {
+        key.server += '/';
+    }
+
+    if (key.server2 && !key.server2.endsWith('/')) {
+        key.server2 += '/';
     }
 
     errorElem = document.querySelector('#stream-key-input').nextElementSibling;
@@ -218,13 +238,7 @@ async function deleteKeyRow() {
         console.error('Key not found:', selectedKeyId);
     }
 
-    if (
-        !confirm(
-            `Are you sure you want to delete ${KEY_TYPE_MAP[key.type]} ` +
-                `${SERVERS[key.server]?.name || 'Custom'} key for ` +
-                `${key.name} ${LANGUAGE_MAP[key.language]}?`,
-        )
-    ) {
+    if (!confirm(`Are you sure you want to delete "${key.name}" key?`)) {
         return;
     }
 
@@ -245,6 +259,18 @@ function showCopiedNotification() {
     setTimeout(() => {
         notification.classList.add('hidden');
     }, 2000);
+}
+
+async function copyLinkBtn() {
+    if (!selectedKeyId) return;
+    const key = config.keys.find((k) => k.id === selectedKeyId);
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+    }
+
+    if (copyText(key.link)) {
+        showCopiedNotification();
+    }
 }
 
 async function copyKeyBtn() {
@@ -286,17 +312,17 @@ function renderKeyLanguages(eventId) {
         .join('');
 }
 
-function renderServerInput(server) {
+function renderServerInput(server, suffix = '') {
     if (server && Object.keys(SERVERS).includes(server)) {
-        document.querySelector('#key-server-input').value = server;
-        document.querySelector('#key-custom-server-input').value = '';
-        document.querySelector('#custom-server').classList.remove('inline-block');
-        document.querySelector('#custom-server').classList.add('hidden');
+        document.querySelector('#key-server' + suffix + '-input').value = server;
+        document.querySelector('#key-custom-server' + suffix + '-input').value = '';
+        document.querySelector('#custom-server' + suffix).classList.remove('inline-block');
+        document.querySelector('#custom-server' + suffix).classList.add('hidden');
     } else {
-        document.querySelector('#key-server-input').value = '';
-        document.querySelector('#key-custom-server-input').value = server;
-        document.querySelector('#custom-server').classList.add('inline-block');
-        document.querySelector('#custom-server').classList.remove('hidden');
+        document.querySelector('#key-server' + suffix + '-input').value = '';
+        document.querySelector('#key-custom-server' + suffix + '-input').value = server;
+        document.querySelector('#custom-server' + suffix).classList.add('inline-block');
+        document.querySelector('#custom-server' + suffix).classList.remove('hidden');
     }
 }
 
@@ -318,9 +344,4 @@ const SERVERS = {
     ig: { name: 'Instagram', value: 'rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/' },
     vc: { name: 'VDO Cipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },
     vk: { name: 'VK Video', value: 'rtmp://ovsu.okcdn.ru/input/' },
-};
-
-const KEY_TYPE_MAP = {
-    p: 'Primary',
-    b: 'Backup',
 };

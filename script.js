@@ -32,9 +32,39 @@ function updateEventRoles(userEmail, config) {
     eventRoles = getEventRoles(userEmail, config.events, config.roles);
 }
 
+async function fetchDataAndRerender() {
+    const newConfig = processResponse(await getAllData());
+    if (newConfig.etag === config.etag) return;
+    config = newConfig;
+    updateEventRoles(userEmail, config);
+
+    const eventId = getUrlParam('eventId');
+    if (config.events.find((e) => e.id === eventId)) {
+        selectEvent(eventId);
+    } else if (config.events.length > 0) {
+        selectEvent(config.events[0].id);
+    } else {
+        console.error('No events');
+        selectEvent('');
+    }
+
+    // ===== Storage status =====
+    const storageStatus = Math.round(config.size / 1000);
+    document.querySelector('#storage-progress').value = String(storageStatus);
+    document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
+
+    // ===== Events =====
+    if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
+        document.querySelector('#add-event-btn').classList.remove('hidden');
+        document.querySelector('#edit-event-btn').classList.remove('hidden');
+    }
+}
+
+const REFRESH_TIME = 5 * 60 * 1000;
 let userEmail = null;
 let config = {
     size: 0,
+    etag: '',
     events: [],
     roles: [],
     keys: [],
@@ -49,23 +79,8 @@ let eventRoles = {};
     userEmail = processResponse(await getUserEmail());
     document.querySelector('#user-email').innerText = userEmail;
 
-    config = processResponse(await getAllData());
-    updateEventRoles(userEmail, config);
-
-    // ===== Storage status =====
-    const storageStatus = Math.round(config.size / 1000);
-    document.querySelector('#storage-progress').value = String(storageStatus);
-    document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
-
-    // ===== Events =====
-    if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
-        document.querySelector('#add-event-btn').classList.remove('hidden');
-        document.querySelector('#edit-event-btn').classList.remove('hidden');
-    }
-
-    if (config.events.length > 0) {
-        selectEvent(config.events[0].id);
-    }
+    fetchDataAndRerender();
+    setInterval(fetchDataAndRerender, REFRESH_TIME);
 
     // ===== Roles =====
     document.addEventListener('click', () =>

@@ -58,7 +58,7 @@ function editEventMock(event) {
     if (!old) {
         return {
             success: false,
-            error: 'Eve t not found',
+            error: 'Event not found: ' + event.id,
         };
     }
 
@@ -80,13 +80,75 @@ function deleteEventMock(id) {
     if (!event) {
         return {
             success: false,
-            error: 'Key not found',
+            error: 'Event not found: ' + id,
         };
     }
 
     etagMock += 1;
     testEvents.splice(
         testEvents.findIndex((e) => e.id === id),
+        1,
+    );
+
+    return { success: true, data: true };
+}
+
+function addRoleMock(role) {
+    if (!role) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    etagMock += 1;
+    role.id = String(Date.now());
+    testRoles.push(role);
+
+    return { success: true, data: role };
+}
+
+function editRoleMock(role) {
+    if (!role || !role.id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const old = testRoles.find((r) => r.id === role.id);
+    if (!old) {
+        return {
+            success: false,
+            error: 'Role not found: ' + role.id,
+        };
+    }
+
+    etagMock += 1;
+    Object.assign(old, role);
+
+    return { success: true, data: old };
+}
+
+function deleteRoleMock(id) {
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const role = testRoles.find((r) => r.id === id);
+    if (!role) {
+        return {
+            success: false,
+            error: 'Role not found: ' + id,
+        };
+    }
+
+    etagMock += 1;
+    testRoles.splice(
+        testRoles.findIndex((r) => r.id === id),
         1,
     );
 
@@ -117,18 +179,18 @@ function editKeyMock(key) {
         };
     }
 
-    const oldKey = testKeys.find((k) => k.id === key.id);
-    if (!oldKey) {
+    const old = testKeys.find((k) => k.id === key.id);
+    if (!old) {
         return {
             success: false,
-            error: 'Key not found',
+            error: 'Key not found: ' + key.id,
         };
     }
 
     etagMock += 1;
-    Object.assign(oldKey, key);
+    Object.assign(old, key);
 
-    return { success: true, data: oldKey };
+    return { success: true, data: old };
 }
 
 function deleteKeyMock(id) {
@@ -143,7 +205,7 @@ function deleteKeyMock(id) {
     if (!key) {
         return {
             success: false,
-            error: 'Key not found',
+            error: 'Key not found: ' + id,
         };
     }
 

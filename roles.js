@@ -97,6 +97,77 @@ async function editRoleRow() {
     document.getElementById('role-modal').showModal();
 }
 
+async function saveRoleFormBtn(event) {
+    const role = {
+        id: document.getElementById('role-id-input').value.trim(),
+        event: document.getElementById('role-event-input').value.trim(),
+        email: document.getElementById('role-email-input').value.trim(),
+        type: document.getElementById('role-type-input').value.trim(),
+        language: document.getElementById('role-language-input').value.trim(),
+        remarks: document.getElementById('role-remarks-input').value.trim(),
+    };
+
+    // Validation
+    let errorElem = document.querySelector('#role-email-input').nextElementSibling;
+    if (role.email === '') {
+        errorElem.innerText = "Email can't be empty";
+        event.preventDefault();
+        return;
+    } else if (!document.getElementById('role-email-input').checkValidity()) {
+        errorElem.innerText = 'Invalid email';
+        event.preventDefault();
+        return;
+    } else {
+        errorElem.innerText = '';
+    }
+
+    // Send request
+    showLoading();
+    if (role.id === '') {
+        // Adding new row
+        document.querySelector('#add-role-btn').disabled = true;
+        console.assert(role.event);
+
+        const newRole = processResponse(await addRole(role));
+        if (newRole !== null) {
+            config.roles.push(newRole);
+        }
+        document.querySelector('#add-role-btn').disabled = false;
+    } else {
+        // Editing existing row
+        const newRole = processResponse(await editRole(role));
+        if (newRole !== null) {
+            const old = config.roles.find((r) => r.id === newRole.id);
+            console.assert(old);
+            config.roles.splice(config.roles.indexOf(old), 1, newRole);
+        }
+    }
+    renderRoleTable(role.event);
+    hideLoading();
+}
+
+async function deleteRoleRow() {
+    if (!selectedRoleId) return;
+    const role = config.roles.find((r) => r.id === selectedRoleId);
+    if (!role) {
+        console.error('Role not found:', selectedRoleId);
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to delete role ${role.email} | ${ROLE_MAP[role.type]}?`)) {
+        return;
+    }
+
+    showLoading();
+    const res = processResponse(await deleteRole(role.id));
+    if (res !== null) {
+        config.roles = config.roles.filter((r) => r.id !== role.id);
+    }
+    updateEventRoles(userEmail, config);
+    renderRoleTable(role.event);
+    hideLoading();
+}
+
 function renderRoleTypes(eventId) {
     document.querySelector('#role-type-input').innerHTML = Object.values(ROLES)
         .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))

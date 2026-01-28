@@ -217,15 +217,17 @@ async function saveKeyFormBtn(event) {
     // Sending request
     showLoading();
     if (key.id === '') {
-        // Adding new key
+        // Adding new row
+        document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);
 
         const newKey = processResponse(await addKey(key));
         if (newKey !== null) {
             config.keys.push(newKey);
         }
+        document.querySelector('#add-key-btn').disabled = false;
     } else {
-        // Updating existing key
+        // Updating existing row
         const newKey = processResponse(await editKey(key));
         if (newKey !== null) {
             const oldKey = config.keys.find((k) => k.id === newKey.id);

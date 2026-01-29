@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="./output.css" />
     <script src="./bundle.umd.min.js"></script>
     <script src="./utils.js"></script>
-    <script src="./api.js"></script>
     <script src="./access.js"></script>
     <script src="./events.js"></script>
     <script src="./roles.js"></script>
@@ -22,7 +21,6 @@
     <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.0/output.css" />
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/utils.js" defer></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/api.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/events.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/roles.js"></script>
     <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.0/keys.js"></script>
@@ -133,9 +131,10 @@
     <!-- Context Menu -->
     <div id="key-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
       <ul class="menu w-32 p-2">
-        <li><a onclick="copyLinkBtn()" id="copy-link-btn">Copy Link</a></li>
         <li><a onclick="copyKeyBtn()">Copy Key</a></li>
         <li><a onclick="copyRtmpBtn()">Copy Full URL</a></li>
+        <li><a onclick="copyRtmpBtn('2')">Copy Bkp URL</a></li>
+        <li><a onclick="copyLinkBtn()" id="copy-link-btn">Copy Link</a></li>
         <li><a onclick="editKeyRow()" id="edit-key-btn" class="hidden">Edit</a></li>
         <li><a onclick="deleteKeyRow()" id="delete-key-btn" class="text-error hidden">Delete</a></li>
       </ul>

@@ -128,14 +128,14 @@ async function saveRoleFormBtn(event) {
         document.querySelector('#add-role-btn').disabled = true;
         console.assert(role.event);
 
-        const newRole = processResponse(await addRole(role));
+        const newRole = processResponse(await api('addRole', role));
         if (newRole !== null) {
             config.roles.push(newRole);
         }
         document.querySelector('#add-role-btn').disabled = false;
     } else {
         // Editing existing row
-        const newRole = processResponse(await editRole(role));
+        const newRole = processResponse(await api('editRole', role));
         if (newRole !== null) {
             const old = config.roles.find((r) => r.id === newRole.id);
             console.assert(old);
@@ -159,11 +159,11 @@ async function deleteRoleRow() {
     }
 
     showLoading();
-    const res = processResponse(await deleteRole(role.id));
+    const res = processResponse(await api('deleteRole', role.id));
     if (res !== null) {
         config.roles = config.roles.filter((r) => r.id !== role.id);
     }
-    updateEventRoles(userEmail, config);
+    updateEventRoles(config);
     renderRoleTable(role.event);
     hideLoading();
 }

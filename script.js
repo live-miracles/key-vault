@@ -1,3 +1,20 @@
+async function api(functionName, ...params) {
+    try {
+        const res = await new Promise((resolve, reject) =>
+            window.google.script.run
+                .withFailureHandler(reject)
+                .withSuccessHandler(resolve)
+                [functionName](...params),
+        );
+        if (res.success === false) {
+            return { success: false, error: functionName + ': ' + res.error };
+        }
+        return { success: true, data: res.data };
+    } catch (error) {
+        return { success: false, error: functionName + ': ' + error };
+    }
+}
+
 function processResponse(response) {
     if (response.success === false) {
         showErrorAlert(response.error);
@@ -28,15 +45,15 @@ function hideLoading() {
     document.getElementById('saving-badge').checked = false;
 }
 
-function updateEventRoles(userEmail, config) {
-    eventRoles = getEventRoles(userEmail, config.events, config.roles);
+function updateEventRoles(config) {
+    eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 }
 
 async function fetchDataAndRerender() {
-    const newConfig = processResponse(await getAllData());
+    const newConfig = processResponse(await api('getAllData'));
     if (newConfig.etag === config.etag) return;
     config = newConfig;
-    updateEventRoles(userEmail, config);
+    updateEventRoles(config);
 
     const eventId = getUrlParam('eventId');
     if (config.events.find((e) => e.id === eventId)) {
@@ -47,6 +64,8 @@ async function fetchDataAndRerender() {
         console.error('No events');
         selectEvent('');
     }
+
+    document.querySelector('#user-email').innerText = config.userEmail;
 
     // ===== Storage status =====
     const storageStatus = Math.round(config.size / 1000);
@@ -64,6 +83,7 @@ const REFRESH_TIME = 5 * 60 * 1000;
 let userEmail = null;
 let config = {
     size: 0,
+    userEmail: '',
     etag: '',
     events: [],
     roles: [],
@@ -75,9 +95,6 @@ let eventRoles = {};
     if (typeof google === 'undefined') {
         window.google = googleMock;
     }
-
-    userEmail = processResponse(await getUserEmail());
-    document.querySelector('#user-email').innerText = userEmail;
 
     fetchDataAndRerender();
     setInterval(fetchDataAndRerender, REFRESH_TIME);

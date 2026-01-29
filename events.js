@@ -28,10 +28,10 @@ async function addEventBtn() {
 
     showLoading();
     document.querySelector('#add-event-btn').disabled = true;
-    const event = processResponse(await addEvent({ name: `Event ${nextNumber}` }));
+    const event = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
     if (event === null) return;
     config.events.push(event);
-    updateEventRoles(userEmail, config);
+    updateEventRoles(config);
     selectEvent(event.id);
     document.querySelector('#add-event-btn').disabled = false;
     hideLoading();
@@ -73,7 +73,7 @@ async function saveEventFormBtn(evt) {
     // Sending request
     showLoading();
     document.querySelector('#edit-event-btn').disabled = true;
-    const newEvent = processResponse(await editEvent(event));
+    const newEvent = processResponse(await api('editEvent', event));
     if (newEvent !== null) {
         const old = config.events.find((e) => e.id === newEvent.id);
         console.assert(old);
@@ -98,7 +98,7 @@ async function deleteEventBtn() {
 
     showLoading();
     document.querySelector('#delete-event-btn').disabled = true;
-    const res = processResponse(await deleteEvent(event.id));
+    const res = processResponse(await api('deleteEvent', event.id));
     if (res !== null) {
         config.events = config.events.filter((e) => e.id !== event.id);
     }

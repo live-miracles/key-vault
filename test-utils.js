@@ -2,13 +2,6 @@ function getRandomWaitTime() {
     return parseInt((1 + Math.random()) * 1000);
 }
 
-function getUserEmailMock() {
-    return {
-        success: true,
-        data: testEmail2,
-    };
-}
-
 function getAllDataMock(etag) {
     const serverEtag = String(etagMock);
     if (etag === serverEtag) {
@@ -22,6 +15,8 @@ function getAllDataMock(etag) {
 
     const data = {
         etag: serverEtag,
+        userEmail: testEmail2,
+        size: '0',
         events: structuredClone(testEvents), // important to return copy
         keys: structuredClone(testKeys),
         roles: structuredClone(testRoles),

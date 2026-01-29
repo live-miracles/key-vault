@@ -221,14 +221,14 @@ async function saveKeyFormBtn(event) {
         document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);
 
-        const newKey = processResponse(await addKey(key));
+        const newKey = processResponse(await api('addKey', key));
         if (newKey !== null) {
             config.keys.push(newKey);
         }
         document.querySelector('#add-key-btn').disabled = false;
     } else {
         // Updating existing row
-        const newKey = processResponse(await editKey(key));
+        const newKey = processResponse(await api('editKey', key));
         if (newKey !== null) {
             const oldKey = config.keys.find((k) => k.id === newKey.id);
             console.assert(oldKey);
@@ -251,7 +251,7 @@ async function deleteKeyRow() {
     }
 
     showLoading();
-    const res = processResponse(await deleteKey(key.id));
+    const res = processResponse(await api('deleteKey', key.id));
     if (res !== null) {
         config.keys = config.keys.filter((k) => k.id !== key.id);
     }
@@ -293,21 +293,21 @@ async function copyKeyBtn() {
     }
 }
 
-async function copyRtmpBtn() {
+async function copyRtmpBtn(suffix = '') {
     if (!selectedKeyId) return;
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
     }
 
-    let serverUrl = SERVERS[key.server]?.value || key.server;
+    let serverUrl = SERVERS[key['server' + suffix]]?.value || key['server' + suffix];
     if (serverUrl.includes('${s_prp}')) {
         // Instagram
         const params = new URLSearchParams(key.key.split('?')[1]);
         serverUrl = serverUrl.replaceAll('${s_prp}', params.get('s_prp'));
     }
 
-    if (copyText(serverUrl + key.key)) {
+    if (copyText(serverUrl + key['key' + suffix])) {
         showCopiedNotification();
     }
 }

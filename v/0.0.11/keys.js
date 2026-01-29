@@ -34,24 +34,22 @@ function renderKeyTable(eventId = null) {
     let html = '';
 
     Object.keys(keysByLanguage)
-        .sort((a, b) => a.localeCompare(b)) // language order
+        .sort((a, b) => a.localeCompare(b))
         .forEach((lang) => {
             langIndex++;
             const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);
 
-            // Language header row
-            html += `
-            <tr class="font-bold">
-                <th colspan="6">
-                    <span class="badge badge-soft mr-1">${langIndex}</span> ${LANGUAGE_MAP[lang] || lang}
-                </th>
-            </tr>
-        `;
-
-            // Key rows
             keys.forEach((k, keyIndex) => {
                 html += `
                 <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss}" data-key-id="${k.id}">
+
+                    ${
+                        keyIndex === 0
+                            ? `<td rowspan="${keys.length}" class="align-middle font-semibold">
+                                ${langIndex} - ${LANGUAGE_MAP[k.language] || k.language}
+                            </td>`
+                            : ''
+                    }
                     <td>${keyIndex + 1}</td>
                     <td>${k.name}</td>
                     <td>${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>

@@ -231,7 +231,7 @@ function addRole(role) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
-    if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
+    if (!hasRoleAccess(eventRoles, ACTIONS.CREATE)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -266,8 +266,8 @@ function editRole(role) {
     }
 
     if (
-        !hasEventAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type) ||
-        !hasEventAccess(eventRoles, ACTIONS.UPDATE, old.event, old.type)
+        !hasRoleAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type) ||
+        !hasRoleAccess(eventRoles, ACTIONS.UPDATE, old.event, old.type)
     ) {
         return {
             success: false,
@@ -303,7 +303,7 @@ function deleteRole(id) {
         return { success: false, error: 'Role not found: ' + id };
     }
 
-    if (!hasEventAccess(eventRoles, ACTIONS.DELETE, role.event, role.type)) {
+    if (!hasRoleAccess(eventRoles, ACTIONS.DELETE, role.event, role.type)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -333,7 +333,7 @@ function addKey(key) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
-    if (!hasEventAccess(eventRoles, ACTIONS.CREATE_KEY, key.event)) {
+    if (!hasKeyAccess(eventRoles, ACTIONS.CREATE_KEY, key.event)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -382,8 +382,8 @@ function editKey(key) {
     }
 
     if (
-        !hasEventAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) ||
-        !hasEventAccess(eventRoles, ACTIONS.UPDATE, old.event, key.language)
+        !hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) ||
+        !hasKeyAccess(eventRoles, ACTIONS.UPDATE, old.event, key.language)
     ) {
         return {
             success: false,
@@ -431,7 +431,7 @@ function deleteKey(id) {
         return { success: false, error: 'Key not found: ' + id };
     }
 
-    if (!hasEventAccess(eventRoles, ACTIONS.DELETE, key.event, key.language)) {
+    if (!hasKeyAccess(eventRoles, ACTIONS.DELETE, key.event, key.language)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,

@@ -6,30 +6,25 @@
     <title>Key Vault</title>
 
     <link rel="icon" type="image/png" href="https://live-miracles.github.io/key-vault/logo.png" />
-    <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.6/output.css" />
+    <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.11/output.css" />
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/utils.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/access.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/events.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/roles.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/keys.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.6/script.js" defer></script>
-
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/utils.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/access.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/events.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/roles.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/keys.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/script.js" defer></script>
+   
   </head>
   <body class="bg-base-100 text-base-content flex min-h-screen min-w-[620px] flex-col">
-    <div id="loading-alert" role="alert" class="alert alert-info fixed top-3 left-1/2 z-20 hidden w-fit -translate-x-1/2 transform">
-      <span class="loading loading-infinity loading-md"></span>
-      <span class="msg">Loading...</span>
-    </div>
-
-    <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-20 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
+    <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
       <span class="msg"></span>
     </div>
 
-    <div id="error-alert" role="alert" class="alert alert-error fixed top-3 left-1/2 z-20 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
+    <div id="error-alert" role="alert" class="alert alert-error fixed top-3 left-1/2 z-60 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
         <path
           stroke-linecap="round"
@@ -40,7 +35,7 @@
       <span class="msg"></span>
     </div>
 
-    <div id="copied-notification" role="alert" class="alert alert-success fixed bottom-3 left-1/2 z-20 hidden w-fit -translate-x-1/2 transform">
+    <div id="copied-notification" role="alert" class="alert alert-success fixed bottom-3 left-1/2 z-60 hidden w-fit -translate-x-1/2 transform">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
@@ -216,36 +211,36 @@
       </div>
     </dialog>
 
-    <div class="relative flex items-center px-5 pt-3">
-      <!-- LEFT -->
-      <span class="text-xl" id="event-name"></span>
-      <button title="Edit" class="btn btn-accent btn-xs ml-3 hidden" id="edit-event-btn" onclick="editEventBtn()">✎</button>
-      <button title="Delete" class="btn btn-error btn-xs ml-2 hidden" id="delete-event-btn" onclick="deleteEventBtn()">✖</button>
-      <button title="Share" class="btn btn-accent btn-xs ml-2 hidden" id="show-roles-btn" onclick="showHideRoles()">👥</button>
+    <div class="bg-base-200 sticky top-0 z-50">
+      <div class="relative flex items-center px-5 pt-3 pb-3">
+        <!-- LEFT -->
+        <span class="text-xl" id="event-name"></span>
+        <button title="Edit" class="btn btn-accent btn-xs ml-3 hidden" id="edit-event-btn" onclick="editEventBtn()">✎</button>
+        <button title="Delete" class="btn btn-error btn-xs ml-2 hidden" id="delete-event-btn" onclick="deleteEventBtn()">✖</button>
+        <button title="Share" class="btn btn-accent btn-xs ml-2 hidden" id="show-roles-btn" onclick="showHideRoles()">👥</button>
 
-      <!-- CENTER -->
-      <div class="absolute left-1/2 -translate-x-1/2">
-        <label class="swap">
-          <input id="saving-badge" type="checkbox" disabled />
-          <div class="swap-off"></div>
-          <div class="swap-on flex items-center gap-2">
-            <span class="loading loading-infinity loading-xs"></span>
-            Saving
-          </div>
-        </label>
-      </div>
+        <!-- CENTER -->
+        <div class="absolute left-1/2 -translate-x-1/2">
+          <label class="swap">
+            <input id="saving-badge" type="checkbox" disabled />
+            <div class="swap-off"></div>
+            <div class="swap-on flex items-center gap-2">
+              <span class="loading loading-infinity loading-xs"></span>
+              Saving
+            </div>
+          </label>
+        </div>
 
-      <!-- RIGHT -->
-      <div class="ml-auto flex items-center gap-3">
-        <span class="text-xl" id="user-email">
-          <span class="loading loading-dots"></span>
-        </span>
-        <span class="mx-3">|</span>
-        <progress class="progress progress-accent w-12" max="100" id="storage-progress"></progress>
+        <!-- RIGHT -->
+        <div class="ml-auto flex items-center gap-3">
+          <span class="text-xl" id="user-email">
+            <span class="loading loading-dots"></span>
+          </span>
+          <span class="mx-3">|</span>
+          <progress class="progress progress-accent w-12" max="100" id="storage-progress"></progress>
+        </div>
       </div>
     </div>
-
-    <div class="divider"></div>
 
     <div class="flex min-h-0 flex-1 flex-col">
       <div class="hidden overflow-x-auto" id="role-table">
@@ -282,9 +277,9 @@
             <!-- head -->
             <thead>
               <tr>
+                <th>Language</th>
                 <th></th>
                 <th>Name</th>
-                <th>Language</th>
                 <th>Full URL</th>
                 <th>Backup URL</th>
                 <th>Link</th>
@@ -293,7 +288,7 @@
             </thead>
             <tbody id="key-rows">
               <tr>
-                <th><span class="loading loading-dots loading-xs"></span></th>
+                <td><span class="loading loading-dots loading-xs"></span></td>
                 <td><span class="loading loading-dots loading-xs"></span></td>
                 <td><span class="loading loading-dots loading-xs"></span></td>
                 <td><span class="loading loading-dots loading-xs"></span></td>
@@ -312,10 +307,12 @@
         </div>
       </div>
 
-      <div class="flex flex-shrink-0 items-center">
-        <button class="btn btn-accent btn-sm ml-3 hidden text-2xl font-extrabold" id="add-event-btn" title="Add" onclick="addEventBtn()">+</button>
-        <div role="tablist" class="tabs tabs-box ml-3">
-          <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
+      <div class="bg-base-200 sticky bottom-0 z-40 mt-1">
+        <div class="flex flex-shrink-0 items-center">
+          <button class="btn btn-accent btn-xs ml-3 hidden" id="add-event-btn" title="Add" onclick="addEventBtn()">➕</button>
+          <div role="tablist" class="tabs tabs-sm tabs-box ml-3">
+            <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
+          </div>
         </div>
       </div>
     </div>

@@ -52,7 +52,7 @@ function hasRoleAccess(eventRoles, action, eventId, type = null) {
 function hasKeyAccess(eventRoles, action, eventId, language = null) {
     if (!eventRoles[eventId] || eventId === '*') return false;
     if (action === ACTIONS.VIEW) {
-        return true;
+        return eventRoles[eventId].some((r) => r.language === '*' || r.language === language);
     }
     return eventRoles[eventId].some(
         (r) =>

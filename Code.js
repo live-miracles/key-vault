@@ -81,10 +81,6 @@ function getAllRows(sheet) {
     return { headers, rows: data };
 }
 
-function generateId(prefix) {
-    return `${prefix}_${Utilities.getUuid()}`;
-}
-
 function withLock(fn, name) {
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
@@ -126,10 +122,11 @@ function addEvent(event) {
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
         event.id = Utilities.getUuid();
+        event.row = sheet.getLastRow();
         sheet.appendRow([event.id, event.name]);
+
         expireCache();
 
-        event.row = sheet.getLastRow();
         return {
             success: true,
             data: event,
@@ -147,6 +144,10 @@ function editEvent(event) {
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const old = config.events.find((e) => e.id === event.id);
+    if (!old) {
+        return { success: false, error: 'Event not found: ' + event.id };
+    }
 
     if (!hasEventAccess(eventRoles, ACTIONS.UPDATE, event.id)) {
         return {
@@ -156,15 +157,12 @@ function editEvent(event) {
     }
 
     return withLock(() => {
-        for (let i = 0; i < config.events.length; i++) {
-            if (config.events[i].id === event.id) {
-                const sheet = getSheet(SHEETS.EVENT);
-                sheet.getRange(config.events[i].row, 2).setValue(event.name);
-                expireCache();
-                return { success: true, data: event };
-            }
-        }
-        throw new Error('Event not found');
+        const sheet = getSheet(SHEETS.EVENT);
+        sheet.getRange(old.row, 2).setValue(event.name);
+
+        expireCache();
+
+        return { success: true, data: event };
     }, 'editEvent');
 }
 
@@ -180,10 +178,7 @@ function deleteEvent(id) {
     const eventRoles = getEventRoles(config.email, config.events, config.roles);
     const event = config.events.find((e) => e.id === id);
     if (!event) {
-        return {
-            success: false,
-            error: 'Event not found: ' + id,
-        };
+        return { success: false, error: 'Event not found: ' + id };
     }
 
     if (!hasEventAccess(eventRoles, ACTIONS.DELETE, event.id)) {
@@ -218,86 +213,232 @@ function deleteEvent(id) {
 }
 
 // ===== Role API =====
-function createRole(eventId, email, role) {
-    const sheet = getSheet(SHEETS.ROLE);
-    const id = generateId('ROLE');
-    sheet.appendRow([id, eventId, email, role]);
-    return { id, eventId, email, role };
+function addRole(role) {
+    if (!role || !role.event || !role.email || !role.type) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(role),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+
+    if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.ROLE);
+
+        role.id = Utilities.getUuid();
+        role.row = sheet.getLastRow();
+        sheet.appendRow([role.id, role.event, role.email, role.type, role.language, role.remarks]);
+        expireCache();
+
+        return { success: true, data: role };
+    }, 'addRole');
 }
 
-function updateRole(id, newRole) {
-    const sheet = getSheet(SHEETS.ROLE);
-    const rows = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) {
-            sheet.getRange(i + 1, 4).setValue(newRole);
-            return true;
-        }
+function editRole(role) {
+    if (!role || !role.id || !role.event || !role.email || !role.type || !role.language) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(role),
+        };
     }
-    throw new Error('Role entry not found');
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const old = config.roles.find((r) => r.id === role.id);
+    if (!old) {
+        return { success: false, error: 'Role not found: ' + role.id };
+    }
+
+    if (
+        !hasEventAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type) ||
+        !hasEventAccess(eventRoles, ACTIONS.UPDATE, old.event, old.type)
+    ) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.ROLE);
+        sheet
+            .getRange(old.row, 3, 1, 4)
+            .setValues([[role.email, role.type, role.language, role.remarks]]);
+
+        expireCache();
+
+        return { success: true, data: role };
+    }, 'editRole');
 }
 
 function deleteRole(id) {
-    const sheet = getSheet(SHEETS.ROLE);
-    const rows = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) {
-            sheet.deleteRow(i + 1);
-            return true;
-        }
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + id,
+        };
     }
-    throw new Error('Role entry not found');
-}
 
-function deleteRole(id) {
-    const sheet = getSheet(SHEETS.ROLE);
-    const rows = sheet.getDataRange().getValues();
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const role = config.roles.find((r) => r.id === id);
 
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) {
-            sheet.deleteRow(i + 1);
-            return true;
-        }
+    if (!role) {
+        return { success: false, error: 'Role not found: ' + id };
     }
-    throw new Error('Role entry not found');
+
+    if (!hasEventAccess(eventRoles, ACTIONS.DELETE, role.event, role.type)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.ROLE);
+
+        sheet.getRange(role.row, 1, 1, sheet.getLastColumn()).clearContent();
+
+        expireCache();
+
+        return { success: true, data: true };
+    }, 'deleteRole');
 }
 
 // ===== Key API =====
-function createKey(eventId, serverUrl, key, remarks) {
-    const sheet = getSheet(SHEETS.KEY);
-    const id = generateId('KEY');
-    sheet.appendRow([id, eventId, serverUrl, key, remarks || '']);
-    return { id };
+function addKey(key) {
+    if (!key || !key.event || !key.name || !key.language || !key.server || !key.key) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(key),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+
+    if (!hasEventAccess(eventRoles, ACTIONS.CREATE_KEY, key.event)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.KEY);
+
+        key.id = Utilities.getUuid();
+        key.row = sheet.getLastRow();
+        sheet.appendRow([
+            key.id,
+            key.event,
+            key.name,
+            key.language,
+            key.server,
+            key.key,
+            key.server2,
+            key.key2,
+            key.link,
+            key.color,
+            key.remarks,
+        ]);
+
+        expireCache();
+
+        return { success: true, data: key };
+    }, 'addKey');
 }
 
-function updateKey(id, data) {
-    const sheet = getSheet(SHEETS.KEY);
-    const rows = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) {
-            if (data.serverUrl !== undefined) sheet.getRange(i + 1, 3).setValue(data.serverUrl);
-            if (data.key !== undefined) sheet.getRange(i + 1, 4).setValue(data.key);
-            if (data.remarks !== undefined) sheet.getRange(i + 1, 5).setValue(data.remarks);
-            return true;
-        }
+function editKey(key) {
+    if (!key || !key.id || !key.event || !key.name || !key.language || !key.server || !key.key) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(key),
+        };
     }
-    throw new Error('Key entry not found');
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const old = config.keys.find((k) => k.id === key.id);
+
+    if (!old) {
+        return { success: false, error: 'Key not found: ' + key.id };
+    }
+
+    if (
+        !hasEventAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) ||
+        !hasEventAccess(eventRoles, ACTIONS.UPDATE, old.event, key.language)
+    ) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.KEY);
+        sheet
+            .getRange(old.row, 3, 1, 9)
+            .setValues([
+                [
+                    key.name,
+                    key.language,
+                    key.server,
+                    key.key,
+                    key.server2,
+                    key.key2,
+                    key.link,
+                    key.color,
+                    key.remarks,
+                ],
+            ]);
+
+        expireCache();
+
+        return { success: true, data: key };
+    }, 'editKey');
 }
 
 function deleteKey(id) {
-    const sheet = getSheet(SHEETS.KEY);
-    const rows = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < rows.length; i++) {
-        if (rows[i][0] === id) {
-            sheet.deleteRow(i + 1);
-            return true;
-        }
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + id,
+        };
     }
-    throw new Error('Key entry not found');
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const key = config.keys.find((k) => k.id === id);
+
+    if (!key) {
+        return { success: false, error: 'Key not found: ' + id };
+    }
+
+    if (!hasEventAccess(eventRoles, ACTIONS.DELETE, key.event, key.language)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.KEY);
+        sheet.getRange(key.row, 1, 1, sheet.getLastColumn()).clearContent();
+
+        expireCache();
+
+        return { success: true, data: true };
+    }, 'deleteKey');
 }
 
 // ===== Serve Webpage =====

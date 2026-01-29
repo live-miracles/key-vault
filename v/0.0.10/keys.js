@@ -46,12 +46,13 @@ function renderKeyTable(eventId = null) {
                     ${
                         keyIndex === 0
                             ? `<td rowspan="${keys.length}" class="align-middle font-semibold">
-                                ${langIndex} - ${LANGUAGE_MAP[k.language] || k.language}
-                            </td>`
+                                   ${langIndex} - ${LANGUAGE_MAP[k.language] || k.language}
+                               </td>`
                             : ''
                     }
                     <td>${keyIndex + 1}</td>
                     <td>${k.name}</td>
+
                     <td>${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
                     <td>${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
                     <td>${

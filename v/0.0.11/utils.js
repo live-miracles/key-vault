@@ -119,7 +119,7 @@ const LANGUAGE_MAP = {
     ne: 'Nepali',
     ru: 'Russian',
     es: 'Spanish',
-    zh: 'Mandarin Chinese',
+    zh: 'Mandarin',
     fr: 'French',
     it: 'Italian',
     de: 'German',

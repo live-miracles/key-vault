@@ -15,7 +15,9 @@ create-version:
 	cp index.html v/$(v)/
 	cp Code.js v/$(v)/
 	cp output.css v/$(v)/
+	cp utils.js v/$(v)/
+	cp access.js v/$(v)/
+	cp events.js v/$(v)/
+	cp roles.js v/$(v)/
+	cp keys.js v/$(v)/
 	cp script.js v/$(v)/
-	cp google-api.js v/$(v)/
-	cp test-utils.js v/$(v)/
-	cp tools.js v/$(v)/

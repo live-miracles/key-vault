@@ -149,6 +149,7 @@ async function saveKeyFormBtn(event) {
             SERVERS[server]?.value ||
             document.getElementById('key-custom-server2-input').value.trim(),
         key2: document.getElementById('stream-key2-input').value.trim(),
+        link: document.getElementById('key-link-input').value.trim(),
         remarks: document.getElementById('key-remarks-input').value.trim(),
     };
 
@@ -217,6 +218,7 @@ async function saveKeyFormBtn(event) {
     // Sending request
     showLoading();
     if (key.id === '') {
+        console.log(key);
         // Adding new row
         document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);

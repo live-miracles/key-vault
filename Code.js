@@ -22,52 +22,6 @@ function sheetToObjects(sheet) {
     });
 }
 
-// ===== Cached Data =====
-function getAllData(etag) {
-    const cache = CacheService.getScriptCache();
-    const cached = cache.get(CACHE_KEY);
-    if (cached) {
-        const config = JSON.parse(cached);
-        if (etag === config.etag)
-            return {
-                success: true,
-                data: { etag: config.etag },
-            };
-        config.userEmail = getUserEmail();
-        config.size = cached.length;
-        return { success: true, data: config };
-    }
-
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-    const config = {
-        etag: String(Date.now()),
-        events: sheetToObjects(ss.getSheetByName(SHEETS.EVENT)),
-        roles: sheetToObjects(ss.getSheetByName(SHEETS.ROLE)),
-        keys: sheetToObjects(ss.getSheetByName(SHEETS.KEY)),
-    };
-
-    const configString = JSON.stringify(config);
-    cache.put(CACHE_KEY, configString, CACHE_TTL);
-    config.userEmail = getUserEmail();
-    config.size = configString.length;
-
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
-    config.events = config.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id));
-    config.roles = config.roles.filter((r) =>
-        hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type),
-    );
-    config.keys = config.keys.filter((k) =>
-        hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.language),
-    );
-
-    return { success: true, data: config };
-}
-
-function expireCache() {
-    CacheService.getScriptCache().remove(CACHE_KEY);
-}
-
 // ===== Common Functions =====
 function getSheet(name) {
     const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(name);
@@ -100,6 +54,59 @@ function getUserEmail() {
     return Session.getActiveUser().getEmail();
 }
 
+function generateId() {
+    return (
+        Date.now().toString(36).toUpperCase() +
+        Math.random().toString(36).substring(2, 6).toUpperCase()
+    );
+}
+
+// ===== Cached Data =====
+function getAllData(etag) {
+    const cache = CacheService.getScriptCache();
+    const cached = cache.get(CACHE_KEY);
+    let config = {};
+    if (cached) {
+        config = JSON.parse(cached);
+        if (etag === config.etag)
+            return {
+                success: true,
+                data: { etag: config.etag },
+            };
+        config.size = cached.length;
+        config.userEmail = getUserEmail();
+    } else {
+        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+        config = {
+            etag: String(Date.now()),
+            events: sheetToObjects(ss.getSheetByName(SHEETS.EVENT)),
+            roles: sheetToObjects(ss.getSheetByName(SHEETS.ROLE)),
+            keys: sheetToObjects(ss.getSheetByName(SHEETS.KEY)),
+        };
+
+        const configString = JSON.stringify(config);
+        cache.put(CACHE_KEY, configString, CACHE_TTL);
+        config.size = configString.length;
+        config.userEmail = getUserEmail();
+    }
+
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    config.events = config.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id));
+    config.roles = config.roles.filter((r) =>
+        hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type),
+    );
+    config.keys = config.keys.filter((k) =>
+        hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.language),
+    );
+
+    return { success: true, data: config };
+}
+
+function expireCache() {
+    CacheService.getScriptCache().remove(CACHE_KEY);
+}
+
 // ===== Event API =====
 function addEvent(event) {
     if (!event || !event.name) {
@@ -110,7 +117,7 @@ function addEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
     if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         return {
@@ -121,7 +128,7 @@ function addEvent(event) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        event.id = Utilities.getUuid();
+        event.id = generateId();
         event.row = sheet.getLastRow();
         sheet.appendRow([event.id, event.name]);
 
@@ -143,7 +150,7 @@ function editEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const old = config.events.find((e) => e.id === event.id);
     if (!old) {
         return { success: false, error: 'Event not found: ' + event.id };
@@ -175,7 +182,7 @@ function deleteEvent(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const event = config.events.find((e) => e.id === id);
     if (!event) {
         return { success: false, error: 'Event not found: ' + id };
@@ -222,7 +229,7 @@ function addRole(role) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
     if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         return {
@@ -234,7 +241,7 @@ function addRole(role) {
     return withLock(() => {
         const sheet = getSheet(SHEETS.ROLE);
 
-        role.id = Utilities.getUuid();
+        role.id = generateId();
         role.row = sheet.getLastRow();
         sheet.appendRow([role.id, role.event, role.email, role.type, role.language, role.remarks]);
         expireCache();
@@ -252,7 +259,7 @@ function editRole(role) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const old = config.roles.find((r) => r.id === role.id);
     if (!old) {
         return { success: false, error: 'Role not found: ' + role.id };
@@ -289,7 +296,7 @@ function deleteRole(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const role = config.roles.find((r) => r.id === id);
 
     if (!role) {
@@ -324,7 +331,7 @@ function addKey(key) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
     if (!hasEventAccess(eventRoles, ACTIONS.CREATE_KEY, key.event)) {
         return {
@@ -336,7 +343,7 @@ function addKey(key) {
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
 
-        key.id = Utilities.getUuid();
+        key.id = generateId();
         key.row = sheet.getLastRow();
         sheet.appendRow([
             key.id,
@@ -367,7 +374,7 @@ function editKey(key) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const old = config.keys.find((k) => k.id === key.id);
 
     if (!old) {
@@ -417,7 +424,7 @@ function deleteKey(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.email, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     const key = config.keys.find((k) => k.id === id);
 
     if (!key) {

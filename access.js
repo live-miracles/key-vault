@@ -18,8 +18,8 @@ function getEventRoles(email, events, roles) {
     return eventRoles;
 }
 
-function hasEventAccess(eventRoles, action, event = null) {
-    if (!eventRoles[event] && action !== ACTIONS.CREATE) return false;
+function hasEventAccess(eventRoles, action, eventId = null) {
+    if (!eventRoles[eventId] && action !== ACTIONS.CREATE) return false;
     if (action === ACTIONS.VIEW) {
         return true;
     }
@@ -28,33 +28,33 @@ function hasEventAccess(eventRoles, action, event = null) {
     return eventRoles['*'].some((r) => r.type === ROLES.ADMIN && r.event === '*');
 }
 
-function hasRoleAccess(eventRoles, action, event, role = null) {
-    if (!eventRoles[event]) return false;
+function hasRoleAccess(eventRoles, action, eventId, type = null) {
+    if (!eventRoles[eventId]) return false;
     if (action === ACTIONS.VIEW) {
         // Only editors or admins can view roles
-        return eventRoles[event].some((r) => r.type === ROLES.EDITOR || r.type === ROLES.ADMIN);
-    } else if (action === ACTIONS.CREATE && role === null) {
+        return eventRoles[eventId].some((r) => r.type === ROLES.EDITOR || r.type === ROLES.ADMIN);
+    } else if (action === ACTIONS.CREATE && type === null) {
         // Admins can add roles
-        return eventRoles[event].some((r) => r.type === ROLES.ADMIN && event !== '*');
-    } else if (role === ROLES.VIEWER || role === ROLES.EDITOR) {
+        return eventRoles[eventId].some((r) => r.type === ROLES.ADMIN && eventId !== '*');
+    } else if (type === ROLES.VIEWER || type === ROLES.EDITOR) {
         // Admins can add editors
-        return eventRoles[event].some((r) => r.type === ROLES.ADMIN && event !== '*');
-    } else if (role === ROLES.ADMIN) {
+        return eventRoles[eventId].some((r) => r.type === ROLES.ADMIN && eventId !== '*');
+    } else if (type === ROLES.ADMIN) {
         // Global Admins can add Event Admins
-        return eventRoles[event].some(
-            (r) => r.type === ROLES.ADMIN && r.event === '*' && event !== '*',
+        return eventRoles[eventId].some(
+            (r) => r.type === ROLES.ADMIN && r.event === '*' && eventId !== '*',
         );
     }
     console.error('Unexpected error, this code should not be reachable.');
     return false;
 }
 
-function hasKeyAccess(eventRoles, action, event, language = null) {
-    if (!eventRoles[event] || event === '*') return false;
+function hasKeyAccess(eventRoles, action, eventId, language = null) {
+    if (!eventRoles[eventId] || eventId === '*') return false;
     if (action === ACTIONS.VIEW) {
         return true;
     }
-    return eventRoles[event].some(
+    return eventRoles[eventId].some(
         (r) =>
             (r.type === ROLES.EDITOR || r.type === ROLES.ADMIN) &&
             (r.language === '*' || r.language === language || language === null),

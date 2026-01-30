@@ -96,11 +96,36 @@ function renderKeyTable(eventId = null) {
 
 let selectedKeyId = null;
 function showKeyContextMenu(event, keyId) {
+    event.preventDefault();
+
     selectedKeyId = keyId;
-    const contextMenu = document.getElementById('key-context-menu');
-    contextMenu.style.left = `${event.pageX}px`;
-    contextMenu.style.top = `${event.pageY}px`;
-    contextMenu.classList.remove('hidden');
+    const menu = document.getElementById('key-context-menu');
+
+    // Make visible so we can measure it
+    menu.classList.remove('hidden');
+
+    const rect = menu.getBoundingClientRect();
+    const margin = 8;
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    // Horizontal clamp
+    if (x + rect.width > window.innerWidth) {
+        x = window.innerWidth - rect.width - margin;
+    }
+
+    // Vertical: flip above cursor if needed
+    if (y + rect.height > window.innerHeight) {
+        y = y - rect.height - margin;
+    }
+
+    // Final safety clamp
+    x = Math.max(margin, x);
+    y = Math.max(margin, y);
+
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
 }
 
 async function addKeyBtn() {

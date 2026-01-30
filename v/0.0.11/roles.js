@@ -52,11 +52,36 @@ function renderRoleTable(eventId = null) {
 
 let selectedRoleId = null;
 function showRoleContextMenu(event, roleId) {
+    event.preventDefault();
+
     selectedRoleId = roleId;
-    const contextMenu = document.getElementById('role-context-menu');
-    contextMenu.style.left = `${event.pageX}px`;
-    contextMenu.style.top = `${event.pageY}px`;
-    contextMenu.classList.remove('hidden');
+    const menu = document.getElementById('role-context-menu');
+
+    // Make visible so we can measure it
+    menu.classList.remove('hidden');
+
+    const rect = menu.getBoundingClientRect();
+    const margin = 8;
+
+    let x = event.clientX;
+    let y = event.clientY;
+
+    // Horizontal clamp
+    if (x + rect.width > window.innerWidth) {
+        x = window.innerWidth - rect.width - margin;
+    }
+
+    // Vertical: flip above cursor if needed
+    if (y + rect.height > window.innerHeight) {
+        y = y - rect.height - margin;
+    }
+
+    // Final safety clamp
+    x = Math.max(margin, x);
+    y = Math.max(margin, y);
+
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
 }
 
 async function addRoleBtn() {

@@ -18,7 +18,9 @@ function renderRoleTable(eventId = null) {
     document.querySelector('#role-rows').innerHTML = config.roles
         .filter((r) => r.event === eventId || r.event === '*')
         .sort((r1, r2) => {
-            if (r1.role !== r2.role) return ROLE_MAP(r2.role) - ROLE_MAP(r1.role);
+            if (r1.type !== r2.type) return parseInt(r2.type) - parseInt(r1.type);
+            if (r2.event === '*' && r1.event !== '*') return 1;
+            if (r2.event !== '*' && r1.event === '*') return -1;
             return r1.email.localeCompare(r2.email);
         })
         .map(

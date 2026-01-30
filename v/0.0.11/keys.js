@@ -27,25 +27,24 @@ function renderKeyTable(eventId = null) {
 
             keys.forEach((k, keyIndex) => {
                 html += `
-                <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss}" data-key-id="${k.id}">
-
+                <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">
                     ${
                         keyIndex === 0
-                            ? `<td rowspan="${keys.length}" class="align-middle font-semibold">
+                            ? `<td rowspan="${keys.length}" class="align-middle font-semibold" style="padding: 2px">
                                 ${langIndex} - ${LANGUAGE_MAP[k.language] || k.language}
                             </td>`
                             : ''
                     }
-                    <td>${keyIndex + 1}</td>
-                    <td>${k.name}</td>
-                    <td>${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
-                    <td>${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
-                    <td>${
+                    <td style="padding: 2px">${keyIndex + 1}</td>
+                    <td style="padding: 2px">${k.name}</td>
+                    <td style="padding: 2px">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
+                    <td style="padding: 2px">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
+                    <td style="padding: 2px">${
                         k.link
                             ? `<a href="${k.link}" class="link" target="_blank">${getShortText(k.link, 25)}</a>`
                             : ''
                     }</td>
-                    <td>${k.remarks || ''}</td>
+                    <td style="padding: 2px">${k.remarks || ''}</td>
                 </tr>`;
             });
         });

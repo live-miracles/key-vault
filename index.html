@@ -109,9 +109,9 @@
               <p class="label text-error"></p>
             </fieldset>
           </div>
-          <fieldset class="fieldset" id="role-remarks-input">
+          <fieldset class="fieldset">
             <legend class="fieldset-legend">Remarks</legend>
-            <input type="text" id="remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
+            <input type="text" id="role-remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
           </fieldset>
         </div>
 
@@ -183,7 +183,16 @@
 
             <fieldset class="fieldset ml-2 inline-block flex-grow">
               <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
-              <input type="text" id="stream-key-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <input
+                type="text"
+                id="stream-key-input"
+                class="input w-full"
+                placeholder="Type here"
+                maxlength="200"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false" />
               <p class="label text-error"></p>
             </fieldset>
           </div>
@@ -203,7 +212,16 @@
 
             <fieldset class="fieldset ml-2 inline-block flex-grow">
               <legend class="fieldset-legend">Backup Stream Key</legend>
-              <input type="text" id="stream-key2-input" class="input w-full" placeholder="Type here" maxlength="200" />
+              <input
+                type="text"
+                id="stream-key2-input"
+                class="input w-full"
+                placeholder="Type here"
+                maxlength="200"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false" />
               <p class="label text-error"></p>
             </fieldset>
           </div>
@@ -254,13 +272,13 @@
       </div>
     </div>
 
-    <div class="flex min-h-0 flex-1 flex-col">
-      <div class="hidden overflow-x-auto" id="role-table">
+    <div class="flex min-h-0 w-full flex-1 flex-col">
+      <div class="mx-auto hidden max-w-[800px] overflow-x-auto" id="role-table">
         <div class="overflow-x-auto">
           <table class="table">
             <!-- head -->
             <thead>
-              <tr>
+              <tr class="text-center">
                 <th>Email</th>
                 <th>Role</th>
                 <th>Language</th>
@@ -285,10 +303,10 @@
 
       <div class="min-h-0 flex-1 overflow-y-auto" id="key-table">
         <div class="overflow-x-auto">
-          <table class="table">
+          <table class="table-pin-rows table">
             <!-- head -->
             <thead>
-              <tr>
+              <tr class="text-center">
                 <th>Language</th>
                 <th></th>
                 <th>Name</th>
@@ -322,6 +340,7 @@
       <div class="bg-base-200 sticky bottom-0 z-40 mt-1">
         <div class="flex flex-shrink-0 items-center">
           <button class="btn btn-accent btn-xs ml-3 hidden" id="add-event-btn" title="Add" onclick="addEventBtn()">➕</button>
+
           <div role="tablist" class="tabs tabs-sm tabs-box ml-3">
             <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
           </div>

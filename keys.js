@@ -12,20 +12,6 @@ function maskKey(key) {
 }
 
 function renderKeyTable(eventId = null) {
-    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId)) {
-        document.querySelector('#add-key-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#add-key-btn').classList.add('hidden');
-    }
-
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        document.querySelector('#key-table').classList.add('hidden');
-        return;
-    }
-    document.querySelector('#key-table').classList.remove('hidden');
-    renderKeyLanguages(eventId);
-
     const keysByLanguage = Object.groupBy(
         config.keys.filter((k) => k.event === eventId),
         (k) => k.language,
@@ -60,8 +46,7 @@ function renderKeyTable(eventId = null) {
                             : ''
                     }</td>
                     <td>${k.remarks || ''}</td>
-                </tr>
-            `;
+                </tr>`;
             });
         });
 

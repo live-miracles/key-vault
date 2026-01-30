@@ -45,6 +45,8 @@ function renderRoleTable(eventId = null) {
             }
             if (hasRoleAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type)) {
                 showRoleContextMenu(e, roleId);
+            } else {
+                document.getElementById('role-context-menu').classList.add('hidden');
             }
         });
     });

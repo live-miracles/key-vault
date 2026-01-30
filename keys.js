@@ -178,23 +178,23 @@ function editKeyRow() {
 
 async function saveKeyFormBtn(event) {
     const server = document.getElementById('key-server-input').value;
+    const server2 = document.getElementById('key-server2-input').value;
     const key = {
         id: document.getElementById('key-id-input').value.trim(),
         event: document.getElementById('key-event-input').value.trim(),
         color: document.getElementById('key-color-input').value.trim(),
         name: document.getElementById('key-name-input').value.trim(),
         language: document.getElementById('key-language-input').value.trim(),
-        server:
-            SERVERS[server]?.value ||
-            document.getElementById('key-custom-server-input').value.trim(),
+        server: server || document.getElementById('key-custom-server-input').value.trim(),
         key: document.getElementById('stream-key-input').value.trim(),
-        server2:
-            SERVERS[server]?.value ||
-            document.getElementById('key-custom-server2-input').value.trim(),
+        server2: server2 || document.getElementById('key-custom-server2-input').value.trim(),
         key2: document.getElementById('stream-key2-input').value.trim(),
         link: document.getElementById('key-link-input').value.trim(),
         remarks: document.getElementById('key-remarks-input').value.trim(),
     };
+
+    const keyServer = SERVERS[key.server]?.value || key.server;
+    const keyServer2 = SERVERS[key.server2]?.value || key.server2;
 
     // Validation
     let errorElem = document.querySelector('#key-name-input').nextElementSibling;
@@ -211,7 +211,7 @@ async function saveKeyFormBtn(event) {
     }
 
     errorElem = document.querySelector('#key-server-input').nextElementSibling;
-    if (!key.server.startsWith('rtmp://') && !key.server.startsWith('rtmps://')) {
+    if (!keyServer.startsWith('rtmp://') && !keyServer.startsWith('rtmps://')) {
         errorElem.innerText = 'Invalid RTMP';
         event.preventDefault();
         return;
@@ -224,7 +224,7 @@ async function saveKeyFormBtn(event) {
     }
 
     errorElem = document.querySelector('#key-server2-input').nextElementSibling;
-    if (key.server2 && !key.server2.startsWith('rtmp://') && !key.server2.startsWith('rtmps://')) {
+    if (keyServer2 && !keyServer2.startsWith('rtmp://') && !keyServer2.startsWith('rtmps://')) {
         errorElem.innerText = 'Invalid RTMP';
         event.preventDefault();
         return;

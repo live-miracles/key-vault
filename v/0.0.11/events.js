@@ -109,7 +109,31 @@ async function deleteEventBtn() {
 
 function selectEvent(id) {
     setUrlParam('event', id);
+
     renderEventTabBar(id);
+
     renderRoleTable(id);
+    if (hasRoleAccess(eventRoles, ACTIONS.VIEW, id)) {
+        document.querySelector('#show-roles-btn').classList.remove('hidden');
+    } else {
+        document.querySelector('#show-roles-btn').classList.add('hidden');
+    }
+
+    if (hasRoleAccess(eventRoles, ACTIONS.CREATE, id)) {
+        document.querySelector('#add-role-btn').classList.remove('hidden');
+        document.querySelector('#edit-role-btn').classList.remove('hidden');
+        document.querySelector('#delete-role-btn').classList.remove('hidden');
+    } else {
+        document.querySelector('#add-role-btn').classList.add('hidden');
+        document.querySelector('#edit-role-btn').classList.add('hidden');
+        document.querySelector('#delete-role-btn').classList.add('hidden');
+    }
+
     renderKeyTable(id);
+    renderKeyLanguages(id);
+    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, id)) {
+        document.querySelector('#add-key-btn').classList.remove('hidden');
+    } else {
+        document.querySelector('#add-key-btn').classList.add('hidden');
+    }
 }

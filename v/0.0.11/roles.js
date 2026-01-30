@@ -1,20 +1,4 @@
 function renderRoleTable(eventId = null) {
-    if (hasRoleAccess(eventRoles, ACTIONS.VIEW, eventId)) {
-        document.querySelector('#show-roles-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#show-roles-btn').classList.add('hidden');
-    }
-
-    if (hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId)) {
-        document.querySelector('#add-role-btn').classList.remove('hidden');
-        document.querySelector('#edit-role-btn').classList.remove('hidden');
-        document.querySelector('#delete-role-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#add-role-btn').classList.add('hidden');
-        document.querySelector('#edit-role-btn').classList.add('hidden');
-        document.querySelector('#delete-role-btn').classList.add('hidden');
-    }
-
     document.querySelector('#role-rows').innerHTML = config.roles
         .filter((r) => r.event === eventId || r.event === '*')
         .sort((r1, r2) => {

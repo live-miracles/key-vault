@@ -15,7 +15,7 @@ function sheetToObjects(sheet) {
         const obj = { row: idx + 2 };
 
         headers.forEach((h, i) => {
-            obj[h] = r[i];
+            obj[h] = String(r[i]);
         });
 
         return obj;

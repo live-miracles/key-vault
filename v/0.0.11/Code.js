@@ -231,7 +231,7 @@ function addRole(role) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
-    if (!hasRoleAccess(eventRoles, ACTIONS.CREATE)) {
+    if (!hasRoleAccess(eventRoles, ACTIONS.CREATE, role.event)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -333,7 +333,7 @@ function addKey(key) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
-    if (!hasKeyAccess(eventRoles, ACTIONS.CREATE_KEY, key.event)) {
+    if (!hasKeyAccess(eventRoles, ACTIONS.CREATE, key.event)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,

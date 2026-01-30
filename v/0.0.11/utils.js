@@ -102,7 +102,8 @@ const LANGUAGES = [
     'ro',
     'id',
     'fa',
-].sort();
+    'vi',
+];
 
 const LANGUAGE_MAP = {
     en: 'English',
@@ -128,4 +129,5 @@ const LANGUAGE_MAP = {
     ro: 'Romanian',
     id: 'Indonesian',
     fa: 'Persian',
+    vi: 'Vietnamese',
 };

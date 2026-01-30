@@ -20,7 +20,7 @@ function renderKeyTable(eventId = null) {
     let html = '';
 
     Object.keys(keysByLanguage)
-        .sort((a, b) => a.localeCompare(b))
+        .sort((a, b) => LANGUAGE_MAP[a].localeCompare(LANGUAGE_MAP[b]))
         .forEach((lang) => {
             langIndex++;
             const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);

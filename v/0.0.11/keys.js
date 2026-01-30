@@ -219,7 +219,7 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    if (!key.server.endsWith('/')) {
+    if (!keyServer.endsWith('/')) {
         key.server += '/';
     }
 
@@ -241,11 +241,7 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    if (!key.server.endsWith('/')) {
-        key.server += '/';
-    }
-
-    if (key.server2 && !key.server2.endsWith('/')) {
+    if (key.server2 && !keyServer2.endsWith('/')) {
         key.server2 += '/';
     }
 
@@ -381,7 +377,7 @@ function renderServerInput(server, suffix = '') {
 
 const COLORS = {
     '': { name: 'None', css: '', bgCss: '' },
-    1: { name: '🔴 Red', css: 'text-error', bgCss: 'bg-error/10' },
+    1: { name: '🔴 Red', css: 'text-error', bgCss: 'bg-red-500/30' },
     2: { name: '🟠 Orange', css: 'text-secondary', bgCss: 'bg-secondary/10' },
     3: { name: '🟡 Yellow', css: 'text-warning', bgCss: 'bg-warning/10' },
     4: { name: '🟢 Green', css: 'text-primary', bgCss: 'bg-primary/10' },

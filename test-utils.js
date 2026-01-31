@@ -250,14 +250,17 @@ const testEvents = [
     {
         id: 'EVT01',
         name: 'Event 1',
+        status: '',
     },
     {
         id: 'EVT02',
         name: 'Event 2',
+        status: 'locked',
     },
     {
         id: 'EVT03',
         name: 'Event 3',
+        status: '',
     },
 ];
 

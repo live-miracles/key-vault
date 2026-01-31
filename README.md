@@ -13,16 +13,14 @@ you will be able to:
 
 1. Create a Spreadsheet with tabs:
     - Role: "id", "event", "email", "type", "language", "remarks"
-    - Event: "id", "name"
+    - Event: "id", "name", "status"
     - Key: "id", "event", "name", "language", "server", "key", "server2", "key2", "color", "remarks"
 2. Create an AppScript and add a `SPREADSHEET_ID` property.
 3. Create "Code.gs", "and "Index.html" files in the project and copy this code.
 
 ## Roles
 
-- Super Admin - can edit any event and assign Global Admins.
-- Global Admin - can edit any event and assign Event Admins.
-- Event Admin - can edit and add other Event Admins for one event.
-- Event Editor - can edit one event.
-- Language Editor - can edit one event, but can't share access with others.
-- Event/Language Viewer - can only view one event.
+- \*Admin - can edit any event and assign Event Admins.
+- Admin - can edit and add Viewers/Editors for one event.
+- Editor - can edit one event (can be restricted to languages).
+- Viewer - can only view one event (can be restricted to languages).

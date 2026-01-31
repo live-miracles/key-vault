@@ -173,7 +173,7 @@ function editEvent(event) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(old.row, 2, 1, 2).setValues([[role.name, role.status]]);
+        sheet.getRange(old.row, 2, 1, 2).setValues([[event.name, event.status]]);
 
         expireCache();
 

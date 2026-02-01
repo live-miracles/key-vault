@@ -78,6 +78,7 @@ async function lockEventBtn() {
     if (newEvent !== null) {
         event.status = newEvent.status;
     }
+    document.querySelector('#lock-event-btn').disabled = false;
     selectEvent(event.id);
     hideLoading();
 }

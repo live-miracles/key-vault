@@ -11,7 +11,7 @@ function renderRoleTable(eventId = null) {
             (r) => `
             <tr class="hover:bg-base-300 text-center" data-role-id="${r.id}">
                 <th>${r.email}</th>
-                <td>${(r.event === '*' ? '*' : '') + ROLE_MAP[r.type]}</td>
+                <td>${ROLE_MAP[r.type]}</td>
                 <td>${LANGUAGE_MAP[r.language] || r.language}</td>
                 <td>${r.remarks}</td>
             </tr>

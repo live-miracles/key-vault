@@ -277,7 +277,7 @@ const testRoles = [
         id: 'ROLE02',
         event: '*',
         email: testEmail2,
-        type: ROLES.ADMIN,
+        type: ROLES.OWNER,
         language: '*',
         remarks: '',
     },

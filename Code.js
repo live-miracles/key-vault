@@ -352,6 +352,15 @@ function addKey(key) {
         };
     }
 
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
 
@@ -403,6 +412,15 @@ function editKey(key) {
         };
     }
 
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
         sheet
@@ -448,6 +466,15 @@ function deleteKey(id) {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
         };
+    }
+
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {

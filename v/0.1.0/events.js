@@ -17,21 +17,20 @@ function renderEventTabBar(eventId = null) {
     if (hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId)) {
         document.querySelector('#edit-event-btn').classList.remove('hidden');
         document.querySelector('#delete-event-btn').classList.remove('hidden');
-        document.querySelector('#lock-event-btn').disabled = false;
-        document.querySelector('#lock-event-btn').classList.remove('hidden');
     } else {
         document.querySelector('#edit-event-btn').classList.add('hidden');
         document.querySelector('#delete-event-btn').classList.add('hidden');
-        document.querySelector('#lock-event-btn').classList.add('hidden');
     }
 
     if (event.status === EVENT_STATUS.LOCKED) {
-        document.querySelector('#lock-event-btn').classList.remove('btn-soft');
+        document.querySelector('#lock-event-btn').classList.remove('btn-neutral');
+        document.querySelector('#lock-event-btn').classList.add('btn-accent');
         document.querySelector('#edit-event-btn').disabled = true;
         document.querySelector('#delete-event-btn').disabled = true;
     } else {
-        console.log(config, config.events.length > 1)
-        document.querySelector('#lock-event-btn').classList.add('btn-soft');
+        console.log(config, config.events.length > 1);
+        document.querySelector('#lock-event-btn').classList.add('btn-neutral');
+        document.querySelector('#lock-event-btn').classList.remove('btn-soft');
         document.querySelector('#edit-event-btn').disabled = false;
         document.querySelector('#delete-event-btn').disabled = config.events.length <= 1;
     }
@@ -51,6 +50,11 @@ async function lockEventBtn() {
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
         console.error('Event not found:', eventId);
+        return;
+    }
+
+    if (!hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId)) {
+        alert('Only admins can lock/unlock the event.');
         return;
     }
 
@@ -189,9 +193,14 @@ function selectEvent(id) {
         document.querySelector('#delete-role-btn').classList.add('hidden');
     }
 
+    const event = config.events.find((e) => e.id === id);
     renderKeyTable(id);
     renderKeyLanguages(id);
-    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, id)) {
+    if (
+        hasKeyAccess(eventRoles, ACTIONS.CREATE, id) &&
+        event &&
+        event.status !== EVENT_STATUS.LOCKED
+    ) {
         document.querySelector('#add-key-btn').classList.remove('hidden');
     } else {
         document.querySelector('#add-key-btn').classList.add('hidden');

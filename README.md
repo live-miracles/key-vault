@@ -20,7 +20,7 @@ you will be able to:
 
 ## Roles
 
-- \*Admin - can edit any event and assign Event Admins.
-- Admin - can edit and add Viewers/Editors for one event.
-- Editor - can edit one event (can be restricted to languages).
-- Viewer - can only view one event (can be restricted to languages).
+- Owner - can edit any event and assign Event Admins.
+- Admin - can edit an event and add Viewers/Editors.
+- Editor - can edit an event (can be restricted to languages).
+- Viewer - can only view an event (can be restricted to languages).

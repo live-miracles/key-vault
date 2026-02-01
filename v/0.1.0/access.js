@@ -4,11 +4,13 @@ function getEventRoles(email, events, roles) {
         acc[e.id] = [];
         return acc;
     }, {});
-    eventRoles['*'] = [];
+    eventRoles.owners = [];
     userRoles.forEach((r) => {
-        if (r.event === '*') {
+        if (r.type === ROLES.OWNER) {
             Object.keys(eventRoles).forEach((key) => eventRoles[key].push(r));
-        } else eventRoles[r.event]?.push(r);
+        } else {
+            eventRoles[r.event]?.push(r);
+        }
     });
     Object.keys(eventRoles).forEach((key) => {
         if (eventRoles[key].length === 0) {
@@ -19,46 +21,55 @@ function getEventRoles(email, events, roles) {
 }
 
 function hasEventAccess(eventRoles, action, eventId = null) {
-    if (!eventRoles[eventId] && action !== ACTIONS.CREATE) return false;
-    if (action === ACTIONS.VIEW) {
-        return true;
+    const isOwner = Boolean(eventRoles.owners);
+
+    if (!eventRoles[eventId]) {
+        if (action === ACTIONS.CREATE && isOwner) return true;
+        return false;
     }
-    // Only global Admins can manage events
-    if (!eventRoles['*']) return false;
-    return eventRoles['*'].some((r) => r.type === ROLES.ADMIN && r.event === '*');
+
+    if (action === ACTIONS.VIEW) return true;
+    return isOwner;
 }
 
 function hasRoleAccess(eventRoles, action, eventId, type = null) {
     if (!eventRoles[eventId]) return false;
+    if (type === ROLES.OWNER) return false;
+
+    const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
+    const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
+    const isEditor = isAdmin || eventRoles[eventId].some((r) => r.type === ROLES.EDITOR);
+
     if (action === ACTIONS.VIEW) {
-        // Only editors or admins can view roles
-        return eventRoles[eventId].some((r) => r.type === ROLES.EDITOR || r.type === ROLES.ADMIN);
-    } else if (action === ACTIONS.CREATE && type === null) {
-        // Admins can add roles
-        return eventRoles[eventId].some((r) => r.type === ROLES.ADMIN && eventId !== '*');
-    } else if (type === ROLES.VIEWER || type === ROLES.EDITOR) {
-        // Admins can add editors
-        return eventRoles[eventId].some((r) => r.type === ROLES.ADMIN && eventId !== '*');
+        return isEditor;
+    } else if (action === ACTIONS.CREATE) {
+        if (type === ROLES.ADMIN) return isOwner;
+        else return isAdmin;
     } else if (type === ROLES.ADMIN) {
-        // Global Admins can add Event Admins
-        return eventRoles[eventId].some(
-            (r) => r.type === ROLES.ADMIN && r.event === '*' && eventId !== '*',
-        );
-    }
-    console.error('Unexpected error, this code should not be reachable.');
-    return false;
+        return isOwner;
+    } else return isAdmin;
 }
 
 function hasKeyAccess(eventRoles, action, eventId, language = null) {
-    if (!eventRoles[eventId] || eventId === '*') return false;
-    if (action === ACTIONS.VIEW) {
-        return eventRoles[eventId].some((r) => r.language === '*' || r.language === language);
-    }
-    return eventRoles[eventId].some(
-        (r) =>
-            (r.type === ROLES.EDITOR || r.type === ROLES.ADMIN) &&
-            (r.language === '*' || r.language === language || language === null),
-    );
+    if (!eventRoles[eventId]) return false;
+
+    const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
+    const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
+    const isEditor =
+        isAdmin ||
+        eventRoles[eventId].some(
+            (r) =>
+                r.type === ROLES.EDITOR &&
+                (r.language === '*' || r.language === language || language === null),
+        );
+    const isViewer =
+        isEditor ||
+        eventRoles[eventId].some(
+            (r) => r.type === ROLES.EDITOR && (r.language === '*' || r.language === language),
+        );
+
+    if (action === ACTIONS.VIEW) return isViewer;
+    return isEditor;
 }
 
 const ACTIONS = {
@@ -72,10 +83,12 @@ const ROLES = {
     VIEWER: '0',
     EDITOR: '1',
     ADMIN: '2',
+    OWNER: '3',
 };
 
 const ROLE_MAP = {
     [ROLES.VIEWER]: 'Viewer',
     [ROLES.EDITOR]: 'Editor',
     [ROLES.ADMIN]: 'Admin',
+    [ROLES.OWNER]: 'Owner',
 };

@@ -28,7 +28,6 @@ function renderEventTabBar(eventId = null) {
         document.querySelector('#edit-event-btn').disabled = true;
         document.querySelector('#delete-event-btn').disabled = true;
     } else {
-        console.log(config, config.events.length > 1);
         document.querySelector('#lock-event-btn').classList.add('btn-neutral');
         document.querySelector('#lock-event-btn').classList.remove('btn-soft');
         document.querySelector('#edit-event-btn').disabled = false;

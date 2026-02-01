@@ -22,7 +22,7 @@ function getEventRoles(email, events, roles) {
 }
 
 function hasEventAccess(eventRoles, action, eventId = null) {
-    const isOwner = Boolean(eventRoles.owners);
+    const isOwner = Boolean(eventRoles['*']);
 
     if (!eventRoles[eventId]) {
         if (action === ACTIONS.CREATE && isOwner) return true;

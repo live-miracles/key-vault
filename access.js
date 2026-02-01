@@ -4,7 +4,7 @@ function getEventRoles(email, events, roles) {
         acc[e.id] = [];
         return acc;
     }, {});
-    eventRoles.owners = [];
+    eventRoles['*'] = [];
     userRoles.forEach((r) => {
         if (r.type === ROLES.OWNER) {
             Object.keys(eventRoles).forEach((key) => eventRoles[key].push(r));
@@ -35,15 +35,17 @@ function hasEventAccess(eventRoles, action, eventId = null) {
 
 function hasRoleAccess(eventRoles, action, eventId, type = null) {
     if (!eventRoles[eventId]) return false;
-    if (type === ROLES.OWNER) return false;
 
     const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
     const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
     const isEditor = isAdmin || eventRoles[eventId].some((r) => r.type === ROLES.EDITOR);
 
     if (action === ACTIONS.VIEW) return isEditor;
-    else if (type === ROLES.ADMIN) return isOwner;
-    else return isAdmin;
+
+    if (type === ROLES.OWNER) return false;
+    if (type === ROLES.ADMIN) return isOwner;
+
+    return isAdmin;
 }
 
 function hasKeyAccess(eventRoles, action, eventId, language = null) {

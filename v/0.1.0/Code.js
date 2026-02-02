@@ -181,6 +181,45 @@ function editEvent(event) {
     }, 'editEvent');
 }
 
+function lockEvent(event) {
+    if (!event || !event.id || !['', EVENT_STATUS.LOCKED].includes(event.status)) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(event),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const old = config.events.find((e) => e.id === event.id);
+    if (!old) {
+        return { success: false, error: 'Event not found: ' + event.id };
+    }
+
+    if (!hasEventAccess(eventRoles, ACTIONS.LOCK, event.id)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (old.status === event.status) {
+        return {
+            success: false,
+            error: `Event is already ${event.status ? 'locked' : 'unlocked'}: ` + event.id,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.EVENT);
+        sheet.getRange(old.row, 3).setValue(event.status);
+
+        expireCache();
+
+        return { success: true, data: event };
+    }, 'lockEvent');
+}
+
 function deleteEvent(id) {
     if (!id) {
         return {

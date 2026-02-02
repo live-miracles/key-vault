@@ -403,6 +403,9 @@ googleMock.script.run.withFailureHandler = (_) => ({
         editEvent: (event) => {
             setTimeout(() => f(editEventMock(event)), getRandomWaitTime());
         },
+        lockEvent: (event) => {
+            setTimeout(() => f(editEventMock(event)), getRandomWaitTime());
+        },
         deleteEvent: (id) => {
             setTimeout(() => f(deleteEventMock(id)), getRandomWaitTime());
         },

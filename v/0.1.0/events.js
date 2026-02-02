@@ -1,7 +1,3 @@
-const EVENT_STATUS = {
-    LOCKED: 'locked',
-};
-
 function renderEventTabBar(eventId = null) {
     const event = config.events.find((e) => e.id === eventId);
     const name = event?.name || '';
@@ -52,12 +48,12 @@ async function lockEventBtn() {
         return;
     }
 
-    if (!hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId)) {
-        alert('Only admins can lock/unlock the event.');
+    const locked = event.status === EVENT_STATUS.LOCKED;
+    if (!hasEventAccess(eventRoles, ACTIONS.LOCK, eventId)) {
+        alert(`Only Admins can ${locked ? 'unlock' : 'lock'} the event.`);
         return;
     }
 
-    const locked = event.status === EVENT_STATUS.LOCKED;
     if (
         !confirm(
             `Are you sure you want to ${locked ? 'unlock' : 'lock'} the event "${event.name}"?`,
@@ -69,11 +65,7 @@ async function lockEventBtn() {
     showLoading();
     document.querySelector('#lock-event-btn').disabled = true;
     const newEvent = processResponse(
-        await api('editEvent', {
-            id: event.id,
-            name: event.name,
-            status: locked ? '' : EVENT_STATUS.LOCKED,
-        }),
+        await api('lockEvent', { id: event.id, status: locked ? '' : EVENT_STATUS.LOCKED }),
     );
     if (newEvent !== null) {
         event.status = newEvent.status;

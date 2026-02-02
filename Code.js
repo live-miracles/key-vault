@@ -9,10 +9,6 @@ const SHEETS = {
     KEY: 'Key',
 };
 
-const EVENT_STATUS = {
-    LOCKED: 'locked',
-};
-
 function sheetToObjects(sheet) {
     const [headers, ...rows] = sheet.getDataRange().getValues();
     return rows.map((r, idx) => {

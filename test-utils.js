@@ -13,13 +13,22 @@ function getAllDataMock(etag) {
         };
     }
 
+    const userEmail = testEmail3;
+    const eventRoles = getEventRoles(userEmail, testEvents, testRoles);
+
     const data = {
         etag: serverEtag,
-        userEmail: testEmail2,
+        userEmail: userEmail,
         size: '0',
-        events: structuredClone(testEvents), // important to return copy
-        keys: structuredClone(testKeys),
-        roles: structuredClone(testRoles),
+        events: structuredClone(
+            testEvents.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id)),
+        ), // important to return copy
+        keys: structuredClone(
+            testKeys.filter((k) => hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.language)),
+        ),
+        roles: structuredClone(
+            testRoles.filter((r) => hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type)),
+        ),
     };
     data.size = JSON.stringify(data).length;
 

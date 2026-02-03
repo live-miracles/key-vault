@@ -66,7 +66,7 @@ function hasKeyAccess(eventRoles, action, eventId, language = null) {
     const isViewer =
         isEditor ||
         eventRoles[eventId].some(
-            (r) => r.type === ROLES.EDITOR && (r.language === '*' || r.language === language),
+            (r) => r.type === ROLES.VIEWER && (r.language === '*' || r.language === language),
         );
 
     if (action === ACTIONS.VIEW) return isViewer;

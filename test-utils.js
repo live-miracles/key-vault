@@ -13,7 +13,7 @@ function getAllDataMock(etag) {
         };
     }
 
-    const userEmail = testEmail3;
+    const userEmail = testEmail2;
     const eventRoles = getEventRoles(userEmail, testEvents, testRoles);
 
     const data = {

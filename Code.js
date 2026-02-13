@@ -254,13 +254,13 @@ function deleteEvent(id) {
         };
     }
 
-    if (old.status === EVENT_STATUS.LOCKED) {
+    if (event.status === EVENT_STATUS.LOCKED) {
         return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).clearContent();
+        sheet.getRange(event.row, 1, 1, sheet.getLastColumn()).clearContent();
 
         const roleSheet = getSheet(SHEETS.ROLE);
         config.roles
@@ -270,7 +270,7 @@ function deleteEvent(id) {
             );
 
         const keySheet = getSheet(SHEETS.KEY);
-        config.roles
+        config.keys
             .filter((k) => k.event === id)
             .forEach((k) =>
                 keySheet.getRange(k.row, 1, 1, keySheet.getLastColumn()).clearContent(),

@@ -26,6 +26,17 @@ function renderKeyTable(eventId = null) {
             const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);
 
             keys.forEach((k, keyIndex) => {
+                const cnt = config.keys.filter(
+                    (key) =>
+                        (k.server === key.server && k.key === key.key) ||
+                        (k.server === key.server2 && k.key === key.key2),
+                ).length;
+                const cnt2 = config.keys.filter(
+                    (key) =>
+                        (k.server2 === key.server && k.key2 === key.key) ||
+                        (k.server2 === key.server2 && k.key2 === key.key2),
+                ).length;
+
                 html += `
                 <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">
                     ${
@@ -37,8 +48,8 @@ function renderKeyTable(eventId = null) {
                     }
                     <td style="padding: 2px">${keyIndex + 1}</td>
                     <td style="padding: 2px">${k.name}</td>
-                    <td style="padding: 2px">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
-                    <td style="padding: 2px">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
+                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
+                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
                     <td style="padding: 2px">${
                         k.link
                             ? `<a href="${k.link}" class="link" target="_blank">${getShortText(k.link, 25)}</a>`

@@ -196,9 +196,12 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    errorElem = document.querySelector('#key-server-input').nextElementSibling;
-    if (!keyServer.startsWith('rtmp://') && !keyServer.startsWith('rtmps://')) {
-        errorElem.innerText = 'Invalid RTMP';
+    errorElem = document.querySelector('#key-custom-server-input').nextElementSibling;
+    if (
+        (!keyServer.startsWith('rtmp://') && !keyServer.startsWith('rtmps://')) ||
+        keyServer.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Server';
         event.preventDefault();
         return;
     } else {
@@ -209,18 +212,27 @@ async function saveKeyFormBtn(event) {
         key.server += '/';
     }
 
-    errorElem = document.querySelector('#key-server2-input').nextElementSibling;
-    if (keyServer2 && !keyServer2.startsWith('rtmp://') && !keyServer2.startsWith('rtmps://')) {
-        errorElem.innerText = 'Invalid RTMP';
+    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
+    if (
+        key.key === '' ||
+        key.key.startsWith('rtmp://') ||
+        key.key.startsWith('rtmps://') ||
+        key.key.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
     } else {
         errorElem.innerText = '';
     }
 
-    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (key.key === '') {
-        errorElem.innerText = "Key can't be empty";
+    errorElem = document.querySelector('#key-custom-server2-input').nextElementSibling;
+    if (
+        (key.key2 && keyServer2 === '') ||
+        (keyServer2 && !keyServer2.startsWith('rtmp://') && !keyServer2.startsWith('rtmps://')) ||
+        keyServer2.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Server';
         event.preventDefault();
         return;
     } else {
@@ -231,9 +243,14 @@ async function saveKeyFormBtn(event) {
         key.server2 += '/';
     }
 
-    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (key.key === '') {
-        errorElem.innerText = "Key can't be empty";
+    errorElem = document.querySelector('#stream-key2-input').nextElementSibling;
+    if (
+        (key.server2 && key.key2 === '') ||
+        key.key2.startsWith('rtmp://') ||
+        key.key2.startsWith('rtmps://') ||
+        key.key2.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
     } else {

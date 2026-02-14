@@ -55,7 +55,7 @@ async function fetchDataAndRerender() {
     config = newConfig;
     updateEventRoles(config);
 
-    const eventId = getUrlParam('eventId');
+    const eventId = getUrlParam('event');
     if (config.events.find((e) => e.id === eventId)) {
         selectEvent(eventId);
     } else if (config.events.length > 0) {

@@ -26,16 +26,16 @@ function renderKeyTable(eventId = null) {
             const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);
 
             keys.forEach((k, keyIndex) => {
-                const cnt = config.keys.filter(
-                    (key) =>
-                        (k.server === key.server && k.key === key.key) ||
-                        (k.server === key.server2 && k.key === key.key2),
-                ).length;
-                const cnt2 = config.keys.filter(
-                    (key) =>
-                        (k.server2 === key.server && k.key2 === key.key) ||
-                        (k.server2 === key.server2 && k.key2 === key.key2),
-                ).length;
+                const cnt =
+                    config.keys.filter((key) => k.server === key.server && k.key === key.key)
+                        .length +
+                    config.keys.filter((key) => k.server === key.server2 && k.key === key.key2)
+                        .length;
+                const cnt2 =
+                    config.keys.filter((key) => k.server2 === key.server && k.key2 === key.key)
+                        .length +
+                    config.keys.filter((key) => k.server2 === key.server2 && k.key2 === key.key2)
+                        .length;
 
                 html += `
                 <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">

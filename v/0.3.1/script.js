@@ -55,7 +55,7 @@ async function fetchDataAndRerender() {
     config = newConfig;
     updateEventRoles(config);
 
-    const eventId = getUrlParam('eventId');
+    const eventId = getUrlParam('event');
     if (config.events.find((e) => e.id === eventId)) {
         selectEvent(eventId);
     } else if (config.events.length > 0) {
@@ -71,12 +71,6 @@ async function fetchDataAndRerender() {
     const storageStatus = Math.round(config.size / 1000);
     document.querySelector('#storage-progress').value = String(storageStatus);
     document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
-
-    // ===== Events =====
-    if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
-        document.querySelector('#add-event-btn').classList.remove('hidden');
-        document.querySelector('#edit-event-btn').classList.remove('hidden');
-    }
 }
 
 const REFRESH_TIME = 5 * 60 * 1000;

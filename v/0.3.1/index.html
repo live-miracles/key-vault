@@ -6,14 +6,15 @@
     <title>Key Vault</title>
 
     <link rel="icon" type="image/png" href="https://live-miracles.github.io/key-vault/logo.png" />
-    <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.0.11/output.css" />
+    <link rel="stylesheet" href="https://live-miracles.github.io/key-vault/v/0.3.1/output.css" />
     <script src="https://cdn.jsdelivr.net/npm/transliteration/dist/browser/bundle.umd.min.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/utils.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/access.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/events.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/roles.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/keys.js"></script>
-    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.0.11/script.js" defer></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/utils.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/access.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/events.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/roles.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/keys.js"></script>
+    <script crossorigin src="https://live-miracles.github.io/key-vault/v/0.3.1/script.js" defer></script>
+
   </head>
   <body class="bg-base-100 text-base-content flex min-h-screen min-w-[620px] flex-col">
     <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-[700px] -translate-x-1/2 transform">
@@ -44,6 +45,7 @@
     <dialog id="event-modal" class="modal">
       <div class="modal-box max-w-[800px]">
         <input type="text" id="event-id-input" class="hidden" />
+        <input type="text" id="event-status-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full max-w-[800px] space-y-3 px-4">
           <fieldset class="fieldset">
@@ -64,9 +66,9 @@
 
     <!-- Context Menu -->
     <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
-      <ul class="menu w-32 p-2">
-        <li><a onclick="editRoleRow()" id="edit-role-btn" class="hidden">Edit</a></li>
-        <li><a onclick="deleteRoleRow()" id="delete-role-btn" class="text-error hidden">Delete</a></li>
+      <ul class="menu w-fit p-2">
+        <li><a onclick="editRoleRow()" id="edit-role-btn" class="text-accent hidden font-semibold">Edit</a></li>
+        <li><a onclick="deleteRoleRow()" id="delete-role-btn" class="text-error hidden font-semibold">Delete</a></li>
       </ul>
     </div>
 
@@ -113,13 +115,13 @@
 
     <!-- Context Menu -->
     <div id="key-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
-      <ul class="menu w-32 p-2">
+      <ul class="menu w-fit p-2">
         <li><a onclick="copyKeyBtn()">Copy Key</a></li>
-        <li><a onclick="copyRtmpBtn()">Copy Full URL</a></li>
-        <li><a onclick="copyRtmpBtn('2')">Copy Bkp URL</a></li>
+        <li><a onclick="copyRtmpBtn()">Copy Main URL</a></li>
+        <li><a onclick="copyRtmpBtn('2')">Copy Backup URL</a></li>
         <li><a onclick="copyLinkBtn()" id="copy-link-btn">Copy Link</a></li>
-        <li><a onclick="editKeyRow()" id="edit-key-btn" class="hidden">Edit</a></li>
-        <li><a onclick="deleteKeyRow()" id="delete-key-btn" class="text-error hidden">Delete</a></li>
+        <li><a onclick="editKeyRow()" id="edit-key-btn" class="text-accent hidden font-semibold">Edit</a></li>
+        <li><a onclick="deleteKeyRow()" id="delete-key-btn" class="text-error hidden font-semibold">Delete</a></li>
       </ul>
     </div>
 
@@ -232,9 +234,10 @@
       <div class="relative flex items-center px-5 pt-3 pb-3">
         <!-- LEFT -->
         <span class="text-xl" id="event-name"></span>
-        <button title="Edit" class="btn btn-accent btn-xs ml-3 hidden" id="edit-event-btn" onclick="editEventBtn()">✎</button>
-        <button title="Delete" class="btn btn-error btn-xs ml-2 hidden" id="delete-event-btn" onclick="deleteEventBtn()">✖</button>
-        <button title="Share" class="btn btn-accent btn-xs ml-2 hidden" id="show-roles-btn" onclick="showHideRoles()">👥</button>
+        <button title="Edit" class="btn btn-accent btn-xs ml-3 hidden" id="edit-event-btn" onclick="editEventBtn()" disabled>✎</button>
+        <button title="Delete" class="btn btn-error btn-xs ml-2 hidden" id="delete-event-btn" onclick="deleteEventBtn()" disabled>✖</button>
+        <button title="Lock/Unlock" class="btn btn-neutral btn-xs ml-2" id="lock-event-btn" onclick="lockEventBtn()">🔒</button>
+        <button title="Share" class="btn btn-primary btn-xs ml-5 hidden" id="show-roles-btn" onclick="showHideRoles()">👥</button>
 
         <!-- CENTER -->
         <div class="absolute left-1/2 -translate-x-1/2">
@@ -297,7 +300,7 @@
                 <th>Language</th>
                 <th></th>
                 <th>Name</th>
-                <th>Full URL</th>
+                <th>Main URL</th>
                 <th>Backup URL</th>
                 <th>Link</th>
                 <th>Remarks</th>

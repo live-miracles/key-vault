@@ -27,14 +27,12 @@ function renderKeyTable(eventId = null) {
 
             keys.forEach((k, keyIndex) => {
                 const cnt =
-                    config.keys.filter((key) => k.server === key.server && k.key === key.key)
-                        .length +
-                    config.keys.filter((key) => k.server === key.server2 && k.key === key.key2)
-                        .length;
+                    config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
+                    config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
                 const cnt2 =
-                    config.keys.filter((key) => k.server2 === key.server && k.key2 === key.key)
+                    config.keys.filter((key) => k.server2 + k.key2 === key.server + key.key)
                         .length +
-                    config.keys.filter((key) => k.server2 === key.server2 && k.key2 === key.key2)
+                    config.keys.filter((key) => k.server2 + k.key2 === key.server2 + key.key2)
                         .length;
 
                 html += `
@@ -223,6 +221,10 @@ async function saveKeyFormBtn(event) {
         key.server += '/';
     }
 
+    for (const shortName of Object.keys(SERVERS)) {
+        if (SERVERS[shortName].value === key.server) key.server = shortName;
+    }
+
     errorElem = document.querySelector('#stream-key-input').nextElementSibling;
     if (
         key.key === '' ||
@@ -254,8 +256,16 @@ async function saveKeyFormBtn(event) {
         key.server2 += '/';
     }
 
+    for (const shortName of Object.keys(SERVERS)) {
+        if (SERVERS[shortName].value === key.server2) key.server2 = shortName;
+    }
+
     errorElem = document.querySelector('#stream-key2-input').nextElementSibling;
-    if (
+    if (key.server + key.key === key.server2 + key.key2) {
+        errorElem.innerText = "Backup RTMP can\'t be the same as the Main";
+        event.preventDefault();
+        return;
+    } else if (
         (key.server2 && key.key2 === '') ||
         key.key2.startsWith('rtmp://') ||
         key.key2.startsWith('rtmps://') ||

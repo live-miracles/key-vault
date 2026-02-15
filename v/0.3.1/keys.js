@@ -26,6 +26,15 @@ function renderKeyTable(eventId = null) {
             const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);
 
             keys.forEach((k, keyIndex) => {
+                const cnt =
+                    config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
+                    config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
+                const cnt2 =
+                    config.keys.filter((key) => k.server2 + k.key2 === key.server + key.key)
+                        .length +
+                    config.keys.filter((key) => k.server2 + k.key2 === key.server2 + key.key2)
+                        .length;
+
                 html += `
                 <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">
                     ${
@@ -37,8 +46,8 @@ function renderKeyTable(eventId = null) {
                     }
                     <td style="padding: 2px">${keyIndex + 1}</td>
                     <td style="padding: 2px">${k.name}</td>
-                    <td style="padding: 2px">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
-                    <td style="padding: 2px">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
+                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
+                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
                     <td style="padding: 2px">${
                         k.link
                             ? `<a href="${k.link}" class="link" target="_blank">${getShortText(k.link, 25)}</a>`
@@ -61,7 +70,9 @@ function renderKeyTable(eventId = null) {
                 console.error('Key not found');
                 return;
             }
-            if (hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language)) {
+            const event = config.events.find((e) => e.id === key.event);
+            const isLocked = event.status === EVENT_STATUS.LOCKED;
+            if (hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) && !isLocked) {
                 document.querySelector('#edit-key-btn').classList.remove('hidden');
                 document.querySelector('#delete-key-btn').classList.remove('hidden');
             } else {
@@ -194,9 +205,12 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    errorElem = document.querySelector('#key-server-input').nextElementSibling;
-    if (!keyServer.startsWith('rtmp://') && !keyServer.startsWith('rtmps://')) {
-        errorElem.innerText = 'Invalid RTMP';
+    errorElem = document.querySelector('#key-custom-server-input').nextElementSibling;
+    if (
+        (!keyServer.startsWith('rtmp://') && !keyServer.startsWith('rtmps://')) ||
+        keyServer.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Server';
         event.preventDefault();
         return;
     } else {
@@ -207,18 +221,31 @@ async function saveKeyFormBtn(event) {
         key.server += '/';
     }
 
-    errorElem = document.querySelector('#key-server2-input').nextElementSibling;
-    if (keyServer2 && !keyServer2.startsWith('rtmp://') && !keyServer2.startsWith('rtmps://')) {
-        errorElem.innerText = 'Invalid RTMP';
+    for (const shortName of Object.keys(SERVERS)) {
+        if (SERVERS[shortName].value === key.server) key.server = shortName;
+    }
+
+    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
+    if (
+        key.key === '' ||
+        key.key.startsWith('rtmp://') ||
+        key.key.startsWith('rtmps://') ||
+        key.key.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
     } else {
         errorElem.innerText = '';
     }
 
-    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (key.key === '') {
-        errorElem.innerText = "Key can't be empty";
+    errorElem = document.querySelector('#key-custom-server2-input').nextElementSibling;
+    if (
+        (key.key2 && keyServer2 === '') ||
+        (keyServer2 && !keyServer2.startsWith('rtmp://') && !keyServer2.startsWith('rtmps://')) ||
+        keyServer2.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Server';
         event.preventDefault();
         return;
     } else {
@@ -229,9 +256,22 @@ async function saveKeyFormBtn(event) {
         key.server2 += '/';
     }
 
-    errorElem = document.querySelector('#stream-key-input').nextElementSibling;
-    if (key.key === '') {
-        errorElem.innerText = "Key can't be empty";
+    for (const shortName of Object.keys(SERVERS)) {
+        if (SERVERS[shortName].value === key.server2) key.server2 = shortName;
+    }
+
+    errorElem = document.querySelector('#stream-key2-input').nextElementSibling;
+    if (key.server + key.key === key.server2 + key.key2) {
+        errorElem.innerText = "Backup RTMP can\'t be the same as the Main";
+        event.preventDefault();
+        return;
+    } else if (
+        (key.server2 && key.key2 === '') ||
+        key.key2.startsWith('rtmp://') ||
+        key.key2.startsWith('rtmps://') ||
+        key.key2.includes(' ')
+    ) {
+        errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
     } else {

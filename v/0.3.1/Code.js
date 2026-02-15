@@ -9,8 +9,8 @@ const SHEETS = {
     KEY: 'Key',
 };
 
-function sheetToObjects(sheet) {
-    const [headers, ...rows] = sheet.getDataRange().getValues();
+function sheetStringsToObjects(data) {
+    const [headers, ...rows] = data.map((str) => str.split('¦'));
     return rows.map((r, idx) => {
         const obj = { row: idx + 2 };
 
@@ -20,6 +20,13 @@ function sheetToObjects(sheet) {
 
         return obj;
     });
+}
+
+function sheetToStrings(sheet) {
+    return sheet
+        .getDataRange()
+        .getValues()
+        .map((r) => r.join('¦'));
 }
 
 // ===== Common Functions =====
@@ -62,34 +69,43 @@ function generateId() {
 }
 
 // ===== Cached Data =====
+function parseCache(text) {
+    const tmp = JSON.parse(text);
+    return {
+        etag: tmp.etag,
+        events: sheetStringsToObjects(tmp.events),
+        roles: sheetStringsToObjects(tmp.roles),
+        keys: sheetStringsToObjects(tmp.keys),
+    };
+}
+
+function getCacheString() {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+    const data = {
+        etag: String(Date.now()),
+        events: sheetToStrings(ss.getSheetByName(SHEETS.EVENT)),
+        roles: sheetToStrings(ss.getSheetByName(SHEETS.ROLE)),
+        keys: sheetToStrings(ss.getSheetByName(SHEETS.KEY)),
+    };
+
+    return JSON.stringify(data);
+}
+
 function getAllData(etag) {
     const cache = CacheService.getScriptCache();
-    const cached = cache.get(CACHE_KEY);
-    let config = {};
-    if (cached) {
-        config = JSON.parse(cached);
-        if (etag === config.etag)
-            return {
-                success: true,
-                data: { etag: config.etag },
-            };
-        config.size = cached.length;
-        config.userEmail = getUserEmail();
-    } else {
-        const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-        config = {
-            etag: String(Date.now()),
-            events: sheetToObjects(ss.getSheetByName(SHEETS.EVENT)),
-            roles: sheetToObjects(ss.getSheetByName(SHEETS.ROLE)),
-            keys: sheetToObjects(ss.getSheetByName(SHEETS.KEY)),
-        };
-
-        const configString = JSON.stringify(config);
-        cache.put(CACHE_KEY, configString, CACHE_TTL);
-        config.size = configString.length;
-        config.userEmail = getUserEmail();
+    let cacheString = cache.get(CACHE_KEY);
+    if (!cacheString) {
+        cacheString = getCacheString();
+        cache.put(CACHE_KEY, cacheString, CACHE_TTL);
     }
+
+    const config = parseCache(cacheString);
+    if (etag === config.etag) {
+        return { success: true, data: { etag: config.etag } };
+    }
+    config.size = cacheString.length;
+    config.userEmail = getUserEmail();
 
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
     config.events = config.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id));
@@ -163,14 +179,57 @@ function editEvent(event) {
         };
     }
 
+    if (old.status === EVENT_STATUS.LOCKED && event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(old.row, 2).setValue(event.name);
+        sheet.getRange(old.row, 2, 1, 2).setValues([[event.name, event.status]]);
 
         expireCache();
 
         return { success: true, data: event };
     }, 'editEvent');
+}
+
+function lockEvent(event) {
+    if (!event || !event.id || !['', EVENT_STATUS.LOCKED].includes(event.status)) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(event),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const old = config.events.find((e) => e.id === event.id);
+    if (!old) {
+        return { success: false, error: 'Event not found: ' + event.id };
+    }
+
+    if (!hasEventAccess(eventRoles, ACTIONS.LOCK, event.id)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (old.status === event.status) {
+        return {
+            success: false,
+            error: `Event is already ${event.status ? 'locked' : 'unlocked'}: ` + event.id,
+        };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.EVENT);
+        sheet.getRange(old.row, 3).setValue(event.status);
+
+        expireCache();
+
+        return { success: true, data: event };
+    }, 'lockEvent');
 }
 
 function deleteEvent(id) {
@@ -195,9 +254,13 @@ function deleteEvent(id) {
         };
     }
 
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).clearContent();
+        sheet.getRange(event.row, 1, 1, sheet.getLastColumn()).clearContent();
 
         const roleSheet = getSheet(SHEETS.ROLE);
         config.roles
@@ -207,7 +270,7 @@ function deleteEvent(id) {
             );
 
         const keySheet = getSheet(SHEETS.KEY);
-        config.roles
+        config.keys
             .filter((k) => k.event === id)
             .forEach((k) =>
                 keySheet.getRange(k.row, 1, 1, keySheet.getLastColumn()).clearContent(),
@@ -340,6 +403,15 @@ function addKey(key) {
         };
     }
 
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
 
@@ -391,6 +463,15 @@ function editKey(key) {
         };
     }
 
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
         sheet
@@ -436,6 +517,15 @@ function deleteKey(id) {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
         };
+    }
+
+    const event = config.events.find((e) => e.id === key.event);
+    if (!event) {
+        return { success: false, error: 'Event not found: ' + key.event };
+    }
+
+    if (event.status === EVENT_STATUS.LOCKED) {
+        return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {

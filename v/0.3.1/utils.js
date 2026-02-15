@@ -78,35 +78,9 @@ function getUrlParam(param) {
     return url.searchParams.get(param);
 }
 
-const LANGUAGES = [
-    'en',
-    'hi',
-    'ta',
-    'te',
-    'kn',
-    'ml',
-    'mr',
-    'bn',
-    'gu',
-    'as',
-    'or',
-    'ne',
-    'ru',
-    'es',
-    'zh',
-    'fr',
-    'it',
-    'de',
-    'ar',
-    'pt',
-    'ro',
-    'id',
-    'fa',
-    'vi',
-];
-
 const LANGUAGE_MAP = {
     en: 'English',
+    'en-4k': 'English 4K',
     hi: 'Hindi',
     ta: 'Tamil',
     te: 'Telugu',
@@ -131,3 +105,5 @@ const LANGUAGE_MAP = {
     fa: 'Persian',
     vi: 'Vietnamese',
 };
+
+const LANGUAGES = Object.keys(LANGUAGE_MAP);

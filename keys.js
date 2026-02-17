@@ -168,6 +168,12 @@ function editKeyRow() {
     document.querySelector('#stream-key-input').value = key.key;
     document.querySelector('#stream-key2-input').value = key.key2;
 
+    document.querySelector('#key-name-input').nextElementSibling.innerText = '';
+    document.querySelector('#key-custom-server-input').nextElementSibling.innerText = '';
+    document.querySelector('#stream-key-input').nextElementSibling.innerText = '';
+    document.querySelector('#key-custom-server2-input').nextElementSibling.innerText = '';
+    document.querySelector('#stream-key2-input').nextElementSibling.innerText = '';
+
     document.getElementById('key-modal').showModal();
 }
 
@@ -235,6 +241,18 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
+    } else if (
+        config.keys
+            .filter((k) => k.id !== key.id)
+            .some(
+                (k) =>
+                    k.server + k.key === key.server + key.key ||
+                    k.server2 + k.key2 === key.server + key.key,
+            )
+    ) {
+        errorElem.innerText = 'This RTMP has already been added';
+        event.preventDefault();
+        return;
     } else {
         errorElem.innerText = '';
     }
@@ -274,6 +292,19 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
+    } else if (
+        key.server2 &&
+        config.keys
+            .filter((k) => k.id !== key.id)
+            .some(
+                (k) =>
+                    k.server + k.key === key.server2 + key.key2 ||
+                    k.server2 + k.key2 === key.server2 + key.key2,
+            )
+    ) {
+        errorElem.innerText = 'This RTMP has already been added';
+        event.preventDefault();
+        return;
     } else {
         errorElem.innerText = '';
     }
@@ -281,7 +312,6 @@ async function saveKeyFormBtn(event) {
     // Sending request
     showLoading();
     if (key.id === '') {
-        console.log(key);
         // Adding new row
         document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);

@@ -12,39 +12,26 @@ function maskKey(key) {
 }
 
 function renderKeyTable(eventId = null) {
-    const keysByLanguage = Object.groupBy(
-        config.keys.filter((k) => k.event === eventId),
-        (k) => k.language,
-    );
-    let langIndex = 0;
-    let html = '';
+    const keys = config.keys
+        .filter((k) => k.event === eventId)
+        .sort((a, b) => LANGUAGE_MAP[a.language].localeCompare(LANGUAGE_MAP[b.language]));
 
-    Object.keys(keysByLanguage)
-        .sort((a, b) => LANGUAGE_MAP[a].localeCompare(LANGUAGE_MAP[b]))
-        .forEach((lang) => {
-            langIndex++;
-            const keys = keysByLanguage[lang].sort((a, b) => a.row - b.row);
+    document.querySelector('#key-rows').innerHTML = keys
+        .map((k, i) => {
+            const cnt =
+                config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
+                config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
+            const cnt2 =
+                config.keys.filter((key) => k.server2 + k.key2 === key.server + key.key).length +
+                config.keys.filter((key) => k.server2 + k.key2 === key.server2 + key.key2).length;
 
-            keys.forEach((k, keyIndex) => {
-                const cnt =
-                    config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
-                    config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
-                const cnt2 =
-                    config.keys.filter((key) => k.server2 + k.key2 === key.server + key.key)
-                        .length +
-                    config.keys.filter((key) => k.server2 + k.key2 === key.server2 + key.key2)
-                        .length;
-
-                html += `
+            const languageIndex = keys.filter(
+                (key, index) => index <= i && key.language === k.language,
+            ).length;
+            return `
                 <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">
-                    ${
-                        keyIndex === 0
-                            ? `<td rowspan="${keys.length}" class="align-middle font-semibold" style="padding: 2px">
-                                ${langIndex} - ${LANGUAGE_MAP[k.language] || k.language}
-                            </td>`
-                            : ''
-                    }
-                    <td style="padding: 2px">${keyIndex + 1}</td>
+                    <td style="padding: 2px">${i + 1} (${languageIndex})</td>
+                    <td style="padding: 2px">${LANGUAGE_MAP[k.language]}</td>
                     <td style="padding: 2px">${k.name}</td>
                     <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
                     <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
@@ -55,10 +42,8 @@ function renderKeyTable(eventId = null) {
                     }</td>
                     <td style="padding: 2px">${k.remarks || ''}</td>
                 </tr>`;
-            });
-        });
-
-    document.querySelector('#key-rows').innerHTML = html;
+        })
+        .join('');
 
     // Add right-click event listeners to rows
     document.querySelectorAll('#key-rows tr').forEach((row) => {
@@ -168,6 +153,12 @@ function editKeyRow() {
     document.querySelector('#stream-key-input').value = key.key;
     document.querySelector('#stream-key2-input').value = key.key2;
 
+    document.querySelector('#key-name-input').nextElementSibling.innerText = '';
+    document.querySelector('#key-custom-server-input').nextElementSibling.innerText = '';
+    document.querySelector('#stream-key-input').nextElementSibling.innerText = '';
+    document.querySelector('#key-custom-server2-input').nextElementSibling.innerText = '';
+    document.querySelector('#stream-key2-input').nextElementSibling.innerText = '';
+
     document.getElementById('key-modal').showModal();
 }
 
@@ -235,6 +226,18 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
+    } else if (
+        config.keys
+            .filter((k) => k.id !== key.id)
+            .some(
+                (k) =>
+                    k.server + k.key === key.server + key.key ||
+                    k.server2 + k.key2 === key.server + key.key,
+            )
+    ) {
+        errorElem.innerText = 'This RTMP has already been added';
+        event.preventDefault();
+        return;
     } else {
         errorElem.innerText = '';
     }
@@ -274,6 +277,19 @@ async function saveKeyFormBtn(event) {
         errorElem.innerText = 'Invalid RTMP Key';
         event.preventDefault();
         return;
+    } else if (
+        key.server2 &&
+        config.keys
+            .filter((k) => k.id !== key.id)
+            .some(
+                (k) =>
+                    k.server + k.key === key.server2 + key.key2 ||
+                    k.server2 + k.key2 === key.server2 + key.key2,
+            )
+    ) {
+        errorElem.innerText = 'This RTMP has already been added';
+        event.preventDefault();
+        return;
     } else {
         errorElem.innerText = '';
     }
@@ -281,7 +297,6 @@ async function saveKeyFormBtn(event) {
     // Sending request
     showLoading();
     if (key.id === '') {
-        console.log(key);
         // Adding new row
         document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);

@@ -107,6 +107,8 @@ async function editRoleRow() {
     document.querySelector('#role-language-input').value = role.language;
     document.querySelector('#role-remarks-input').value = role.remarks;
 
+    document.querySelector('#role-email-input').nextElementSibling.innerText = '';
+
     document.getElementById('role-modal').showModal();
 }
 

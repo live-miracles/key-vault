@@ -84,7 +84,7 @@ deployment:
 Once these are set, a tag like `v0.3.2` will:
 
 - publish `https://live-miracles.github.io/key-vault/v/0.3.2/`
-- generate `dist/apps-script/Index.html` and `dist/apps-script/Code.js`
+- generate the Apps Script project in `dist/apps-script/`
 - push the generated project with `clasp`
 - create a new Apps Script version and update the existing deployment to point at it
 
@@ -99,9 +99,8 @@ project.
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`
 2. Create an Apps Script project and add a script property named `SPREADSHEET_ID`.
-3. Copy `Code.js` into the Apps Script project, or use the generated `dist/apps-script/Code.js`
-   after running `npm run apps-script:build -- v0.3.2`.
-4. Create an HTML file named `Index` and paste in `dist/apps-script/Index.html`.
+3. Run `npm run apps-script:build -- v0.3.2`.
+4. Add the generated files from `dist/apps-script/` to the Apps Script project.
 5. Deploy the project as a web app.
 
 ## Roles

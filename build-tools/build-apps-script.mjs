@@ -46,6 +46,7 @@ if (appsScriptIndex === indexHtml) {
 const titledIndex = appsScriptIndex.replace(/<title>.*?<\/title>/, `<title>${appTitle}</title>`);
 const codeJs = await fs.readFile(path.join(root, 'Code.js'), 'utf8');
 const titledCodeJs = codeJs.replace(".setTitle('Key Vault')", `.setTitle('${appTitle}')`);
+const accessJs = await fs.readFile(path.join(root, 'frontend', 'access.js'), 'utf8');
 
 await fs.writeFile(path.join(outDir, 'Index.html'), titledIndex);
 if (titledCodeJs === codeJs) {
@@ -54,6 +55,7 @@ if (titledCodeJs === codeJs) {
 }
 
 await fs.writeFile(path.join(outDir, 'Code.js'), titledCodeJs);
+await fs.writeFile(path.join(outDir, 'access.js'), accessJs);
 await fs.writeFile(
     path.join(outDir, 'appsscript.json'),
     `${JSON.stringify(

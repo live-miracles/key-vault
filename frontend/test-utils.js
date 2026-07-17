@@ -46,6 +46,7 @@ function addEventMock(event) {
     etagMock += 1;
     event.id = String(Date.now());
     testEvents.push(event);
+    event.row = testEvents.length + 1;
 
     return { success: true, data: event };
 }
@@ -108,6 +109,7 @@ function addRoleMock(role) {
     etagMock += 1;
     role.id = String(Date.now());
     testRoles.push(role);
+    role.row = testRoles.length + 1;
 
     return { success: true, data: role };
 }
@@ -169,8 +171,8 @@ function addKeyMock(key) {
 
     etagMock += 1;
     key.id = String(Date.now());
-    key.row = testKeys.length;
     testKeys.push(key);
+    key.row = testKeys.length + 1;
 
     return { success: true, data: key };
 }
@@ -403,8 +405,8 @@ googleMock.script.run.withFailureHandler = (_) => ({
         getUserEmail: () => {
             setTimeout(() => f(getUserEmailMock()), getRandomWaitTime());
         },
-        getAllData: () => {
-            setTimeout(() => f(getAllDataMock()), getRandomWaitTime());
+        getAllData: (etag) => {
+            setTimeout(() => f(getAllDataMock(etag)), getRandomWaitTime());
         },
         addEvent: (data) => {
             setTimeout(() => f(addEventMock(data)), getRandomWaitTime());

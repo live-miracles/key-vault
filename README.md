@@ -105,7 +105,7 @@ project.
 
 ## Roles
 
-- Owner: can edit any event and assign event admins.
-- Admin: can edit an event and add viewers and editors.
-- Editor: can edit an event and can be restricted to languages.
-- Viewer: can only view an event and can be restricted to languages.
+- Owner: can edit or delete events, lock or unlock events, and assign event admins.
+- Admin: can lock or unlock an event and add viewers and editors.
+- Editor: can edit keys for an event and can be restricted to languages.
+- Viewer: can only view an event's keys and can be restricted to languages.

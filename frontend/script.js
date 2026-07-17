@@ -50,7 +50,8 @@ function updateEventRoles(config) {
 }
 
 async function fetchDataAndRerender() {
-    const newConfig = processResponse(await api('getAllData'));
+    const newConfig = processResponse(await api('getAllData', config.etag));
+    if (newConfig === null) return;
     if (newConfig.etag === config.etag) return;
     config = newConfig;
     updateEventRoles(config);

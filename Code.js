@@ -145,8 +145,8 @@ function addEvent(event) {
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
         event.id = generateId();
-        event.row = sheet.getLastRow();
         sheet.appendRow([event.id, event.name]);
+        event.row = sheet.getLastRow();
 
         expireCache();
 
@@ -179,17 +179,18 @@ function editEvent(event) {
         };
     }
 
-    if (old.status === EVENT_STATUS.LOCKED && event.status === EVENT_STATUS.LOCKED) {
+    if (old.status === EVENT_STATUS.LOCKED) {
         return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(old.row, 2, 1, 2).setValues([[event.name, event.status]]);
+        const newEvent = { ...old, name: event.name };
+        sheet.getRange(old.row, 2).setValue(newEvent.name);
 
         expireCache();
 
-        return { success: true, data: event };
+        return { success: true, data: newEvent };
     }, 'editEvent');
 }
 
@@ -305,8 +306,8 @@ function addRole(role) {
         const sheet = getSheet(SHEETS.ROLE);
 
         role.id = generateId();
-        role.row = sheet.getLastRow();
         sheet.appendRow([role.id, role.event, role.email, role.type, role.language, role.remarks]);
+        role.row = sheet.getLastRow();
         expireCache();
 
         return { success: true, data: role };
@@ -396,7 +397,7 @@ function addKey(key) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
-    if (!hasKeyAccess(eventRoles, ACTIONS.CREATE, key.event)) {
+    if (!hasKeyAccess(eventRoles, ACTIONS.CREATE, key.event, key.language)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -416,7 +417,6 @@ function addKey(key) {
         const sheet = getSheet(SHEETS.KEY);
 
         key.id = generateId();
-        key.row = sheet.getLastRow();
         sheet.appendRow([
             key.id,
             key.event,
@@ -430,6 +430,7 @@ function addKey(key) {
             key.color,
             key.remarks,
         ]);
+        key.row = sheet.getLastRow();
 
         expireCache();
 
@@ -453,9 +454,13 @@ function editKey(key) {
         return { success: false, error: 'Key not found: ' + key.id };
     }
 
+    if (key.event !== old.event) {
+        return { success: false, error: 'Cannot move key between events: ' + key.id };
+    }
+
     if (
         !hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) ||
-        !hasKeyAccess(eventRoles, ACTIONS.UPDATE, old.event, key.language)
+        !hasKeyAccess(eventRoles, ACTIONS.UPDATE, old.event, old.language)
     ) {
         return {
             success: false,

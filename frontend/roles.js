@@ -9,11 +9,11 @@ function renderRoleTable(eventId = null) {
         })
         .map(
             (r) => `
-            <tr class="hover:bg-base-300 text-center" data-role-id="${r.id}">
-                <th style="padding: 5px;">${r.email}</th>
-                <td style="padding: 5px;">${ROLE_MAP[r.type]}</td>
-                <td style="padding: 5px;">${LANGUAGE_MAP[r.language] || r.language}</td>
-                <td style="padding: 5px;">${r.remarks}</td>
+            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
+                <th style="padding: 5px;">${escapeHtml(r.email)}</th>
+                <td style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
+                <td style="padding: 5px;">${escapeHtml(LANGUAGE_MAP[r.language] || r.language)}</td>
+                <td style="padding: 5px;">${escapeHtml(r.remarks)}</td>
             </tr>
         `,
         )

@@ -14,10 +14,16 @@ function maskKey(key) {
 function renderKeyTable(eventId = null) {
     const keys = config.keys
         .filter((k) => k.event === eventId)
-        .sort((a, b) => LANGUAGE_MAP[a.language].localeCompare(LANGUAGE_MAP[b.language]));
+        .sort((a, b) =>
+            (LANGUAGE_MAP[a.language] || a.language).localeCompare(
+                LANGUAGE_MAP[b.language] || b.language,
+            ),
+        );
 
     document.querySelector('#key-rows').innerHTML = keys
         .map((k, i) => {
+            const color = COLORS[k.color] || COLORS[''];
+            const link = safeUrl(k.link);
             const cnt =
                 config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
                 config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
@@ -29,18 +35,18 @@ function renderKeyTable(eventId = null) {
                 (key, index) => index <= i && key.language === k.language,
             ).length;
             return `
-                <tr class="hover:bg-base-300 ${COLORS[k.color].bgCss} text-center" data-key-id="${k.id}">
+                <tr class="hover:bg-base-300 ${color.bgCss} text-center" data-key-id="${escapeHtml(k.id)}">
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
-                    <td style="padding: 2px">${LANGUAGE_MAP[k.language]}</td>
-                    <td style="padding: 2px">${k.name}</td>
-                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${(SERVERS[k.server]?.value || k.server) + maskKey(k.key)}</td>
-                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${(SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2)}</td>
+                    <td style="padding: 2px">${escapeHtml(LANGUAGE_MAP[k.language] || k.language)}</td>
+                    <td style="padding: 2px">${escapeHtml(k.name)}</td>
+                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${escapeHtml((SERVERS[k.server]?.value || k.server) + maskKey(k.key))}</td>
+                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${escapeHtml((SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2))}</td>
                     <td style="padding: 2px">${
-                        k.link
-                            ? `<a href="${k.link}" class="link" target="_blank">${getShortText(k.link, 25)}</a>`
+                        link
+                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer">${escapeHtml(getShortText(k.link, 25))}</a>`
                             : ''
                     }</td>
-                    <td style="padding: 2px">${k.remarks || ''}</td>
+                    <td style="padding: 2px">${escapeHtml(k.remarks)}</td>
                 </tr>`;
         })
         .join('');
@@ -56,7 +62,7 @@ function renderKeyTable(eventId = null) {
                 return;
             }
             const event = config.events.find((e) => e.id === key.event);
-            const isLocked = event.status === EVENT_STATUS.LOCKED;
+            const isLocked = event?.status === EVENT_STATUS.LOCKED;
             if (hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) && !isLocked) {
                 document.querySelector('#edit-key-btn').classList.remove('hidden');
                 document.querySelector('#delete-key-btn').classList.remove('hidden');
@@ -324,6 +330,7 @@ async function deleteKeyRow() {
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
+        return;
     }
 
     if (!confirm(`Are you sure you want to delete key "${key.name}"?`)) {
@@ -354,9 +361,10 @@ async function copyLinkBtn() {
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
+        return;
     }
 
-    if (copyText(key.link)) {
+    if (await copyText(key.link)) {
         showCopiedNotification();
     }
 }
@@ -366,9 +374,10 @@ async function copyKeyBtn() {
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
+        return;
     }
 
-    if (copyText(key.key)) {
+    if (await copyText(key.key)) {
         showCopiedNotification();
     }
 }
@@ -378,6 +387,7 @@ async function copyRtmpBtn(suffix = '') {
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
+        return;
     }
 
     let serverUrl = SERVERS[key['server' + suffix]]?.value || key['server' + suffix];
@@ -387,7 +397,7 @@ async function copyRtmpBtn(suffix = '') {
         serverUrl = serverUrl.replaceAll('${s_prp}', params.get('s_prp'));
     }
 
-    if (copyText(serverUrl + key['key' + suffix])) {
+    if (await copyText(serverUrl + key['key' + suffix])) {
         showCopiedNotification();
     }
 }

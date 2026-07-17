@@ -18,7 +18,11 @@ function renderEventTabBar(eventId = null) {
         document.querySelector('#delete-event-btn').classList.add('hidden');
     }
 
-    if (event.status === EVENT_STATUS.LOCKED) {
+    const canLockEvent = hasEventAccess(eventRoles, ACTIONS.LOCK, eventId);
+    document.querySelector('#lock-event-btn').disabled = !event || !canLockEvent;
+    document.querySelector('#lock-event-btn').classList.toggle('hidden', !event || !canLockEvent);
+
+    if (event?.status === EVENT_STATUS.LOCKED) {
         document.querySelector('#lock-event-btn').classList.remove('btn-neutral');
         document.querySelector('#lock-event-btn').classList.add('btn-accent');
         document.querySelector('#edit-event-btn').disabled = true;
@@ -31,13 +35,16 @@ function renderEventTabBar(eventId = null) {
     }
 
     const tabsElem = document.querySelector('.tabs');
-    tabsElem.innerHTML = config.events
-        .map(
-            (e) => `
-        <a role="tab" class="tab ${eventId === e.id ? 'tab-active' : ''}"
-          onclick="selectEvent('${e.id}')">${e.name}</a>`,
-        )
-        .join('');
+    tabsElem.replaceChildren(
+        ...config.events.map((e) => {
+            const tab = document.createElement('a');
+            tab.role = 'tab';
+            tab.className = `tab ${eventId === e.id ? 'tab-active' : ''}`;
+            tab.textContent = e.name;
+            tab.addEventListener('click', () => selectEvent(e.id));
+            return tab;
+        }),
+    );
 }
 
 async function lockEventBtn() {
@@ -50,7 +57,7 @@ async function lockEventBtn() {
 
     const locked = event.status === EVENT_STATUS.LOCKED;
     if (!hasEventAccess(eventRoles, ACTIONS.LOCK, eventId)) {
-        alert(`Only Admins can ${locked ? 'unlock' : 'lock'} the event.`);
+        alert(`Only owners or admins can ${locked ? 'unlock' : 'lock'} the event.`);
         return;
     }
 
@@ -84,14 +91,18 @@ async function addEventBtn() {
 
     showLoading();
     document.querySelector('#add-event-btn').disabled = true;
-    const event = processResponse(
-        await api('addEvent', { name: `Event ${nextNumber}`, status: '' }),
-    );
-    if (event === null) return;
-    config.events.push(event);
-    updateEventRoles(config);
-    selectEvent(event.id);
-    hideLoading();
+    try {
+        const event = processResponse(
+            await api('addEvent', { name: `Event ${nextNumber}`, status: '' }),
+        );
+        if (event === null) return;
+        config.events.push(event);
+        updateEventRoles(config);
+        selectEvent(event.id);
+    } finally {
+        document.querySelector('#add-event-btn').disabled = false;
+        hideLoading();
+    }
 }
 
 function editEventBtn() {

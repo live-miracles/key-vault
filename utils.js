@@ -6,6 +6,27 @@ function getShortText(str, len) {
     return str.length > len ? str.slice(0, len / 2) + '...' + str.slice(-len / 2) : str;
 }
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+}
+
+function safeUrl(value) {
+    const text = String(value ?? '').trim();
+    if (text === '') return '';
+
+    try {
+        const url = new URL(text, window.location.href);
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+    } catch (_) {
+        return '';
+    }
+}
+
 function isValidUrl(str) {
     // YouTube backup URL is a little funny
     const text = str.replaceAll(

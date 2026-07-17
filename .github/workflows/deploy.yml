@@ -1,0 +1,88 @@
+name: Build and deploy
+
+on:
+    push:
+        branches:
+            - master
+        tags:
+            - 'v*'
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: pages-deploy-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v7
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Check formatting
+              run: npm run format:check
+
+            - name: Check release version
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: npm run version:check -- "$GITHUB_REF_NAME"
+
+            - name: Build CSS
+              run: npm run css
+
+            - name: Stage site
+              run: |
+                  mkdir -p site
+                  cp -r frontend/. site/
+
+            - name: Stage versioned release
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: |
+                  VERSION=${GITHUB_REF#refs/tags/v}
+                  mkdir -p site/v/$VERSION
+                  cp -r frontend/. site/v/$VERSION/
+
+            - name: Deploy to gh-pages
+              uses: peaceiris/actions-gh-pages@v4.1.0
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_branch: gh-pages
+                  publish_dir: ./site
+                  keep_files: true
+
+            - name: Build Apps Script project
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: npm run apps-script:build -- "$GITHUB_REF_NAME"
+
+            - name: Configure clasp
+              if: startsWith(github.ref, 'refs/tags/v')
+              env:
+                  CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+                  APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
+              run: |
+                  printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+                  printf '{"scriptId":"%s","rootDir":"dist/apps-script"}\n' "$APPS_SCRIPT_ID" > .clasp.json
+
+            - name: Deploy Apps Script
+              if: startsWith(github.ref, 'refs/tags/v')
+              env:
+                  APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+              run: |
+                  npx clasp push --force
+                  VERSION_OUTPUT=$(npx clasp --json version "$GITHUB_REF_NAME")
+                  echo "$VERSION_OUTPUT"
+                  VERSION_NUMBER=$(VERSION_OUTPUT="$VERSION_OUTPUT" node -e "const data = JSON.parse(process.env.VERSION_OUTPUT || '{}'); process.stdout.write(String(data.versionNumber || ''));")
+                  test -n "$VERSION_NUMBER"
+                  npx clasp deploy --deploymentId "$APPS_SCRIPT_DEPLOYMENT_ID" --versionNumber "$VERSION_NUMBER" --description "$GITHUB_REF_NAME"

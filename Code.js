@@ -540,5 +540,5 @@ function deleteKey(id) {
 
 // ===== Serve Webpage =====
 function doGet() {
-    return HtmlService.createHtmlOutputFromFile('Index');
+    return HtmlService.createHtmlOutputFromFile('Index').setTitle('Key Vault');
 }

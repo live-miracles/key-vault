@@ -2897,6 +2897,9 @@
   .cursor-move {
     cursor: move;
   }
+  .cursor-not-allowed {
+    cursor: not-allowed;
+  }
   .flex-col {
     flex-direction: column;
   }

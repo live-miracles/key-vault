@@ -1,6 +1,7 @@
 function getLanguages() {
     return [...(config.languages || [])]
-        .filter((language) => /^(0[1-9]|[1-9][0-9])$/.test(language.id) && language.name)
+        .map((language) => ({ ...language, id: normalizeLanguageId(language.id) }))
+        .filter((language) => isValidLanguageId(language.id) && language.name)
         .sort((a, b) => {
             const orderDiff = Number(a.order || 0) - Number(b.order || 0);
             if (orderDiff !== 0) return orderDiff;
@@ -10,11 +11,13 @@ function getLanguages() {
 
 function getLanguageName(id) {
     if (id === '*') return '* (All)';
-    return getLanguages().find((language) => language.id === id)?.name || id;
+    const languageId = normalizeLanguageId(id);
+    return getLanguages().find((language) => language.id === languageId)?.name || languageId;
 }
 
 function hasMissingLanguage(id) {
-    return id !== '*' && !getLanguages().some((language) => language.id === id);
+    const languageId = normalizeLanguageId(id);
+    return id !== '*' && !getLanguages().some((language) => language.id === languageId);
 }
 
 function languageLabelHtml(id) {
@@ -29,17 +32,32 @@ function languageLabelHtml(id) {
 }
 
 function getLanguageOrder(id) {
-    const index = getLanguages().findIndex((language) => language.id === id);
+    const languageId = normalizeLanguageId(id);
+    const index = getLanguages().findIndex((language) => language.id === languageId);
     return index === -1 ? Number.MAX_SAFE_INTEGER : index;
 }
 
 function getNextLanguageId() {
     const usedIds = new Set(getLanguages().map((language) => language.id));
     for (let i = 1; i <= 99; i++) {
-        const id = String(i).padStart(2, '0');
+        const id = `lang${String(i).padStart(2, '0')}`;
         if (!usedIds.has(id)) return id;
     }
     return '';
+}
+
+function isValidLanguageId(id) {
+    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+}
+
+function normalizeLanguageId(id) {
+    const languageId = String(id ?? '').trim();
+    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
+    if (/^lang[1-9]$/.test(languageId)) {
+        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
+    }
+    return languageId;
 }
 
 function languageOptions({ includeAll = false, eventId = null, action = null } = {}) {
@@ -137,7 +155,7 @@ function editLanguageById(languageId) {
 
 async function saveLanguageFormBtn(event) {
     const language = {
-        id: document.getElementById('language-id-input').value.trim(),
+        id: normalizeLanguageId(document.getElementById('language-id-input').value),
         name: document.getElementById('language-name-input').value.trim(),
     };
 
@@ -146,8 +164,8 @@ async function saveLanguageFormBtn(event) {
         errorElem.innerText = "ID can't be empty";
         event.preventDefault();
         return;
-    } else if (!/^(0[1-9]|[1-9][0-9])$/.test(language.id)) {
-        errorElem.innerText = 'Use 01 to 99';
+    } else if (!isValidLanguageId(language.id)) {
+        errorElem.innerText = 'Use lang01 to lang99';
         event.preventDefault();
         return;
     } else if (

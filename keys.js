@@ -160,9 +160,10 @@ async function addKeyBtn() {
     document.querySelector('#key-language-input').value =
         document.querySelector('#key-language-input option')?.value || '';
     renderServerInput('yt');
-    renderServerInput('', '2');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
+    renderServerInput('', '2');
+    applyBackupServerLock();
     document.querySelector('#key-link-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
 
@@ -190,6 +191,7 @@ function editKeyRow() {
 
     document.querySelector('#stream-key-input').value = key.key;
     document.querySelector('#stream-key2-input').value = key.key2;
+    applyBackupServerLock();
 
     document.querySelector('#key-name-input').nextElementSibling.innerText = '';
     document.querySelector('#key-custom-server-input').nextElementSibling.innerText = '';
@@ -216,6 +218,7 @@ async function saveKeyFormBtn(event) {
         link: document.getElementById('key-link-input').value.trim(),
         remarks: document.getElementById('key-remarks-input').value.trim(),
     };
+    enforceLockedBackup(key);
 
     const keyServer = SERVERS[key.server]?.value || key.server;
     const keyServer2 = SERVERS[key.server2]?.value || key.server2;
@@ -302,7 +305,7 @@ async function saveKeyFormBtn(event) {
     }
 
     errorElem = document.querySelector('#stream-key2-input').nextElementSibling;
-    if (key.server + key.key === key.server2 + key.key2) {
+    if (!isLockedBackupServer(key.server) && key.server + key.key === key.server2 + key.key2) {
         errorElem.innerText = "Backup RTMP can\'t be the same as the Main";
         event.preventDefault();
         return;
@@ -452,6 +455,38 @@ function renderServerInput(server, suffix = '') {
     }
 }
 
+function isLockedBackupServer(server) {
+    return Object.prototype.hasOwnProperty.call(LOCKED_BACKUP_BY_SERVER, server);
+}
+
+function enforceLockedBackup(key) {
+    const backupServer = LOCKED_BACKUP_BY_SERVER[key.server];
+    if (!backupServer) return;
+
+    key.server2 = backupServer;
+    key.key2 = key.key;
+}
+
+function applyBackupServerLock() {
+    const primaryServer = document.querySelector('#key-server-input').value;
+    const primaryKeyInput = document.querySelector('#stream-key-input');
+    const backupServerInput = document.querySelector('#key-server2-input');
+    const backupCustomServerInput = document.querySelector('#key-custom-server2-input');
+    const backupKeyInput = document.querySelector('#stream-key2-input');
+    const backupServer = LOCKED_BACKUP_BY_SERVER[primaryServer];
+    const isLocked = Boolean(backupServer);
+
+    if (isLocked) {
+        renderServerInput(backupServer, '2');
+        backupKeyInput.value = primaryKeyInput.value;
+    }
+
+    backupServerInput.disabled = isLocked;
+    backupCustomServerInput.disabled = isLocked;
+    backupKeyInput.readOnly = isLocked;
+    backupKeyInput.classList.toggle('cursor-not-allowed', isLocked);
+}
+
 const COLORS = {
     '': { name: 'None', css: '', bgCss: '' },
     1: { name: '🔴 Red', css: 'text-error', bgCss: 'bg-red-500/30' },
@@ -462,6 +497,11 @@ const COLORS = {
     6: { name: '🟣 Purple', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
 
+const LOCKED_BACKUP_BY_SERVER = {
+    yt: 'yb',
+    fb: 'fb',
+};
+
 const SERVERS = {
     '': { name: 'Custom', value: '' },
     yt: { name: 'YouTube', value: 'rtmp://a.rtmp.youtube.com/live2/' },
@@ -469,5 +509,4 @@ const SERVERS = {
     fb: { name: 'Facebook', value: 'rtmps://live-api-s.facebook.com:443/rtmp/' },
     ig: { name: 'Instagram', value: 'rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/' },
     vc: { name: 'VDO Cipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },
-    vk: { name: 'VK Video', value: 'rtmp://ovsu.okcdn.ru/input/' },
 };

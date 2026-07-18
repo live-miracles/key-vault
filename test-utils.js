@@ -29,6 +29,7 @@ function getAllDataMock(etag) {
         roles: structuredClone(
             testRoles.filter((r) => hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type)),
         ),
+        languages: structuredClone(testLanguages),
     };
     data.size = JSON.stringify(data).length;
 
@@ -161,6 +162,137 @@ function deleteRoleMock(id) {
     return { success: true, data: true };
 }
 
+function addLanguageMock(language) {
+    if (!language) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    if (!/^(0[1-9]|[1-9][0-9])$/.test(language.id)) {
+        return {
+            success: false,
+            error: 'Language id must be between 01 and 99',
+        };
+    }
+
+    if (testLanguages.length >= 99) {
+        return {
+            success: false,
+            error: 'Cannot add more than 99 languages',
+        };
+    }
+
+    if (testLanguages.some((l) => l.id === language.id)) {
+        return {
+            success: false,
+            error: 'Language already exists: ' + language.id,
+        };
+    }
+
+    etagMock += 1;
+    language.order = String(Math.max(...testLanguages.map((l) => Number(l.order) || 0), 0) + 1);
+    testLanguages.push(language);
+    language.row = testLanguages.length + 1;
+
+    return { success: true, data: language };
+}
+
+function editLanguageMock(language) {
+    if (!language || !language.id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const old = testLanguages.find((l) => l.id === language.id);
+    if (!old) {
+        return {
+            success: false,
+            error: 'Language not found: ' + language.id,
+        };
+    }
+
+    if (!/^(0[1-9]|[1-9][0-9])$/.test(language.id)) {
+        return {
+            success: false,
+            error: 'Language id must be between 01 and 99',
+        };
+    }
+
+    etagMock += 1;
+    old.name = language.name;
+
+    return { success: true, data: old };
+}
+
+function reorderLanguagesMock(languageIds) {
+    if (!Array.isArray(languageIds)) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const currentIds = new Set(testLanguages.map((language) => language.id));
+    const newIds = new Set(languageIds);
+    if (
+        languageIds.length !== testLanguages.length ||
+        newIds.size !== currentIds.size ||
+        languageIds.some((id) => !currentIds.has(id))
+    ) {
+        return {
+            success: false,
+            error: 'Language list mismatch',
+        };
+    }
+
+    etagMock += 1;
+    languageIds.forEach((id, index) => {
+        const language = testLanguages.find((l) => l.id === id);
+        language.order = String(index + 1);
+    });
+
+    return { success: true, data: structuredClone(testLanguages) };
+}
+
+function deleteLanguageMock(id) {
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters',
+        };
+    }
+
+    const language = testLanguages.find((l) => l.id === id);
+    if (!language) {
+        return {
+            success: false,
+            error: 'Language not found: ' + id,
+        };
+    }
+
+    if (
+        testKeys.some((key) => key.language === id) ||
+        testRoles.some((role) => role.language === id)
+    ) {
+        return {
+            success: false,
+            error: 'Language is in use: ' + id,
+        };
+    }
+
+    etagMock += 1;
+    testLanguages.splice(
+        testLanguages.findIndex((l) => l.id === id),
+        1,
+    );
+
+    return { success: true, data: true };
+}
+
 function addKeyMock(key) {
     if (!key) {
         return {
@@ -282,7 +414,6 @@ const testRoles = [
         email: testEmail1,
         type: ROLES.ADMIN,
         language: '*',
-        remarks: '',
     },
     {
         id: 'ROLE02',
@@ -290,23 +421,45 @@ const testRoles = [
         email: testEmail2,
         type: ROLES.OWNER,
         language: '*',
-        remarks: '',
     },
     {
         id: 'ROLE03',
         event: 'EVT02',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'en',
-        remarks: '',
+        language: '01',
     },
     {
         id: 'ROLE04',
         event: 'EVT02',
         email: testEmail1,
         type: ROLES.EDITOR,
-        language: 'de',
-        remarks: '',
+        language: '02',
+    },
+    {
+        id: 'ROLE05',
+        event: 'EVT01',
+        email: testEmail3,
+        type: ROLES.VIEWER,
+        language: '09',
+    },
+];
+
+const testLanguages = [
+    {
+        id: '01',
+        name: 'English',
+        order: '1',
+    },
+    {
+        id: '02',
+        name: 'German',
+        order: '2',
+    },
+    {
+        id: '03',
+        name: 'Hindi',
+        order: '3',
     },
 ];
 
@@ -316,7 +469,7 @@ const testKeys = [
         id: 'KEY01',
         event: 'EVT01',
         name: 'Channel 1',
-        language: 'en',
+        language: '01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -329,8 +482,8 @@ const testKeys = [
         row: 2,
         id: 'KEY02',
         event: 'EVT01',
-        name: 'Channel 2',
-        language: 'de',
+        name: 'Very Long Platform Name Channel Demo',
+        language: '02',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -344,7 +497,7 @@ const testKeys = [
         id: 'KEY03',
         event: 'EVT01',
         name: 'Channel 3',
-        language: 'en',
+        language: '01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -358,7 +511,7 @@ const testKeys = [
         id: 'KEY04',
         event: 'EVT02',
         name: 'Channel 4',
-        language: 'en',
+        language: '01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -372,7 +525,7 @@ const testKeys = [
         id: 'KEY05',
         event: 'EVT01',
         name: 'Channel 5',
-        language: 'en',
+        language: '01',
         server: 'rtmp://123:123:123:123/live/',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -386,9 +539,23 @@ const testKeys = [
         id: 'KEY06',
         event: 'EVT02',
         name: 'Channel 6',
-        language: 'de',
+        language: '02',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
+        server2: '',
+        key2: '',
+        color: '',
+        link: '',
+        remarks: '',
+    },
+    {
+        row: 7,
+        id: 'KEY07',
+        event: 'EVT01',
+        name: 'Missing Language Demo',
+        language: '09',
+        server: 'yt',
+        key: 'abc-123-abc-123-missing',
         server2: '',
         key2: '',
         color: '',
@@ -428,6 +595,18 @@ googleMock.script.run.withFailureHandler = (_) => ({
         },
         deleteRole: (id) => {
             setTimeout(() => f(deleteRoleMock(id)), getRandomWaitTime());
+        },
+        addLanguage: (language) => {
+            setTimeout(() => f(addLanguageMock(language)), getRandomWaitTime());
+        },
+        editLanguage: (language) => {
+            setTimeout(() => f(editLanguageMock(language)), getRandomWaitTime());
+        },
+        reorderLanguages: (languageIds) => {
+            setTimeout(() => f(reorderLanguagesMock(languageIds)), getRandomWaitTime());
+        },
+        deleteLanguage: (id) => {
+            setTimeout(() => f(deleteLanguageMock(id)), getRandomWaitTime());
         },
         addKey: (key) => {
             setTimeout(() => f(addKeyMock(key)), getRandomWaitTime());

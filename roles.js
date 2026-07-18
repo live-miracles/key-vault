@@ -7,16 +7,32 @@ function renderRoleTable(eventId = null) {
             if (r2.event !== '*' && r1.event === '*') return -1;
             return r1.email.localeCompare(r2.email);
         })
-        .map(
-            (r) => `
+        .map((r) => {
+            const isCurrentUser = r.email.toLowerCase() === config.userEmail.toLowerCase();
+            const canManageRole = hasRoleAccess(eventRoles, ACTIONS.UPDATE, r.event, r.type);
+            const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
+            const actions = canManageRole
+                ? `
+                        <div class="flex justify-center gap-1">
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" onclick="editRoleById(this.closest('tr').dataset.roleId)">
+                                ${iconSvg('pen')}
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" onclick="deleteRoleById(this.closest('tr').dataset.roleId)">
+                                ${iconSvg('trash')}
+                            </button>
+                        </div>
+                    `
+                : '';
+
+            return `
             <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
-                <th style="padding: 5px;">${escapeHtml(r.email)}</th>
+                <th style="padding: 5px;">${emailLabel}</th>
                 <td style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
-                <td style="padding: 5px;">${escapeHtml(LANGUAGE_MAP[r.language] || r.language)}</td>
-                <td style="padding: 5px;">${escapeHtml(r.remarks)}</td>
+                <td style="padding: 5px;">${languageLabelHtml(r.language)}</td>
+                <td style="padding: 5px;">${actions}</td>
             </tr>
-        `,
-        )
+        `;
+        })
         .join('');
 
     // Add right-click event listeners to rows
@@ -39,6 +55,17 @@ function renderRoleTable(eventId = null) {
 }
 
 let selectedRoleId = null;
+
+function editRoleById(roleId) {
+    selectedRoleId = roleId;
+    editRoleRow();
+}
+
+function deleteRoleById(roleId) {
+    selectedRoleId = roleId;
+    deleteRoleRow();
+}
+
 function showRoleContextMenu(event, roleId) {
     event.preventDefault();
 
@@ -84,9 +111,9 @@ async function addRoleBtn() {
     document.querySelector('#role-event-input').value = eventId;
     document.querySelector('#role-email-input').value = '';
     renderRoleTypes(eventId);
+    renderRoleLanguages();
     document.querySelector('#role-type-input').value = ROLES.VIEWER;
     document.querySelector('#role-language-input').value = '*';
-    document.querySelector('#role-remarks-input').value = '';
 
     document.querySelector('#role-modal').showModal();
 }
@@ -100,12 +127,12 @@ async function editRoleRow() {
     }
 
     renderRoleTypes(role.event);
+    renderRoleLanguages();
     document.querySelector('#role-id-input').value = role.id;
     document.querySelector('#role-event-input').value = role.event;
     document.querySelector('#role-email-input').value = role.email;
     document.querySelector('#role-type-input').value = role.type;
     document.querySelector('#role-language-input').value = role.language;
-    document.querySelector('#role-remarks-input').value = role.remarks;
 
     document.querySelector('#role-email-input').nextElementSibling.innerText = '';
 
@@ -119,7 +146,6 @@ async function saveRoleFormBtn(event) {
         email: document.getElementById('role-email-input').value.trim(),
         type: document.getElementById('role-type-input').value.trim(),
         language: document.getElementById('role-language-input').value.trim(),
-        remarks: document.getElementById('role-remarks-input').value.trim(),
     };
 
     // Validation
@@ -190,10 +216,18 @@ function renderRoleTypes(eventId) {
         .join('');
 }
 
+function renderRoleLanguages() {
+    renderLanguageSelect('#role-language-input', { includeAll: true });
+}
+
 function editRoleFormBtn(event) {
     event.preventDefault();
 }
 
+function showShareModal() {
+    document.querySelector('#share-modal').showModal();
+}
+
 function showHideRoles() {
-    document.querySelector('#role-table').classList.toggle('hidden');
+    showShareModal();
 }

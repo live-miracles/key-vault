@@ -46,6 +46,7 @@ function hideLoading() {
 }
 
 function updateEventRoles(config) {
+    config.events = config.events.filter((e) => e.id && e.name);
     eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 }
 

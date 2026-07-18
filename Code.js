@@ -74,7 +74,7 @@ function parseCache(text) {
     const tmp = JSON.parse(text);
     return {
         etag: tmp.etag,
-        events: sheetStringsToObjects(tmp.events),
+        events: sheetStringsToObjects(tmp.events).filter((event) => event.id && event.name),
         roles: sheetStringsToObjects(tmp.roles).map((role) => {
             const cleanRole = { ...role };
             delete cleanRole.remarks;

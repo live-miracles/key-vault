@@ -1,5 +1,6 @@
 function renderEventTabBar(eventId = null) {
-    const event = config.events.find((e) => e.id === eventId);
+    const events = config.events.filter((e) => e.id && e.name);
+    const event = events.find((e) => e.id === eventId);
     const name = event?.name || '';
     document.getElementById('event-name').innerText = name;
 
@@ -47,12 +48,12 @@ function renderEventTabBar(eventId = null) {
             .querySelector('#lock-event-btn [data-lock-icon="unlock"]')
             .classList.remove('hidden');
         document.querySelector('#edit-event-btn').disabled = false;
-        document.querySelector('#delete-event-btn').disabled = config.events.length <= 1;
+        document.querySelector('#delete-event-btn').disabled = events.length <= 1;
     }
 
     const tabsElem = document.querySelector('.tabs');
     tabsElem.replaceChildren(
-        ...config.events.map((e) => {
+        ...events.map((e) => {
             const tab = document.createElement('a');
             tab.role = 'tab';
             tab.className = `tab ${eventId === e.id ? 'tab-active' : ''}`;

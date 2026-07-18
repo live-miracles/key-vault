@@ -28,7 +28,7 @@ function renderRoleTable(eventId = null) {
             <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
                 <th style="padding: 5px;">${emailLabel}</th>
                 <td style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
-                <td style="padding: 5px;">${escapeHtml(LANGUAGE_MAP[r.language] || r.language)}</td>
+                <td style="padding: 5px;">${languageLabelHtml(r.language)}</td>
                 <td style="padding: 5px;">${actions}</td>
             </tr>
         `;
@@ -111,6 +111,7 @@ async function addRoleBtn() {
     document.querySelector('#role-event-input').value = eventId;
     document.querySelector('#role-email-input').value = '';
     renderRoleTypes(eventId);
+    renderRoleLanguages();
     document.querySelector('#role-type-input').value = ROLES.VIEWER;
     document.querySelector('#role-language-input').value = '*';
 
@@ -126,6 +127,7 @@ async function editRoleRow() {
     }
 
     renderRoleTypes(role.event);
+    renderRoleLanguages();
     document.querySelector('#role-id-input').value = role.id;
     document.querySelector('#role-event-input').value = role.event;
     document.querySelector('#role-email-input').value = role.email;
@@ -212,6 +214,10 @@ function renderRoleTypes(eventId) {
         .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))
         .map((role) => `<option value="${role}">${ROLE_MAP[role]}</option>`)
         .join('');
+}
+
+function renderRoleLanguages() {
+    renderLanguageSelect('#role-language-input', { includeAll: true });
 }
 
 function editRoleFormBtn(event) {

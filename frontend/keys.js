@@ -19,14 +19,18 @@ function getRtmpPreview(server, key) {
     return fullValue.substring(0, 25) + ' … ' + key.slice(-3);
 }
 
+function getPlatformNamePreview(name) {
+    return name.length > 30 ? name.slice(0, 25) + ' ...' : name;
+}
+
 function renderKeyTable(eventId = null) {
     const keys = config.keys
         .filter((k) => k.event === eventId)
-        .sort((a, b) =>
-            (LANGUAGE_MAP[a.language] || a.language).localeCompare(
-                LANGUAGE_MAP[b.language] || b.language,
-            ),
-        );
+        .sort((a, b) => {
+            const orderDiff = getLanguageOrder(a.language) - getLanguageOrder(b.language);
+            if (orderDiff !== 0) return orderDiff;
+            return getLanguageName(a.language).localeCompare(getLanguageName(b.language));
+        });
 
     document.querySelector('#key-rows').innerHTML = keys
         .map((k, i) => {
@@ -61,8 +65,8 @@ function renderKeyTable(eventId = null) {
             return `
                 <tr class="hover:bg-base-300 ${color.bgCss} text-center" data-key-id="${escapeHtml(k.id)}">
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
-                    <td style="padding: 2px">${escapeHtml(LANGUAGE_MAP[k.language] || k.language)}</td>
-                    <td style="padding: 2px">${escapeHtml(k.name)}</td>
+                    <td style="padding: 2px">${languageLabelHtml(k.language)}</td>
+                    <td style="padding: 2px" title="${escapeHtml(k.name)}">${escapeHtml(getPlatformNamePreview(k.name))}</td>
                     <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}" title="${escapeHtml(getRtmpValue(k.server, k.key))}">${escapeHtml(getRtmpPreview(k.server, k.key))}</td>
                     <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}" title="${escapeHtml(getRtmpValue(k.server2, k.key2))}">${escapeHtml(getRtmpPreview(k.server2, k.key2))}</td>
                     <td style="padding: 2px">${
@@ -153,7 +157,8 @@ async function addKeyBtn() {
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-name-input').value = '';
-    document.querySelector('#key-language-input').value = 'en';
+    document.querySelector('#key-language-input').value =
+        document.querySelector('#key-language-input option')?.value || '';
     renderServerInput('yt');
     renderServerInput('', '2');
     document.querySelector('#stream-key-input').value = '';
@@ -430,11 +435,7 @@ async function copyRtmpBtn(suffix = '') {
 }
 
 function renderKeyLanguages(eventId) {
-    document.querySelector('#key-language-input').innerHTML = LANGUAGES.filter((lang) =>
-        hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId, lang),
-    )
-        .map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`)
-        .join('');
+    renderLanguageSelect('#key-language-input', { eventId, action: ACTIONS.CREATE });
 }
 
 function renderServerInput(server, suffix = '') {

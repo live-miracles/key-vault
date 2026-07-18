@@ -24,6 +24,7 @@ const productionAssetBlock = `<link rel="icon" type="image/png" href="${versionB
     <script crossorigin src="${versionBaseUrl}/utils.js"></script>
     <script crossorigin src="${versionBaseUrl}/access.js"></script>
     <script crossorigin src="${versionBaseUrl}/events.js"></script>
+    <script crossorigin src="${versionBaseUrl}/languages.js"></script>
     <script crossorigin src="${versionBaseUrl}/roles.js"></script>
     <script crossorigin src="${versionBaseUrl}/keys.js"></script>
     <script crossorigin src="${versionBaseUrl}/test-utils.js" defer></script>
@@ -35,7 +36,7 @@ await fs.mkdir(outDir, { recursive: true });
 const indexPath = path.join(root, 'frontend', 'index.html');
 const indexHtml = await fs.readFile(indexPath, 'utf8');
 const assetBlockPattern =
-    /<link rel="icon" type="image\/png" href="\.\/logo\.png" \/>\s*<link rel="stylesheet" href="\.\/output\.css" \/>\s*<script src="\.\/bundle\.umd\.min\.js"><\/script>\s*<script src="\.\/utils\.js"><\/script>\s*<script src="\.\/access\.js"><\/script>\s*<script src="\.\/events\.js"><\/script>\s*<script src="\.\/roles\.js"><\/script>\s*<script src="\.\/keys\.js"><\/script>\s*<script src="\.\/test-utils\.js" defer><\/script>\s*<script src="\.\/script\.js" defer><\/script>/;
+    /<link rel="icon" type="image\/png" href="\.\/logo\.png" \/>\s*<link rel="stylesheet" href="\.\/output\.css" \/>\s*<script src="\.\/bundle\.umd\.min\.js"><\/script>\s*<script src="\.\/utils\.js"><\/script>\s*<script src="\.\/access\.js"><\/script>\s*<script src="\.\/events\.js"><\/script>\s*<script src="\.\/languages\.js"><\/script>\s*<script src="\.\/roles\.js"><\/script>\s*<script src="\.\/keys\.js"><\/script>\s*<script src="\.\/test-utils\.js" defer><\/script>\s*<script src="\.\/script\.js" defer><\/script>/;
 const appsScriptIndex = indexHtml.replace(assetBlockPattern, productionAssetBlock);
 
 if (appsScriptIndex === indexHtml) {

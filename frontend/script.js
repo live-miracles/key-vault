@@ -83,6 +83,7 @@ let config = {
     events: [],
     roles: [],
     keys: [],
+    languages: [],
 };
 let eventRoles = {};
 
@@ -98,10 +99,6 @@ let eventRoles = {};
     document.addEventListener('click', () =>
         document.getElementById('role-context-menu').classList.add('hidden'),
     );
-    document.querySelector('#role-language-input').innerHTML =
-        '<option value="*">* (All)</option>' +
-        LANGUAGES.map((lang) => `<option value="${lang}">${LANGUAGE_MAP[lang]}</option>`).join('');
-
     // ===== Keys =====
     document.addEventListener('click', () =>
         document.getElementById('key-context-menu').classList.add('hidden'),

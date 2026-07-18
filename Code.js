@@ -1,12 +1,13 @@
 const props = PropertiesService.getScriptProperties();
 const SPREADSHEET_ID = props.getProperty('SPREADSHEET_ID');
-const CACHE_KEY = 'DATA';
+const CACHE_KEY = 'DATA_V2';
 const CACHE_TTL = 6 * 60 * 60;
 
 const SHEETS = {
     ROLE: 'Role',
     EVENT: 'Event',
     KEY: 'Key',
+    LANGUAGE: 'Language',
 };
 
 function sheetStringsToObjects(data) {
@@ -80,6 +81,11 @@ function parseCache(text) {
             return cleanRole;
         }),
         keys: sheetStringsToObjects(tmp.keys),
+        languages: tmp.languages
+            ? sheetStringsToObjects(tmp.languages).filter(
+                  (language) => language.id && isValidLanguageId(language.id),
+              )
+            : [],
     };
 }
 
@@ -91,6 +97,7 @@ function getCacheString() {
         events: sheetToStrings(ss.getSheetByName(SHEETS.EVENT)),
         roles: sheetToStrings(ss.getSheetByName(SHEETS.ROLE)),
         keys: sheetToStrings(ss.getSheetByName(SHEETS.KEY)),
+        languages: sheetToStrings(ss.getSheetByName(SHEETS.LANGUAGE)),
     };
 
     return JSON.stringify(data);
@@ -125,6 +132,14 @@ function getAllData(etag) {
 
 function expireCache() {
     CacheService.getScriptCache().remove(CACHE_KEY);
+}
+
+function isValidLanguage(config, language, allowAll = false) {
+    return (allowAll && language === '*') || config.languages.some((l) => l.id === language);
+}
+
+function isValidLanguageId(id) {
+    return /^(0[1-9]|[1-9][0-9])$/.test(String(id));
 }
 
 // ===== Event API =====
@@ -299,6 +314,10 @@ function addRole(role) {
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
 
+    if (!isValidLanguage(config, role.language, true)) {
+        return { success: false, error: 'Language not found: ' + role.language };
+    }
+
     if (!hasRoleAccess(eventRoles, ACTIONS.CREATE, role.event)) {
         return {
             success: false,
@@ -331,6 +350,10 @@ function editRole(role) {
     const old = config.roles.find((r) => r.id === role.id);
     if (!old) {
         return { success: false, error: 'Role not found: ' + role.id };
+    }
+
+    if (!isValidLanguage(config, role.language, true)) {
+        return { success: false, error: 'Language not found: ' + role.language };
     }
 
     if (
@@ -390,6 +413,185 @@ function deleteRole(id) {
     }, 'deleteRole');
 }
 
+// ===== Language API =====
+function addLanguage(language) {
+    if (!language || !language.id || !language.name) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(language),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+
+    if (!hasLanguageAccess(eventRoles)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (language.id === '*') {
+        return { success: false, error: 'Language id is reserved: *' };
+    }
+
+    if (!isValidLanguageId(language.id)) {
+        return { success: false, error: 'Language id must be between 01 and 99' };
+    }
+
+    if (config.languages.length >= 99) {
+        return { success: false, error: 'Cannot add more than 99 languages' };
+    }
+
+    if (config.languages.some((l) => l.id === language.id)) {
+        return { success: false, error: 'Language already exists: ' + language.id };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.LANGUAGE);
+        language.order = String(
+            Math.max(...config.languages.map((l) => Number(l.order) || 0), 0) + 1,
+        );
+        sheet.appendRow([language.id, language.name, language.order]);
+        language.row = sheet.getLastRow();
+
+        expireCache();
+
+        return { success: true, data: language };
+    }, 'addLanguage');
+}
+
+function editLanguage(language) {
+    if (!language || !language.id || !language.name) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(language),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const old = config.languages.find((l) => l.id === language.id);
+    if (!old) {
+        return { success: false, error: 'Language not found: ' + language.id };
+    }
+
+    if (!hasLanguageAccess(eventRoles)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (!isValidLanguageId(language.id)) {
+        return { success: false, error: 'Language id must be between 01 and 99' };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.LANGUAGE);
+        sheet.getRange(old.row, 2).setValue(language.name);
+
+        expireCache();
+
+        return { success: true, data: { ...old, name: language.name } };
+    }, 'editLanguage');
+}
+
+function reorderLanguages(languageIds) {
+    if (!Array.isArray(languageIds)) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + JSON.stringify(languageIds),
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+
+    if (!hasLanguageAccess(eventRoles)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (languageIds.length !== config.languages.length) {
+        return { success: false, error: 'Language list mismatch' };
+    }
+
+    const currentIds = new Set(config.languages.map((language) => language.id));
+    const newIds = new Set(languageIds);
+    if (newIds.size !== languageIds.length || newIds.size !== currentIds.size) {
+        return { success: false, error: 'Language list mismatch' };
+    }
+    if (languageIds.some((id) => !currentIds.has(id))) {
+        return { success: false, error: 'Language list mismatch' };
+    }
+
+    if (languageIds.length === 0) {
+        return { success: true, data: [] };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.LANGUAGE);
+        const minRow = Math.min(...config.languages.map((language) => language.row));
+        const maxRow = Math.max(...config.languages.map((language) => language.row));
+        const orderRange = sheet.getRange(minRow, 3, maxRow - minRow + 1, 1);
+        const orderValues = orderRange.getValues();
+
+        languageIds.forEach((id, index) => {
+            const language = config.languages.find((l) => l.id === id);
+            const order = String(index + 1);
+            orderValues[language.row - minRow][0] = order;
+            language.order = order;
+        });
+
+        orderRange.setValues(orderValues);
+
+        expireCache();
+
+        return { success: true, data: config.languages };
+    }, 'reorderLanguages');
+}
+
+function deleteLanguage(id) {
+    if (!id) {
+        return {
+            success: false,
+            error: 'Invalid parameters: ' + id,
+        };
+    }
+
+    const config = getAllData().data;
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const language = config.languages.find((l) => l.id === id);
+
+    if (!language) {
+        return { success: false, error: 'Language not found: ' + id };
+    }
+
+    if (!hasLanguageAccess(eventRoles)) {
+        return {
+            success: false,
+            error: 'Access denied for email: ' + config.userEmail,
+        };
+    }
+
+    if (config.keys.some((k) => k.language === id) || config.roles.some((r) => r.language === id)) {
+        return { success: false, error: 'Language is in use: ' + id };
+    }
+
+    return withLock(() => {
+        const sheet = getSheet(SHEETS.LANGUAGE);
+        sheet.getRange(language.row, 1, 1, sheet.getLastColumn()).clearContent();
+
+        expireCache();
+
+        return { success: true, data: true };
+    }, 'deleteLanguage');
+}
+
 // ===== Key API =====
 function addKey(key) {
     if (!key || !key.event || !key.name || !key.language || !key.server || !key.key) {
@@ -401,6 +603,10 @@ function addKey(key) {
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+
+    if (!isValidLanguage(config, key.language)) {
+        return { success: false, error: 'Language not found: ' + key.language };
+    }
 
     if (!hasKeyAccess(eventRoles, ACTIONS.CREATE, key.event, key.language)) {
         return {
@@ -461,6 +667,10 @@ function editKey(key) {
 
     if (key.event !== old.event) {
         return { success: false, error: 'Cannot move key between events: ' + key.id };
+    }
+
+    if (!isValidLanguage(config, key.language)) {
+        return { success: false, error: 'Language not found: ' + key.language };
     }
 
     if (

@@ -11,6 +11,7 @@
     <script src="./utils.js"></script>
     <script src="./access.js"></script>
     <script src="./events.js"></script>
+    <script src="./languages.js"></script>
     <script src="./roles.js"></script>
     <script src="./keys.js"></script>
     <script src="./test-utils.js" defer></script>
@@ -98,6 +99,33 @@
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
             <button class="btn btn-accent" onclick="saveRoleFormBtn(event)">Save</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="language-modal" class="modal">
+      <div class="modal-box max-w-150">
+        <div class="focus mx-auto mt-2 w-full space-y-3 px-2">
+          <div class="flex items-center">
+            <fieldset class="fieldset inline-block w-32">
+              <legend class="fieldset-legend">ID<span class="text-error">*</span></legend>
+              <input type="text" id="language-id-input" class="input w-full" placeholder="01" maxlength="2" />
+              <p class="label text-error"></p>
+            </fieldset>
+
+            <fieldset class="fieldset ml-2 inline-block grow">
+              <legend class="fieldset-legend">Name<span class="text-error">*</span></legend>
+              <input type="text" id="language-name-input" class="input w-full" placeholder="English" maxlength="50" />
+              <p class="label text-error"></p>
+            </fieldset>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn mx-2">Cancel</button>
+            <button class="btn btn-accent" onclick="saveLanguageFormBtn(event)">Save</button>
           </form>
         </div>
       </div>
@@ -245,12 +273,12 @@
           <span data-icon="unlock" data-lock-icon="unlock" class="hidden h-4 w-4"></span>
         </button>
         <button
-          title="Share Event"
-          aria-label="Share event"
-          class="btn btn-primary btn-square btn-xs ml-5 hidden"
-          id="show-roles-btn"
-          onclick="showShareModal()">
-          <span data-icon="users" class="h-4 w-4"></span>
+          title="Settings"
+          aria-label="Event settings"
+          class="btn btn-accent btn-square btn-xs ml-5 hidden"
+          id="show-settings-btn"
+          onclick="showSettingsModal()">
+          <span data-icon="settings" class="h-4 w-4"></span>
         </button>
 
         <!-- CENTER -->
@@ -267,6 +295,14 @@
 
         <!-- RIGHT -->
         <div class="ml-auto flex items-center gap-3">
+          <button
+            title="Share Event"
+            aria-label="Share event"
+            class="btn btn-primary btn-square btn-xs hidden"
+            id="show-roles-btn"
+            onclick="showShareModal()">
+            <span data-icon="users" class="h-4 w-4"></span>
+          </button>
           <span class="text-xl" id="user-email">
             <span class="loading loading-dots"></span>
           </span>
@@ -311,6 +347,49 @@
             </div>
             <div class="mt-3 text-center">
               <button class="btn btn-accent btn-square btn-sm hidden" id="add-role-btn" onclick="addRoleBtn()" title="Add" aria-label="Add role">
+                <span data-icon="plus" class="h-5 w-5"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      <dialog id="settings-modal" class="modal">
+        <div class="modal-box max-w-175">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">Languages</h3>
+            <form method="dialog">
+              <button class="btn btn-ghost btn-square btn-sm" title="Close" aria-label="Close settings popup">
+                <span data-icon="x" class="h-5 w-5"></span>
+              </button>
+            </form>
+          </div>
+          <div class="mx-auto max-h-[65vh] max-w-150 overflow-x-auto overflow-y-auto" id="language-table">
+            <div class="overflow-x-auto">
+              <table class="table">
+                <thead>
+                  <tr class="text-center">
+                    <th></th>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="language-rows">
+                  <tr>
+                    <th><span class="loading loading-dots loading-xs"></span></th>
+                    <td><span class="loading loading-dots loading-xs"></span></td>
+                    <td><span class="loading loading-dots loading-xs"></span></td>
+                    <td><span class="loading loading-dots loading-xs"></span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="mt-3 text-center">
+              <button class="btn btn-accent btn-square btn-sm" id="add-language-btn" onclick="addLanguageBtn()" title="Add" aria-label="Add language">
                 <span data-icon="plus" class="h-5 w-5"></span>
               </button>
             </div>

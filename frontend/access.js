@@ -36,6 +36,10 @@ function hasEventAccess(eventRoles, action, eventId = null) {
     return isOwner;
 }
 
+function hasLanguageAccess(eventRoles) {
+    return Boolean(eventRoles['*']?.some((r) => r.type === ROLES.OWNER));
+}
+
 function hasRoleAccess(eventRoles, action, eventId, type = null) {
     if (!eventRoles[eventId]) return false;
 

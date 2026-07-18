@@ -18,6 +18,7 @@ Apps Script project, you will be able to:
 │   ├── script.js        # UI logic
 │   ├── access.js        # Access control rules
 │   ├── events.js        # Event management UI
+│   ├── languages.js     # Language settings UI
 │   ├── roles.js         # Role management UI
 │   ├── keys.js          # Key management UI
 │   ├── utils.js         # Shared browser helpers
@@ -96,6 +97,7 @@ project.
 1. Create a spreadsheet with these tabs and columns:
    `Role`: `id`, `event`, `email`, `type`, `language`, `remarks`
    `Event`: `id`, `name`, `status`
+   `Language`: `id`, `name`, `order` (`id` should be a string from `01` to `99`)
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`
 2. Create an Apps Script project and add a script property named `SPREADSHEET_ID`.

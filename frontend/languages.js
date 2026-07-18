@@ -65,7 +65,7 @@ function languageOptions({ includeAll = false, eventId = null, action = null } =
     const languages = getLanguages().filter(
         (language) => !action || hasKeyAccess(eventRoles, action, eventId, language.id),
     );
-    return options.concat(languages);
+    return options.concat(languages.sort((a, b) => a.name.localeCompare(b.name)));
 }
 
 function renderLanguageSelect(selector, options) {

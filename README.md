@@ -55,14 +55,18 @@ Pushing a git tag publishes a versioned frontend snapshot to GitHub Pages at
 load that pinned asset version, so future frontend changes do not affect older releases.
 
 ```bash
-npm version 0.3.2 --no-git-tag-version
-git add package.json package-lock.json
-git commit -m "Release v0.3.2"
-git tag v0.3.2
+git add ...
+git commit -m "..."
+npm version 0.3.2
 git push origin master --tags
 ```
 
-The release tag must match `package.json`. GitHub Actions checks this before deploying.
+`npm version` updates `package.json` and `package-lock.json`, creates the release commit, and creates
+the git tag. With the default `tag-version-prefix` of `v`, `npm version 0.3.2` creates the tag
+`v0.3.2`.
+
+The release tag must match `package.json`. GitHub Actions checks this before deploying. Run
+`npm version` from a clean git working tree.
 
 To preview the generated Apps Script project locally:
 

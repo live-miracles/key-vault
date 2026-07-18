@@ -153,17 +153,18 @@ function isValidLanguage(config, language, allowAll = false) {
 }
 
 function isValidLanguageId(id) {
-    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
 }
 
 function normalizeLanguageId(id, allowAll = false) {
     const languageId = String(id ?? '').trim();
     if (allowAll && languageId === '*') return languageId;
-    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
-    if (/^lang[1-9]$/.test(languageId)) {
-        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
-    }
+    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+
+    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+
     return languageId;
 }
 
@@ -467,7 +468,7 @@ function addLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between lang01 and lang99' };
+        return { success: false, error: 'Language id must be between L01 and L99' };
     }
 
     if (config.languages.length >= 99) {
@@ -517,7 +518,7 @@ function editLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between lang01 and lang99' };
+        return { success: false, error: 'Language id must be between L01 and L99' };
     }
 
     return withLock(() => {

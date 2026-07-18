@@ -283,6 +283,7 @@ async function addKeyBtn() {
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
     document.querySelector('#key-name-input').value = '';
+    renderKeyLanguages(eventId, ACTIONS.CREATE);
     document.querySelector('#key-language-input').value =
         document.querySelector('#key-language-input option')?.value || '';
     renderServerInput('yt');
@@ -309,6 +310,7 @@ function editKeyRow() {
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
     document.querySelector('#key-color-input').value = key.color;
+    renderKeyLanguages(key.event, ACTIONS.UPDATE);
     document.querySelector('#key-language-input').value = key.language;
     document.querySelector('#key-link-input').value = key.link;
     document.querySelector('#key-remarks-input').value = key.remarks;
@@ -512,7 +514,10 @@ function validateEndpoint(endpoint, suffix = '', required = false) {
 
 async function saveKeyFormBtn(event) {
     const mainEndpoint = readEndpoint();
-    const backupEndpoint = readEndpoint('2');
+    let backupEndpoint = readEndpoint('2');
+    if (isLockedBackupServer(mainEndpoint.server) && !backupEndpoint.key) {
+        backupEndpoint = { server: '', key: '', label: backupEndpoint.label };
+    }
     const key = {
         id: document.getElementById('key-id-input').value.trim(),
         event: document.getElementById('key-event-input').value.trim(),
@@ -692,8 +697,8 @@ async function copyRtmpBtn(suffix = '') {
     }
 }
 
-function renderKeyLanguages(eventId) {
-    renderLanguageSelect('#key-language-input', { eventId, action: ACTIONS.CREATE });
+function renderKeyLanguages(eventId, action = ACTIONS.CREATE) {
+    renderLanguageSelect('#key-language-input', { eventId, action });
 }
 
 function renderServerInput(server, suffix = '') {
@@ -749,13 +754,16 @@ function enforceLockedBackup(key) {
     const backupServer = LOCKED_BACKUP_BY_SERVER[key.server];
     if (!backupServer) return;
 
+    if (!key.key2) {
+        key.server2 = '';
+        return;
+    }
+
     key.server2 = backupServer;
-    key.key2 = key.key;
 }
 
 function applyBackupServerLock() {
     const primaryServer = document.querySelector('#key-server-input').value;
-    const primaryKeyInput = document.querySelector('#stream-key-input');
     const backupServerRow = document.querySelector('#backup-server-row');
     const backupServerInput = document.querySelector('#key-server2-input');
     const backupCustomServerInput = document.querySelector('#key-custom-server2-input');
@@ -774,14 +782,13 @@ function applyBackupServerLock() {
 
     if (isLocked) {
         renderServerInput(backupServer, '2');
-        backupKeyInput.value = primaryKeyInput.value;
     }
 
     backupServerInput.disabled = isLocked;
     backupCustomServerInput.disabled = isLocked;
-    backupKeyInput.disabled = isLocked;
-    backupKeyInput.readOnly = isLocked;
-    backupKeyInput.classList.toggle('cursor-not-allowed', isLocked);
+    backupKeyInput.disabled = false;
+    backupKeyInput.readOnly = false;
+    backupKeyInput.classList.remove('cursor-not-allowed');
 }
 
 const COLORS = {

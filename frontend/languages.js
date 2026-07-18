@@ -40,23 +40,24 @@ function getLanguageOrder(id) {
 function getNextLanguageId() {
     const usedIds = new Set(getLanguages().map((language) => language.id));
     for (let i = 1; i <= 99; i++) {
-        const id = `lang${String(i).padStart(2, '0')}`;
+        const id = `L${String(i).padStart(2, '0')}`;
         if (!usedIds.has(id)) return id;
     }
     return '';
 }
 
 function isValidLanguageId(id) {
-    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
 }
 
 function normalizeLanguageId(id) {
     const languageId = String(id ?? '').trim();
-    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
-    if (/^lang[1-9]$/.test(languageId)) {
-        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
-    }
+    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+
+    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+
     return languageId;
 }
 
@@ -165,7 +166,7 @@ async function saveLanguageFormBtn(event) {
         event.preventDefault();
         return;
     } else if (!isValidLanguageId(language.id)) {
-        errorElem.innerText = 'Use lang01 to lang99';
+        errorElem.innerText = 'Use L01 to L99';
         event.preventDefault();
         return;
     } else if (

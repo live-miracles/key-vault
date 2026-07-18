@@ -3,17 +3,18 @@ function getRandomWaitTime() {
 }
 
 function isValidLanguageIdMock(id) {
-    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
 }
 
 function normalizeLanguageIdMock(id, allowAll = false) {
     const languageId = String(id ?? '').trim();
     if (allowAll && languageId === '*') return languageId;
-    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
-    if (/^lang[1-9]$/.test(languageId)) {
-        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
-    }
+    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+
+    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+
     return languageId;
 }
 
@@ -191,7 +192,7 @@ function addLanguageMock(language) {
     if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between lang01 and lang99',
+            error: 'Language id must be between L01 and L99',
         };
     }
 
@@ -237,7 +238,7 @@ function editLanguageMock(language) {
     if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between lang01 and lang99',
+            error: 'Language id must be between L01 and L99',
         };
     }
 
@@ -450,37 +451,37 @@ const testRoles = [
         event: 'EVT02',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'lang01',
+        language: 'L01',
     },
     {
         id: 'ROLE04',
         event: 'EVT02',
         email: testEmail1,
         type: ROLES.EDITOR,
-        language: 'lang02',
+        language: 'L02',
     },
     {
         id: 'ROLE05',
         event: 'EVT01',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'lang09',
+        language: 'L09',
     },
 ];
 
 const testLanguages = [
     {
-        id: 'lang01',
+        id: 'L01',
         name: 'English',
         order: '1',
     },
     {
-        id: 'lang02',
+        id: 'L02',
         name: 'German',
         order: '2',
     },
     {
-        id: 'lang03',
+        id: 'L03',
         name: 'Hindi',
         order: '3',
     },
@@ -492,7 +493,7 @@ const testKeys = [
         id: 'KEY01',
         event: 'EVT01',
         name: 'Channel 1',
-        language: 'lang01',
+        language: 'L01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -506,7 +507,7 @@ const testKeys = [
         id: 'KEY02',
         event: 'EVT01',
         name: 'Very Long Platform Name Channel Demo',
-        language: 'lang02',
+        language: 'L02',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -520,7 +521,7 @@ const testKeys = [
         id: 'KEY03',
         event: 'EVT01',
         name: 'Channel 3',
-        language: 'lang01',
+        language: 'L01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -534,7 +535,7 @@ const testKeys = [
         id: 'KEY04',
         event: 'EVT02',
         name: 'Channel 4',
-        language: 'lang01',
+        language: 'L01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -548,7 +549,7 @@ const testKeys = [
         id: 'KEY05',
         event: 'EVT01',
         name: 'Channel 5',
-        language: 'lang01',
+        language: 'L01',
         server: 'rtmp',
         key: 'rtmp://123.123.123.123/live/abc-123-abc-123-abc-123',
         server2: '',
@@ -562,7 +563,7 @@ const testKeys = [
         id: 'KEY06',
         event: 'EVT02',
         name: 'Channel 6',
-        language: 'lang02',
+        language: 'L02',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -576,7 +577,7 @@ const testKeys = [
         id: 'KEY07',
         event: 'EVT01',
         name: 'Missing Language Demo',
-        language: 'lang09',
+        language: 'L09',
         server: 'yt',
         key: 'abc-123-abc-123-missing',
         server2: '',
@@ -590,7 +591,7 @@ const testKeys = [
         id: 'KEY08',
         event: 'EVT01',
         name: 'Instagram Demo',
-        language: 'lang03',
+        language: 'L03',
         server: 'ig',
         key: 'IG-abc-123-abc-123?s_prp=demo',
         server2: '',
@@ -604,7 +605,7 @@ const testKeys = [
         id: 'KEY09',
         event: 'EVT01',
         name: 'Custom SRT Demo',
-        language: 'lang03',
+        language: 'L03',
         server: 'srt',
         key: 'srt://stream.example.com:10000?mode=caller&latency=240000&passphrase=demo-passphrase&pbkeylen=16&streamid=%23%21%3A%3Ar%3Dlive%2Fdemo%2Cm%3Dpublish',
         server2: '',

@@ -282,7 +282,6 @@ const testRoles = [
         email: testEmail1,
         type: ROLES.ADMIN,
         language: '*',
-        remarks: '',
     },
     {
         id: 'ROLE02',
@@ -290,7 +289,6 @@ const testRoles = [
         email: testEmail2,
         type: ROLES.OWNER,
         language: '*',
-        remarks: '',
     },
     {
         id: 'ROLE03',
@@ -298,7 +296,6 @@ const testRoles = [
         email: testEmail3,
         type: ROLES.VIEWER,
         language: 'en',
-        remarks: '',
     },
     {
         id: 'ROLE04',
@@ -306,7 +303,6 @@ const testRoles = [
         email: testEmail1,
         type: ROLES.EDITOR,
         language: 'de',
-        remarks: '',
     },
 ];
 

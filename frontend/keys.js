@@ -1,14 +1,22 @@
-function maskKey(key) {
-    if (!key || key.length === 0) {
+function getRtmpValue(server, key) {
+    if (!server || !key) {
         return '';
     }
-    if (key.length <= 6) {
-        if (key.length === 1) {
-            return key;
-        }
-        return key[0] + '...' + key[key.length - 1];
+
+    return (SERVERS[server]?.value || server) + key;
+}
+
+function getRtmpPreview(server, key) {
+    const fullValue = getRtmpValue(server, key);
+    if (!fullValue) {
+        return '';
     }
-    return key.substring(0, 3) + '...' + key.substring(key.length - 3);
+
+    if (fullValue.length <= 28) {
+        return fullValue;
+    }
+
+    return fullValue.substring(0, 25) + ' … ' + key.slice(-3);
 }
 
 function renderKeyTable(eventId = null) {
@@ -24,6 +32,22 @@ function renderKeyTable(eventId = null) {
         .map((k, i) => {
             const color = COLORS[k.color] || COLORS[''];
             const link = safeUrl(k.link);
+            const event = config.events.find((e) => e.id === k.event);
+            const isLocked = event?.status === EVENT_STATUS.LOCKED;
+            const canManageKey =
+                hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language) && !isLocked;
+            const actions = canManageKey
+                ? `
+                    <div class="flex justify-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" onclick="editKeyById(this.closest('tr').dataset.keyId)">
+                            ${iconSvg('pen')}
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete key" onclick="deleteKeyById(this.closest('tr').dataset.keyId)">
+                            ${iconSvg('trash')}
+                        </button>
+                    </div>
+                `
+                : '';
             const cnt =
                 config.keys.filter((key) => k.server + k.key === key.server + key.key).length +
                 config.keys.filter((key) => k.server + k.key === key.server2 + key.key2).length;
@@ -39,14 +63,15 @@ function renderKeyTable(eventId = null) {
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
                     <td style="padding: 2px">${escapeHtml(LANGUAGE_MAP[k.language] || k.language)}</td>
                     <td style="padding: 2px">${escapeHtml(k.name)}</td>
-                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}">${escapeHtml((SERVERS[k.server]?.value || k.server) + maskKey(k.key))}</td>
-                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}">${escapeHtml((SERVERS[k.server2]?.value || k.server2) + maskKey(k.key2))}</td>
+                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}" title="${escapeHtml(getRtmpValue(k.server, k.key))}">${escapeHtml(getRtmpPreview(k.server, k.key))}</td>
+                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}" title="${escapeHtml(getRtmpValue(k.server2, k.key2))}">${escapeHtml(getRtmpPreview(k.server2, k.key2))}</td>
                     <td style="padding: 2px">${
                         link
-                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer">${escapeHtml(getShortText(k.link, 25))}</a>`
+                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer" title="${escapeHtml(k.link)}">${escapeHtml(getShortText(k.link, 25))}</a>`
                             : ''
                     }</td>
                     <td style="padding: 2px">${escapeHtml(k.remarks)}</td>
+                    <td style="padding: 2px">${actions}</td>
                 </tr>`;
         })
         .join('');
@@ -61,15 +86,6 @@ function renderKeyTable(eventId = null) {
                 console.error('Key not found');
                 return;
             }
-            const event = config.events.find((e) => e.id === key.event);
-            const isLocked = event?.status === EVENT_STATUS.LOCKED;
-            if (hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.language) && !isLocked) {
-                document.querySelector('#edit-key-btn').classList.remove('hidden');
-                document.querySelector('#delete-key-btn').classList.remove('hidden');
-            } else {
-                document.querySelector('#edit-key-btn').classList.add('hidden');
-                document.querySelector('#delete-key-btn').classList.add('hidden');
-            }
             if (key.link) {
                 document.querySelector('#copy-link-btn').classList.remove('hidden');
             } else {
@@ -81,6 +97,17 @@ function renderKeyTable(eventId = null) {
 }
 
 let selectedKeyId = null;
+
+function editKeyById(keyId) {
+    selectedKeyId = keyId;
+    editKeyRow();
+}
+
+function deleteKeyById(keyId) {
+    selectedKeyId = keyId;
+    deleteKeyRow();
+}
+
 function showKeyContextMenu(event, keyId) {
     event.preventDefault();
 

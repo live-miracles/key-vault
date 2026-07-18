@@ -25,11 +25,23 @@ function renderEventTabBar(eventId = null) {
     if (event?.status === EVENT_STATUS.LOCKED) {
         document.querySelector('#lock-event-btn').classList.remove('btn-neutral');
         document.querySelector('#lock-event-btn').classList.add('btn-accent');
+        document.querySelector('#lock-event-btn').title = 'Unlock';
+        document.querySelector('#lock-event-btn').setAttribute('aria-label', 'Unlock event');
+        document.querySelector('#lock-event-btn [data-lock-icon="lock"]').classList.add('hidden');
+        document
+            .querySelector('#lock-event-btn [data-lock-icon="unlock"]')
+            .classList.remove('hidden');
         document.querySelector('#edit-event-btn').disabled = true;
         document.querySelector('#delete-event-btn').disabled = true;
     } else {
         document.querySelector('#lock-event-btn').classList.add('btn-neutral');
         document.querySelector('#lock-event-btn').classList.remove('btn-soft');
+        document.querySelector('#lock-event-btn').title = 'Lock';
+        document.querySelector('#lock-event-btn').setAttribute('aria-label', 'Lock event');
+        document
+            .querySelector('#lock-event-btn [data-lock-icon="lock"]')
+            .classList.remove('hidden');
+        document.querySelector('#lock-event-btn [data-lock-icon="unlock"]').classList.add('hidden');
         document.querySelector('#edit-event-btn').disabled = false;
         document.querySelector('#delete-event-btn').disabled = config.events.length <= 1;
     }

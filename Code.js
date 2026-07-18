@@ -74,7 +74,11 @@ function parseCache(text) {
     return {
         etag: tmp.etag,
         events: sheetStringsToObjects(tmp.events),
-        roles: sheetStringsToObjects(tmp.roles),
+        roles: sheetStringsToObjects(tmp.roles).map((role) => {
+            const cleanRole = { ...role };
+            delete cleanRole.remarks;
+            return cleanRole;
+        }),
         keys: sheetStringsToObjects(tmp.keys),
     };
 }
@@ -306,7 +310,7 @@ function addRole(role) {
         const sheet = getSheet(SHEETS.ROLE);
 
         role.id = generateId();
-        sheet.appendRow([role.id, role.event, role.email, role.type, role.language, role.remarks]);
+        sheet.appendRow([role.id, role.event, role.email, role.type, role.language]);
         role.row = sheet.getLastRow();
         expireCache();
 
@@ -341,9 +345,10 @@ function editRole(role) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.ROLE);
-        sheet
-            .getRange(old.row, 3, 1, 4)
-            .setValues([[role.email, role.type, role.language, role.remarks]]);
+        sheet.getRange(old.row, 3, 1, 3).setValues([[role.email, role.type, role.language]]);
+        if (sheet.getLastColumn() >= 6) {
+            sheet.getRange(old.row, 6).clearContent();
+        }
 
         expireCache();
 

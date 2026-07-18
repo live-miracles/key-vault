@@ -3,7 +3,7 @@ function capitalize(string) {
 }
 
 function getShortText(str, len) {
-    return str.length > len ? str.slice(0, len / 2) + '...' + str.slice(-len / 2) : str;
+    return str.length > len ? str.slice(0, len / 2) + ' … ' + str.slice(-len / 2) : str;
 }
 
 function escapeHtml(value) {
@@ -14,6 +14,33 @@ function escapeHtml(value) {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
 }
+
+const ICON_PATHS = {
+    check: '<path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" />',
+    error: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /><circle cx="12" cy="12" r="9" />',
+    pen: '<path d="M21.17 6.81a2 2 0 0 0-3.98-3.98L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.36a.5.5 0 0 0 .62.62L7 20.66a2 2 0 0 0 .83-.5Z" />',
+    trash: '<path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M10 11v6" /><path d="M14 11v6" />',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />',
+    unlock: '<rect width="18" height="11" x="3" y="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 9.9-1" />',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />',
+    plus: '<path d="M12 5v14" /><path d="M5 12h14" />',
+    x: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
+};
+
+function iconSvg(name, className = 'h-4 w-4', attrs = '') {
+    return `<svg ${attrs} xmlns="http://www.w3.org/2000/svg" class="${escapeHtml(className)} stroke-current" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
+}
+
+function hydrateIcons() {
+    document.querySelectorAll('[data-icon]').forEach((elem) => {
+        const attrs = elem.dataset.lockIcon
+            ? `data-lock-icon="${escapeHtml(elem.dataset.lockIcon)}"`
+            : '';
+        elem.outerHTML = iconSvg(elem.dataset.icon, elem.className, attrs);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', hydrateIcons);
 
 function safeUrl(value) {
     const text = String(value ?? '').trim();

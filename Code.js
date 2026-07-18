@@ -43,6 +43,10 @@ function getAllRows(sheet) {
     return { headers, rows: data };
 }
 
+function setTextCell(sheet, row, column, value) {
+    sheet.getRange(row, column).setNumberFormat('@').setValue(value);
+}
+
 function withLock(fn, name) {
     const lock = LockService.getScriptLock();
     lock.waitLock(10000);
@@ -72,19 +76,28 @@ function generateId() {
 // ===== Cached Data =====
 function parseCache(text) {
     const tmp = JSON.parse(text);
+    const roles = sheetStringsToObjects(tmp.roles).map((role) => {
+        const cleanRole = { ...role, language: normalizeLanguageId(role.language, true) };
+        delete cleanRole.remarks;
+        return cleanRole;
+    });
+    const keys = sheetStringsToObjects(tmp.keys).map((key) => ({
+        ...key,
+        language: normalizeLanguageId(key.language),
+    }));
+
     return {
         etag: tmp.etag,
         events: sheetStringsToObjects(tmp.events).filter((event) => event.id && event.name),
-        roles: sheetStringsToObjects(tmp.roles).map((role) => {
-            const cleanRole = { ...role };
-            delete cleanRole.remarks;
-            return cleanRole;
-        }),
-        keys: sheetStringsToObjects(tmp.keys),
+        roles,
+        keys,
         languages: tmp.languages
-            ? sheetStringsToObjects(tmp.languages).filter(
-                  (language) => language.id && isValidLanguageId(language.id),
-              )
+            ? sheetStringsToObjects(tmp.languages)
+                  .map((language) => ({
+                      ...language,
+                      id: normalizeLanguageId(language.id),
+                  }))
+                  .filter((language) => language.id && isValidLanguageId(language.id))
             : [],
     };
 }
@@ -135,11 +148,23 @@ function expireCache() {
 }
 
 function isValidLanguage(config, language, allowAll = false) {
-    return (allowAll && language === '*') || config.languages.some((l) => l.id === language);
+    const languageId = normalizeLanguageId(language, allowAll);
+    return (allowAll && languageId === '*') || config.languages.some((l) => l.id === languageId);
 }
 
 function isValidLanguageId(id) {
-    return /^(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+}
+
+function normalizeLanguageId(id, allowAll = false) {
+    const languageId = String(id ?? '').trim();
+    if (allowAll && languageId === '*') return languageId;
+    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
+    if (/^lang[1-9]$/.test(languageId)) {
+        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
+    }
+    return languageId;
 }
 
 // ===== Event API =====
@@ -310,6 +335,7 @@ function addRole(role) {
             error: 'Invalid parameters: ' + JSON.stringify(role),
         };
     }
+    role.language = normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -329,8 +355,9 @@ function addRole(role) {
         const sheet = getSheet(SHEETS.ROLE);
 
         role.id = generateId();
-        sheet.appendRow([role.id, role.event, role.email, role.type, role.language]);
+        sheet.appendRow([role.id, role.event, role.email, role.type, '']);
         role.row = sheet.getLastRow();
+        setTextCell(sheet, role.row, 5, role.language);
         expireCache();
 
         return { success: true, data: role };
@@ -344,6 +371,7 @@ function editRole(role) {
             error: 'Invalid parameters: ' + JSON.stringify(role),
         };
     }
+    role.language = normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -368,6 +396,7 @@ function editRole(role) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.ROLE);
+        setTextCell(sheet, old.row, 5, role.language);
         sheet.getRange(old.row, 3, 1, 3).setValues([[role.email, role.type, role.language]]);
         if (sheet.getLastColumn() >= 6) {
             sheet.getRange(old.row, 6).clearContent();
@@ -421,6 +450,7 @@ function addLanguage(language) {
             error: 'Invalid parameters: ' + JSON.stringify(language),
         };
     }
+    language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -437,7 +467,7 @@ function addLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between 01 and 99' };
+        return { success: false, error: 'Language id must be between lang01 and lang99' };
     }
 
     if (config.languages.length >= 99) {
@@ -453,8 +483,9 @@ function addLanguage(language) {
         language.order = String(
             Math.max(...config.languages.map((l) => Number(l.order) || 0), 0) + 1,
         );
-        sheet.appendRow([language.id, language.name, language.order]);
+        sheet.appendRow(['', language.name, language.order]);
         language.row = sheet.getLastRow();
+        setTextCell(sheet, language.row, 1, language.id);
 
         expireCache();
 
@@ -469,6 +500,7 @@ function editLanguage(language) {
             error: 'Invalid parameters: ' + JSON.stringify(language),
         };
     }
+    language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -485,7 +517,7 @@ function editLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between 01 and 99' };
+        return { success: false, error: 'Language id must be between lang01 and lang99' };
     }
 
     return withLock(() => {
@@ -505,6 +537,7 @@ function reorderLanguages(languageIds) {
             error: 'Invalid parameters: ' + JSON.stringify(languageIds),
         };
     }
+    languageIds = languageIds.map((id) => normalizeLanguageId(id));
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -562,6 +595,7 @@ function deleteLanguage(id) {
             error: 'Invalid parameters: ' + id,
         };
     }
+    id = normalizeLanguageId(id);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -600,6 +634,7 @@ function addKey(key) {
             error: 'Invalid parameters: ' + JSON.stringify(key),
         };
     }
+    key.language = normalizeLanguageId(key.language);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -632,7 +667,7 @@ function addKey(key) {
             key.id,
             key.event,
             key.name,
-            key.language,
+            '',
             key.server,
             key.key,
             key.server2,
@@ -642,6 +677,7 @@ function addKey(key) {
             key.remarks,
         ]);
         key.row = sheet.getLastRow();
+        setTextCell(sheet, key.row, 4, key.language);
 
         expireCache();
 
@@ -656,6 +692,7 @@ function editKey(key) {
             error: 'Invalid parameters: ' + JSON.stringify(key),
         };
     }
+    key.language = normalizeLanguageId(key.language);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -694,6 +731,7 @@ function editKey(key) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
+        setTextCell(sheet, old.row, 4, key.language);
         sheet
             .getRange(old.row, 3, 1, 9)
             .setValues([

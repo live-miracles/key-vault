@@ -101,7 +101,7 @@ project.
 1. Create a spreadsheet with these tabs and columns:
    `Role`: `id`, `event`, `email`, `type`, `language`, `remarks`
    `Event`: `id`, `name`, `status`
-   `Language`: `id`, `name`, `order` (`id` should be a string from `01` to `99`)
+   `Language`: `id`, `name`, `order` (`id` should be a string from `lang01` to `lang99`)
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`
 2. Create an Apps Script project and add a script property named `SPREADSHEET_ID`.

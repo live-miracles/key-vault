@@ -2,6 +2,21 @@ function getRandomWaitTime() {
     return parseInt((1 + Math.random()) * 1000);
 }
 
+function isValidLanguageIdMock(id) {
+    return /^lang(0[1-9]|[1-9][0-9])$/.test(String(id));
+}
+
+function normalizeLanguageIdMock(id, allowAll = false) {
+    const languageId = String(id ?? '').trim();
+    if (allowAll && languageId === '*') return languageId;
+    if (/^[1-9]$/.test(languageId)) return `lang${languageId.padStart(2, '0')}`;
+    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `lang${languageId}`;
+    if (/^lang[1-9]$/.test(languageId)) {
+        return `lang${languageId.replace('lang', '').padStart(2, '0')}`;
+    }
+    return languageId;
+}
+
 function getAllDataMock(etag) {
     const serverEtag = String(etagMock);
     if (etag === serverEtag) {
@@ -106,6 +121,7 @@ function addRoleMock(role) {
             error: 'Invalid parameters',
         };
     }
+    role.language = normalizeLanguageIdMock(role.language, true);
 
     etagMock += 1;
     role.id = String(Date.now());
@@ -122,6 +138,7 @@ function editRoleMock(role) {
             error: 'Invalid parameters',
         };
     }
+    role.language = normalizeLanguageIdMock(role.language, true);
 
     const old = testRoles.find((r) => r.id === role.id);
     if (!old) {
@@ -169,11 +186,12 @@ function addLanguageMock(language) {
             error: 'Invalid parameters',
         };
     }
+    language.id = normalizeLanguageIdMock(language.id);
 
-    if (!/^(0[1-9]|[1-9][0-9])$/.test(language.id)) {
+    if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between 01 and 99',
+            error: 'Language id must be between lang01 and lang99',
         };
     }
 
@@ -206,6 +224,7 @@ function editLanguageMock(language) {
             error: 'Invalid parameters',
         };
     }
+    language.id = normalizeLanguageIdMock(language.id);
 
     const old = testLanguages.find((l) => l.id === language.id);
     if (!old) {
@@ -215,10 +234,10 @@ function editLanguageMock(language) {
         };
     }
 
-    if (!/^(0[1-9]|[1-9][0-9])$/.test(language.id)) {
+    if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between 01 and 99',
+            error: 'Language id must be between lang01 and lang99',
         };
     }
 
@@ -236,6 +255,7 @@ function reorderLanguagesMock(languageIds) {
         };
     }
 
+    languageIds = languageIds.map((id) => normalizeLanguageIdMock(id));
     const currentIds = new Set(testLanguages.map((language) => language.id));
     const newIds = new Set(languageIds);
     if (
@@ -266,6 +286,7 @@ function deleteLanguageMock(id) {
         };
     }
 
+    id = normalizeLanguageIdMock(id);
     const language = testLanguages.find((l) => l.id === id);
     if (!language) {
         return {
@@ -300,6 +321,7 @@ function addKeyMock(key) {
             error: 'Invalid parameters',
         };
     }
+    key.language = normalizeLanguageIdMock(key.language);
 
     etagMock += 1;
     key.id = String(Date.now());
@@ -316,6 +338,7 @@ function editKeyMock(key) {
             error: 'Invalid parameters',
         };
     }
+    key.language = normalizeLanguageIdMock(key.language);
 
     const old = testKeys.find((k) => k.id === key.id);
     if (!old) {
@@ -427,37 +450,37 @@ const testRoles = [
         event: 'EVT02',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: '01',
+        language: 'lang01',
     },
     {
         id: 'ROLE04',
         event: 'EVT02',
         email: testEmail1,
         type: ROLES.EDITOR,
-        language: '02',
+        language: 'lang02',
     },
     {
         id: 'ROLE05',
         event: 'EVT01',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: '09',
+        language: 'lang09',
     },
 ];
 
 const testLanguages = [
     {
-        id: '01',
+        id: 'lang01',
         name: 'English',
         order: '1',
     },
     {
-        id: '02',
+        id: 'lang02',
         name: 'German',
         order: '2',
     },
     {
-        id: '03',
+        id: 'lang03',
         name: 'Hindi',
         order: '3',
     },
@@ -469,7 +492,7 @@ const testKeys = [
         id: 'KEY01',
         event: 'EVT01',
         name: 'Channel 1',
-        language: '01',
+        language: 'lang01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -483,7 +506,7 @@ const testKeys = [
         id: 'KEY02',
         event: 'EVT01',
         name: 'Very Long Platform Name Channel Demo',
-        language: '02',
+        language: 'lang02',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -497,7 +520,7 @@ const testKeys = [
         id: 'KEY03',
         event: 'EVT01',
         name: 'Channel 3',
-        language: '01',
+        language: 'lang01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -511,7 +534,7 @@ const testKeys = [
         id: 'KEY04',
         event: 'EVT02',
         name: 'Channel 4',
-        language: '01',
+        language: 'lang01',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: 'yb',
@@ -525,7 +548,7 @@ const testKeys = [
         id: 'KEY05',
         event: 'EVT01',
         name: 'Channel 5',
-        language: '01',
+        language: 'lang01',
         server: 'rtmp://123:123:123:123/live/',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -539,7 +562,7 @@ const testKeys = [
         id: 'KEY06',
         event: 'EVT02',
         name: 'Channel 6',
-        language: '02',
+        language: 'lang02',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -553,7 +576,7 @@ const testKeys = [
         id: 'KEY07',
         event: 'EVT01',
         name: 'Missing Language Demo',
-        language: '09',
+        language: 'lang09',
         server: 'yt',
         key: 'abc-123-abc-123-missing',
         server2: '',

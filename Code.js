@@ -73,6 +73,22 @@ function generateId() {
     );
 }
 
+const KEY_COLORS = {
+    NONE: '',
+    ERROR: '1',
+    WARNING: '3',
+    NEW: '6',
+};
+
+function normalizeKeyColor(color) {
+    const value = String(color ?? '').trim();
+    return Object.values(KEY_COLORS).includes(value) ? value : KEY_COLORS.NONE;
+}
+
+function hasStreamingConfigChanged(oldKey, key) {
+    return ['server', 'key', 'server2', 'key2'].some((field) => oldKey[field] !== key[field]);
+}
+
 // ===== Cached Data =====
 function parseCache(text) {
     const tmp = JSON.parse(text);
@@ -636,6 +652,7 @@ function addKey(key) {
         };
     }
     key.language = normalizeLanguageId(key.language);
+    key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -658,6 +675,13 @@ function addKey(key) {
 
     if (event.status === EVENT_STATUS.LOCKED) {
         return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
+    if (key.color !== KEY_COLORS.NONE && !hasKeyColorAccess(eventRoles, key.event)) {
+        return {
+            success: false,
+            error: 'Only owners or admins can edit key colors.',
+        };
     }
 
     return withLock(() => {
@@ -694,6 +718,7 @@ function editKey(key) {
         };
     }
     key.language = normalizeLanguageId(key.language);
+    key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
@@ -728,6 +753,17 @@ function editKey(key) {
 
     if (event.status === EVENT_STATUS.LOCKED) {
         return { success: false, error: 'Event is locked: ' + event.id };
+    }
+
+    const oldColor = normalizeKeyColor(old.color);
+    const streamingConfigChanged = hasStreamingConfigChanged(old, key);
+    if (streamingConfigChanged) {
+        key.color = KEY_COLORS.NEW;
+    } else if (key.color !== oldColor && !hasKeyColorAccess(eventRoles, key.event)) {
+        return {
+            success: false,
+            error: 'Only owners or admins can edit key colors.',
+        };
     }
 
     return withLock(() => {

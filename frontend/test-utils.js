@@ -349,6 +349,10 @@ function editKeyMock(key) {
         };
     }
 
+    if (hasStreamingConfigChanged(old, key)) {
+        key.color = KEY_COLORS.NEW;
+    }
+
     etagMock += 1;
     Object.assign(old, key);
 

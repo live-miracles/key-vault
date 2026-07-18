@@ -49,6 +49,11 @@ function getKeyBackupUrl(key) {
     return getRtmpValue(backup.server, backup.key);
 }
 
+function hasStreamingConfigChanged(oldKey, key) {
+    if (!oldKey) return false;
+    return ['server', 'key', 'server2', 'key2'].some((field) => oldKey[field] !== key[field]);
+}
+
 function isFullUrlKeyServer(server) {
     return server === 'rtmp' || server === 'srt';
 }
@@ -161,9 +166,15 @@ function renderKeyTable(eventId = null) {
             const isLocked = event?.status === EVENT_STATUS.LOCKED;
             const canManageKey =
                 hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language) && !isLocked;
+            const hasVisibleColor = Boolean(COLORS[k.color]?.bgCss);
+            const canClearColor =
+                hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor && !isLocked;
             const actions = canManageKey
                 ? `
                     <div class="flex justify-center gap-1">
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent ${canClearColor ? '' : 'invisible'}" title="Mark configured" aria-label="Mark key configured" ${canClearColor ? `onclick="markKeyConfiguredById(this.closest('tr').dataset.keyId)"` : 'disabled'}>
+                            ${iconSvg('check')}
+                        </button>
                         <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" onclick="editKeyById(this.closest('tr').dataset.keyId)">
                             ${iconSvg('pen')}
                         </button>
@@ -194,10 +205,10 @@ function renderKeyTable(eventId = null) {
                     <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}" title="${escapeHtml(backupUrl)}">${escapeHtml(getRtmpPreview(backupEndpoint.server, backupEndpoint.key))}</td>
                     <td style="padding: 2px">${
                         link
-                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer" title="${escapeHtml(k.link)}">${escapeHtml(getShortText(k.link, 25))}</a>`
+                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer" title="${escapeHtml(k.link)}">${escapeHtml(getMiddleEllipsisText(k.link, 20, 15, 3))}</a>`
                             : ''
                     }</td>
-                    <td style="padding: 2px">${escapeHtml(k.remarks)}</td>
+                    <td style="padding: 2px" title="${escapeHtml(k.remarks)}">${escapeHtml(getMiddleEllipsisText(k.remarks, 40, 30, 5))}</td>
                     <td style="padding: 2px">${actions}</td>
                 </tr>`;
         })
@@ -236,6 +247,11 @@ function editKeyById(keyId) {
 function deleteKeyById(keyId) {
     selectedKeyId = keyId;
     deleteKeyRow();
+}
+
+function markKeyConfiguredById(keyId) {
+    selectedKeyId = keyId;
+    markKeyConfigured();
 }
 
 function showKeyContextMenu(event, keyId) {
@@ -282,6 +298,7 @@ async function addKeyBtn() {
     document.querySelector('#key-id-input').value = '';
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-color-input').value = '';
+    document.querySelector('#key-color-input').disabled = !hasKeyColorAccess(eventRoles, eventId);
     document.querySelector('#key-name-input').value = '';
     renderKeyLanguages(eventId, ACTIONS.CREATE);
     document.querySelector('#key-language-input').value =
@@ -310,6 +327,7 @@ function editKeyRow() {
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
     document.querySelector('#key-color-input').value = key.color;
+    document.querySelector('#key-color-input').disabled = !hasKeyColorAccess(eventRoles, key.event);
     renderKeyLanguages(key.event, ACTIONS.UPDATE);
     document.querySelector('#key-language-input').value = key.language;
     document.querySelector('#key-link-input').value = key.link;
@@ -533,6 +551,13 @@ async function saveKeyFormBtn(event) {
     };
     enforceLockedBackup(key);
 
+    const oldKey = key.id ? config.keys.find((k) => k.id === key.id) : null;
+    if (oldKey && hasStreamingConfigChanged(oldKey, key)) {
+        key.color = KEY_COLORS.NEW;
+    } else if (!hasKeyColorAccess(eventRoles, key.event)) {
+        key.color = oldKey ? oldKey.color : KEY_COLORS.NONE;
+    }
+
     // Validation
     clearKeyErrors();
     if (key.name === '') {
@@ -618,6 +643,31 @@ async function saveKeyFormBtn(event) {
             console.assert(oldKey);
             config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
         }
+    }
+    renderKeyTable(key.event);
+    hideLoading();
+}
+
+async function markKeyConfigured() {
+    if (!selectedKeyId) return;
+    const key = config.keys.find((k) => k.id === selectedKeyId);
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+        return;
+    }
+
+    const event = config.events.find((e) => e.id === key.event);
+    if (event?.status === EVENT_STATUS.LOCKED || !hasKeyColorAccess(eventRoles, key.event)) {
+        showErrorAlert('Only owners or admins can mark a key as configured.');
+        return;
+    }
+
+    showLoading();
+    const newKey = processResponse(await api('editKey', { ...key, color: KEY_COLORS.NONE }));
+    if (newKey !== null) {
+        const oldKey = config.keys.find((k) => k.id === newKey.id);
+        console.assert(oldKey);
+        config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
     }
     renderKeyTable(key.event);
     hideLoading();
@@ -791,14 +841,18 @@ function applyBackupServerLock() {
     backupKeyInput.classList.remove('cursor-not-allowed');
 }
 
+const KEY_COLORS = {
+    NONE: '',
+    ERROR: '1',
+    WARNING: '3',
+    NEW: '6',
+};
+
 const COLORS = {
-    '': { name: 'None', css: '', bgCss: '' },
-    1: { name: '🔴 Red', css: 'text-error', bgCss: 'bg-red-500/30' },
-    2: { name: '🟠 Orange', css: 'text-secondary', bgCss: 'bg-secondary/10' },
-    3: { name: '🟡 Yellow', css: 'text-warning', bgCss: 'bg-warning/10' },
-    4: { name: '🟢 Green', css: 'text-primary', bgCss: 'bg-primary/10' },
-    5: { name: '🔵 Blue', css: 'text-info', bgCss: 'bg-info/10' },
-    6: { name: '🟣 Purple', css: 'text-accent', bgCss: 'bg-accent/10' },
+    [KEY_COLORS.NONE]: { name: 'None', css: '', bgCss: '' },
+    [KEY_COLORS.ERROR]: { name: 'Error', css: 'text-error', bgCss: 'bg-red-500/30' },
+    [KEY_COLORS.WARNING]: { name: 'Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
+    [KEY_COLORS.NEW]: { name: 'New', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
 
 const LOCKED_BACKUP_BY_SERVER = {

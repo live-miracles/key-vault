@@ -27,14 +27,13 @@ test('owners receive access to every event and global language settings', () => 
     assert.equal(runtime.get('hasLanguageAccess')(eventRoles), true);
 });
 
-test('admins can lock events and manage non-owner roles, but cannot create owners', () => {
+test('admins can manage non-owner roles, but cannot create owners', () => {
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const eventRoles = {
         EVT01: [{ event: 'EVT01', type: ROLES.ADMIN, language: '*' }],
     };
 
-    assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.LOCK, 'EVT01'), true);
     assert.equal(
         runtime.get('hasRoleAccess')(eventRoles, ACTIONS.CREATE, 'EVT01', ROLES.EDITOR),
         true,

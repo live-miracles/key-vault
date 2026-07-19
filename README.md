@@ -100,7 +100,7 @@ project.
 
 1. Create a spreadsheet with these tabs and columns:
    `Role`: `id`, `event`, `email`, `type`, `language`, `remarks`
-   `Event`: `id`, `name`, `status`
+   `Event`: `id`, `name`
    `Language`: `id`, `name`, `order` (`id` should be a string from `L01` to `L99`)
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`
@@ -111,7 +111,7 @@ project.
 
 ## Roles
 
-- Owner: can edit or delete events, lock or unlock events, and assign event admins.
-- Admin: can lock or unlock an event and add viewers and editors.
+- Owner: can edit or delete events and assign event admins.
+- Admin: can add viewers and editors.
 - Editor: can edit keys for an event and can be restricted to languages.
 - Viewer: can only view an event's keys and can be restricted to languages.

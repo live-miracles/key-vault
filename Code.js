@@ -240,10 +240,6 @@ function editEvent(event) {
         };
     }
 
-    if (old.status === EVENT_STATUS.LOCKED) {
-        return { success: false, error: 'Event is locked: ' + event.id };
-    }
-
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
         const newEvent = { ...old, name: event.name };
@@ -253,45 +249,6 @@ function editEvent(event) {
 
         return { success: true, data: newEvent };
     }, 'editEvent');
-}
-
-function lockEvent(event) {
-    if (!event || !event.id || !['', EVENT_STATUS.LOCKED].includes(event.status)) {
-        return {
-            success: false,
-            error: 'Invalid parameters: ' + JSON.stringify(event),
-        };
-    }
-
-    const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
-    const old = config.events.find((e) => e.id === event.id);
-    if (!old) {
-        return { success: false, error: 'Event not found: ' + event.id };
-    }
-
-    if (!hasEventAccess(eventRoles, ACTIONS.LOCK, event.id)) {
-        return {
-            success: false,
-            error: 'Access denied for email: ' + config.userEmail,
-        };
-    }
-
-    if (old.status === event.status) {
-        return {
-            success: false,
-            error: `Event is already ${event.status ? 'locked' : 'unlocked'}: ` + event.id,
-        };
-    }
-
-    return withLock(() => {
-        const sheet = getSheet(SHEETS.EVENT);
-        sheet.getRange(old.row, 3).setValue(event.status);
-
-        expireCache();
-
-        return { success: true, data: event };
-    }, 'lockEvent');
 }
 
 function deleteEvent(id) {
@@ -314,10 +271,6 @@ function deleteEvent(id) {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
         };
-    }
-
-    if (event.status === EVENT_STATUS.LOCKED) {
-        return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {
@@ -673,10 +626,6 @@ function addKey(key) {
         return { success: false, error: 'Event not found: ' + key.event };
     }
 
-    if (event.status === EVENT_STATUS.LOCKED) {
-        return { success: false, error: 'Event is locked: ' + event.id };
-    }
-
     if (key.color !== KEY_COLORS.NONE && !hasKeyColorAccess(eventRoles, key.event)) {
         return {
             success: false,
@@ -751,10 +700,6 @@ function editKey(key) {
         return { success: false, error: 'Event not found: ' + key.event };
     }
 
-    if (event.status === EVENT_STATUS.LOCKED) {
-        return { success: false, error: 'Event is locked: ' + event.id };
-    }
-
     const oldColor = normalizeKeyColor(old.color);
     const streamingConfigChanged = hasStreamingConfigChanged(old, key);
     if (streamingConfigChanged) {
@@ -817,10 +762,6 @@ function deleteKey(id) {
     const event = config.events.find((e) => e.id === key.event);
     if (!event) {
         return { success: false, error: 'Event not found: ' + key.event };
-    }
-
-    if (event.status === EVENT_STATUS.LOCKED) {
-        return { success: false, error: 'Event is locked: ' + event.id };
     }
 
     return withLock(() => {

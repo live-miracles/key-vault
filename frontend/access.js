@@ -29,10 +29,7 @@ function hasEventAccess(eventRoles, action, eventId = null) {
         return false;
     }
 
-    const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
-
     if (action === ACTIONS.VIEW) return true;
-    if (action === ACTIONS.LOCK) return isAdmin;
     return isOwner;
 }
 
@@ -88,7 +85,6 @@ const ACTIONS = {
     CREATE: 'create',
     UPDATE: 'update',
     DELETE: 'delete',
-    LOCK: 'lock',
 };
 
 const ROLES = {
@@ -103,8 +99,4 @@ const ROLE_MAP = {
     [ROLES.EDITOR]: 'Editor',
     [ROLES.ADMIN]: 'Admin',
     [ROLES.OWNER]: 'Owner',
-};
-
-const EVENT_STATUS = {
-    LOCKED: 'locked',
 };

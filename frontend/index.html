@@ -36,7 +36,6 @@
     <dialog id="event-modal" class="modal">
       <div class="modal-box max-w-115">
         <input type="text" id="event-id-input" class="hidden" />
-        <input type="text" id="event-status-input" class="hidden" />
 
         <div class="focus mx-auto mt-2 w-full space-y-3 px-2">
           <fieldset class="fieldset">
@@ -395,10 +394,6 @@
           onclick="deleteEventBtn()"
           disabled>
           <span data-icon="trash" class="h-4 w-4"></span>
-        </button>
-        <button title="Lock" aria-label="Lock event" class="btn btn-neutral btn-square btn-xs ml-2" id="lock-event-btn" onclick="lockEventBtn()">
-          <span data-icon="lock" data-lock-icon="lock" class="h-4 w-4"></span>
-          <span data-icon="unlock" data-lock-icon="unlock" class="hidden h-4 w-4"></span>
         </button>
         <button
           title="Settings"

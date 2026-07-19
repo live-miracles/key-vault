@@ -162,13 +162,9 @@ function renderKeyTable(eventId = null) {
         .map((k, i) => {
             const color = COLORS[k.color] || COLORS[''];
             const link = safeUrl(k.link);
-            const event = config.events.find((e) => e.id === k.event);
-            const isLocked = event?.status === EVENT_STATUS.LOCKED;
-            const canManageKey =
-                hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language) && !isLocked;
+            const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
             const hasVisibleColor = Boolean(COLORS[k.color]?.bgCss);
-            const canClearColor =
-                hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor && !isLocked;
+            const canClearColor = hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor;
             const actions = canManageKey
                 ? `
                     <div class="flex justify-center gap-1">
@@ -664,8 +660,7 @@ async function markKeyConfigured() {
         return;
     }
 
-    const event = config.events.find((e) => e.id === key.event);
-    if (event?.status === EVENT_STATUS.LOCKED || !hasKeyColorAccess(eventRoles, key.event)) {
+    if (!hasKeyColorAccess(eventRoles, key.event)) {
         showErrorAlert('Only owners or admins can mark a key as configured.');
         return;
     }

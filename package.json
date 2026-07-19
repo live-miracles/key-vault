@@ -9,6 +9,7 @@
         "css": "tailwindcss -i ./frontend/input.css -o ./frontend/output.css",
         "apps-script:build": "node build-tools/build-apps-script.mjs",
         "version:check": "node build-tools/check-version.mjs",
+        "test": "node test/run-tests.mjs",
         "format": "prettier --write .",
         "format:check": "prettier --check ."
     },

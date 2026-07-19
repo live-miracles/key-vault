@@ -239,6 +239,16 @@ function renderKeyTable(eventId = null) {
 
 let selectedKeyId = null;
 
+function canEditKeyColor(eventId) {
+    return hasKeyColorAccess(eventRoles, eventId);
+}
+
+function setKeyColorInput(value, eventId) {
+    const input = document.querySelector('#key-color-input');
+    input.value = value;
+    input.disabled = !canEditKeyColor(eventId);
+}
+
 function editKeyById(keyId) {
     selectedKeyId = keyId;
     editKeyRow();
@@ -297,8 +307,7 @@ async function addKeyBtn() {
 
     document.querySelector('#key-id-input').value = '';
     document.querySelector('#key-event-input').value = eventId;
-    document.querySelector('#key-color-input').value = '';
-    document.querySelector('#key-color-input').disabled = !hasKeyColorAccess(eventRoles, eventId);
+    setKeyColorInput('', eventId);
     document.querySelector('#key-name-input').value = '';
     renderKeyLanguages(eventId, ACTIONS.CREATE);
     document.querySelector('#key-language-input').value =
@@ -326,8 +335,7 @@ function editKeyRow() {
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
-    document.querySelector('#key-color-input').value = key.color;
-    document.querySelector('#key-color-input').disabled = !hasKeyColorAccess(eventRoles, key.event);
+    setKeyColorInput(key.color, key.event);
     renderKeyLanguages(key.event, ACTIONS.UPDATE);
     document.querySelector('#key-language-input').value = key.language;
     document.querySelector('#key-link-input').value = key.link;
@@ -850,9 +858,9 @@ const KEY_COLORS = {
 
 const COLORS = {
     [KEY_COLORS.NONE]: { name: 'None', css: '', bgCss: '' },
-    [KEY_COLORS.ERROR]: { name: 'Error', css: 'text-error', bgCss: 'bg-red-500/30' },
-    [KEY_COLORS.WARNING]: { name: 'Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
-    [KEY_COLORS.NEW]: { name: 'New', css: 'text-accent', bgCss: 'bg-accent/10' },
+    [KEY_COLORS.ERROR]: { name: '🔴 Error', css: 'text-error', bgCss: 'bg-red-500/30' },
+    [KEY_COLORS.WARNING]: { name: '🟡 Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
+    [KEY_COLORS.NEW]: { name: '🟣 New', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
 
 const LOCKED_BACKUP_BY_SERVER = {

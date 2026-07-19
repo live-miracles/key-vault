@@ -23,6 +23,26 @@ function processResponse(response) {
     return response.data;
 }
 
+function cloneConfig() {
+    return structuredClone(config);
+}
+
+function restoreConfig(snapshot, eventId = getUrlParam('event')) {
+    config = snapshot;
+    updateEventRoles(config);
+    selectEvent(eventId);
+}
+
+function replaceConfigItem(collectionName, item, oldId = item.id) {
+    const collection = config[collectionName];
+    const index = collection.findIndex((entry) => entry.id === oldId);
+    if (index === -1) {
+        collection.push(item);
+    } else {
+        collection.splice(index, 1, item);
+    }
+}
+
 let alertCount = 0;
 function showErrorAlert(error, log = true) {
     const elem = document.getElementById('error-alert');
@@ -47,7 +67,7 @@ function hideLoading() {
 
 function updateEventRoles(config) {
     config.events = config.events.filter((e) => e.id && e.name);
-    eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 }
 
 async function fetchDataAndRerender() {
@@ -63,7 +83,6 @@ async function fetchDataAndRerender() {
     } else if (config.events.length > 0) {
         selectEvent(config.events[0].id);
     } else {
-        console.error('No events');
         selectEvent('');
     }
 
@@ -80,6 +99,7 @@ let userEmail = null;
 let config = {
     size: 0,
     userEmail: '',
+    isAppOwner: false,
     etag: '',
     events: [],
     roles: [],
@@ -101,11 +121,6 @@ let eventRoles = {};
         document.getElementById('role-context-menu').classList.add('hidden'),
     );
     document.getElementById('share-modal').addEventListener('close', resetRoleInlineEdit);
-    // ===== Keys =====
-    document.addEventListener('click', () =>
-        document.getElementById('key-context-menu').classList.add('hidden'),
-    );
-
     document.querySelector('#key-color-input').innerHTML = Object.keys(COLORS)
         .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)
         .join('');

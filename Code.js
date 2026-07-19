@@ -66,24 +66,27 @@ function getUserEmail() {
     return Session.getActiveUser().getEmail();
 }
 
-function generateId() {
-    return (
-        Date.now().toString(36).toUpperCase() +
-        Math.random().toString(36).substring(2, 6).toUpperCase()
-    );
+function getAppOwnerEmail() {
+    return Session.getEffectiveUser().getEmail();
 }
 
-function getNextEventId(events) {
-    const usedNumbers = new Set(
-        events
-            .map((event) => String(event.id ?? '').match(/^E([1-9][0-9]*)$/))
-            .filter(Boolean)
-            .map((match) => Number(match[1])),
-    );
+function isAppOwnerEmail(email) {
+    return Boolean(email) && email === getAppOwnerEmail();
+}
 
-    for (let i = 1; ; i++) {
-        if (!usedNumbers.has(i)) return `E${String(i).padStart(2, '0')}`;
-    }
+function getSequentialIdNumber(id, prefix) {
+    const match = String(id ?? '').match(new RegExp(`^${prefix}([1-9][0-9]*)$`));
+    return match ? Number(match[1]) : null;
+}
+
+function getNextSequentialId(items, prefix) {
+    const maxNumber = Math.max(
+        ...items
+            .map((item) => getSequentialIdNumber(item.id, prefix))
+            .filter((number) => number !== null),
+        0,
+    );
+    return `${prefix}${maxNumber + 1}`;
 }
 
 const KEY_COLORS = {
@@ -159,8 +162,9 @@ function getAllData(etag) {
     }
     config.size = cacheString.length;
     config.userEmail = getUserEmail();
+    config.isAppOwner = isAppOwnerEmail(config.userEmail);
 
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     config.events = config.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id));
     config.roles = config.roles.filter((r) =>
         hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type),
@@ -182,17 +186,16 @@ function isValidLanguage(config, language, allowAll = false) {
 }
 
 function isValidLanguageId(id) {
-    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L([1-9][0-9]*)$/.test(String(id));
 }
 
 function normalizeLanguageId(id, allowAll = false) {
     const languageId = String(id ?? '').trim();
     if (allowAll && languageId === '*') return languageId;
-    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+    if (/^[1-9][0-9]*$/.test(languageId)) return `L${languageId}`;
 
-    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
-    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+    const prefixedMatch = languageId.match(/^(?:L|lang)([1-9][0-9]*)$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1]}`;
 
     return languageId;
 }
@@ -207,7 +210,7 @@ function addEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 
     if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         return {
@@ -221,7 +224,7 @@ function addEvent(event) {
         const { headers, rows } = getAllRows(sheet);
         const idIndex = headers.indexOf('id');
         const events = rows.map((row) => ({ id: row[idIndex] }));
-        event.id = getNextEventId(events);
+        event.id = getNextSequentialId(events, 'E');
         sheet.appendRow([event.id, event.name]);
         event.row = sheet.getLastRow();
 
@@ -243,7 +246,7 @@ function editEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const old = config.events.find((e) => e.id === event.id);
     if (!old) {
         return { success: false, error: 'Event not found: ' + event.id };
@@ -276,7 +279,7 @@ function deleteEvent(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const event = config.events.find((e) => e.id === id);
     if (!event) {
         return { success: false, error: 'Event not found: ' + id };
@@ -321,16 +324,19 @@ function addRole(role) {
             error: 'Invalid parameters: ' + JSON.stringify(role),
         };
     }
-    role.language = normalizeLanguageId(role.language, true);
+    role.language =
+        role.type === ROLES.ADMIN || role.type === ROLES.OWNER
+            ? '*'
+            : normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 
     if (!isValidLanguage(config, role.language, true)) {
         return { success: false, error: 'Language not found: ' + role.language };
     }
 
-    if (!hasRoleAccess(eventRoles, ACTIONS.CREATE, role.event)) {
+    if (!hasRoleAccess(eventRoles, ACTIONS.CREATE, role.event, role.type)) {
         return {
             success: false,
             error: 'Access denied for email: ' + config.userEmail,
@@ -339,8 +345,11 @@ function addRole(role) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.ROLE);
+        const { headers, rows } = getAllRows(sheet);
+        const idIndex = headers.indexOf('id');
+        const roles = rows.map((row) => ({ id: row[idIndex] }));
 
-        role.id = generateId();
+        role.id = getNextSequentialId(roles, 'R');
         sheet.appendRow([role.id, role.event, role.email, role.type, '']);
         role.row = sheet.getLastRow();
         setTextCell(sheet, role.row, 5, role.language);
@@ -357,10 +366,13 @@ function editRole(role) {
             error: 'Invalid parameters: ' + JSON.stringify(role),
         };
     }
-    role.language = normalizeLanguageId(role.language, true);
+    role.language =
+        role.type === ROLES.ADMIN || role.type === ROLES.OWNER
+            ? '*'
+            : normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const old = config.roles.find((r) => r.id === role.id);
     if (!old) {
         return { success: false, error: 'Role not found: ' + role.id };
@@ -403,7 +415,7 @@ function deleteRole(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const role = config.roles.find((r) => r.id === id);
 
     if (!role) {
@@ -439,7 +451,7 @@ function addLanguage(language) {
     language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 
     if (!hasLanguageAccess(eventRoles)) {
         return {
@@ -453,11 +465,7 @@ function addLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between L01 and L99' };
-    }
-
-    if (config.languages.length >= 99) {
-        return { success: false, error: 'Cannot add more than 99 languages' };
+        return { success: false, error: 'Language id must be L1 or higher' };
     }
 
     if (config.languages.some((l) => l.id === language.id)) {
@@ -489,7 +497,7 @@ function editLanguage(language) {
     language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const old = config.languages.find((l) => l.id === language.id);
     if (!old) {
         return { success: false, error: 'Language not found: ' + language.id };
@@ -503,7 +511,7 @@ function editLanguage(language) {
     }
 
     if (!isValidLanguageId(language.id)) {
-        return { success: false, error: 'Language id must be between L01 and L99' };
+        return { success: false, error: 'Language id must be L1 or higher' };
     }
 
     return withLock(() => {
@@ -526,7 +534,7 @@ function reorderLanguages(languageIds) {
     languageIds = languageIds.map((id) => normalizeLanguageId(id));
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 
     if (!hasLanguageAccess(eventRoles)) {
         return {
@@ -584,7 +592,7 @@ function deleteLanguage(id) {
     id = normalizeLanguageId(id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const language = config.languages.find((l) => l.id === id);
 
     if (!language) {
@@ -624,7 +632,7 @@ function addKey(key) {
     key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
 
     if (!isValidLanguage(config, key.language)) {
         return { success: false, error: 'Language not found: ' + key.language };
@@ -651,8 +659,11 @@ function addKey(key) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.KEY);
+        const { headers, rows } = getAllRows(sheet);
+        const idIndex = headers.indexOf('id');
+        const keys = rows.map((row) => ({ id: row[idIndex] }));
 
-        key.id = generateId();
+        key.id = getNextSequentialId(keys, 'K');
         sheet.appendRow([
             key.id,
             key.event,
@@ -686,7 +697,7 @@ function editKey(key) {
     key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const old = config.keys.find((k) => k.id === key.id);
 
     if (!old) {
@@ -761,7 +772,7 @@ function deleteKey(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles);
+    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
     const key = config.keys.find((k) => k.id === id);
 
     if (!key) {

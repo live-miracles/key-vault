@@ -163,10 +163,14 @@ function renderKeyTable(eventId = null) {
             const color = COLORS[k.color] || COLORS[''];
             const link = safeUrl(k.link);
             const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
+            const isPending = Boolean(k.pending);
             const hasVisibleColor = Boolean(COLORS[k.color]?.bgCss);
-            const canClearColor = hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor;
-            const actions = canManageKey
-                ? `
+            const canClearColor =
+                hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor && !isPending;
+            const actions = isPending
+                ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+                : canManageKey
+                  ? `
                     <div class="flex justify-center gap-1">
                         <button type="button" class="btn btn-ghost btn-square btn-xs text-accent ${canClearColor ? '' : 'invisible'}" title="Mark configured" aria-label="Mark key configured" ${canClearColor ? `onclick="markKeyConfiguredById(this.closest('tr').dataset.keyId)"` : 'disabled'}>
                             ${iconSvg('check')}
@@ -179,7 +183,7 @@ function renderKeyTable(eventId = null) {
                         </button>
                     </div>
                 `
-                : '';
+                  : '';
             const mainUrl = getKeyMainUrl(k);
             const backupEndpoint = getKeyBackupEndpoint(k);
             const backupUrl = getKeyBackupUrl(k);
@@ -188,6 +192,29 @@ function renderKeyTable(eventId = null) {
             );
             const cnt = allUrls.filter((url) => url === mainUrl).length;
             const cnt2 = backupUrl ? allUrls.filter((url) => url === backupUrl).length : 0;
+            const mainUrlCell = renderCopyableTextCell({
+                text: getRtmpPreview(k.server, k.key),
+                value: mainUrl,
+                title: mainUrl,
+                className: cnt > 1 ? 'text-error' : '',
+                disabled: isPending || !mainUrl,
+            });
+            const backupUrlCell = renderCopyableTextCell({
+                text: getRtmpPreview(backupEndpoint.server, backupEndpoint.key),
+                value: backupUrl,
+                title: backupUrl,
+                className: cnt2 > 1 ? 'text-error' : '',
+                disabled: isPending || !backupUrl,
+            });
+            const webLinkCell = link
+                ? renderCopyableTextCell({
+                      text: getMiddleEllipsisText(k.link, 20, 15, 3),
+                      value: k.link,
+                      title: k.link,
+                      href: link,
+                      disabled: isPending,
+                  })
+                : '';
 
             const languageIndex = keys.filter(
                 (key, index) => index <= i && key.language === k.language,
@@ -197,40 +224,38 @@ function renderKeyTable(eventId = null) {
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
                     <td style="padding: 2px">${languageLabelHtml(k.language)}</td>
                     <td style="padding: 2px" title="${escapeHtml(k.name)}">${escapeHtml(getPlatformNamePreview(k.name))}</td>
-                    <td style="padding: 2px" class="${cnt > 1 ? 'text-error' : ''}" title="${escapeHtml(mainUrl)}">${escapeHtml(getRtmpPreview(k.server, k.key))}</td>
-                    <td style="padding: 2px" class="${cnt2 > 1 ? 'text-error' : ''}" title="${escapeHtml(backupUrl)}">${escapeHtml(getRtmpPreview(backupEndpoint.server, backupEndpoint.key))}</td>
-                    <td style="padding: 2px">${
-                        link
-                            ? `<a href="${escapeHtml(link)}" class="link" target="_blank" rel="noopener noreferrer" title="${escapeHtml(k.link)}">${escapeHtml(getMiddleEllipsisText(k.link, 20, 15, 3))}</a>`
-                            : ''
-                    }</td>
+                    <td style="padding: 2px">${mainUrlCell}</td>
+                    <td style="padding: 2px">${backupUrlCell}</td>
+                    <td style="padding: 2px">${webLinkCell}</td>
                     <td style="padding: 2px" title="${escapeHtml(k.remarks)}">${escapeHtml(getMiddleEllipsisText(k.remarks, 40, 30, 5))}</td>
                     <td style="padding: 2px">${actions}</td>
                 </tr>`;
         })
         .join('');
+}
 
-    // Add right-click event listeners to rows
-    document.querySelectorAll('#key-rows tr').forEach((row) => {
-        row.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const keyId = row.dataset.keyId;
-            const key = config.keys.find((k) => k.id === keyId);
-            if (!key) {
-                console.error('Key not found');
-                return;
-            }
-            if (key.link) {
-                document.querySelector('#copy-link-btn').classList.remove('hidden');
-            } else {
-                document.querySelector('#copy-link-btn').classList.add('hidden');
-            }
-            document
-                .querySelector('#copy-backup-url-btn')
-                .classList.toggle('hidden', !getKeyBackupUrl(key));
-            showKeyContextMenu(e, keyId);
-        });
-    });
+function renderCopyableTextCell({
+    text,
+    value,
+    title,
+    href = '',
+    className = '',
+    disabled = false,
+}) {
+    if (!value) return '';
+
+    const content = href
+        ? `<a href="${escapeHtml(href)}" class="link ${escapeHtml(className)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(title)}">${escapeHtml(text)}</a>`
+        : `<span class="${escapeHtml(className)}" title="${escapeHtml(title)}">${escapeHtml(text)}</span>`;
+    const copyButton = disabled
+        ? ''
+        : `
+            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy" aria-label="Copy" onclick="copyTextValue(this.dataset.copyValue)" data-copy-value="${escapeHtml(value)}">
+                ${iconSvg('copy')}
+            </button>
+        `;
+
+    return `<div class="flex items-center justify-center gap-1">${content}${copyButton}</div>`;
 }
 
 let selectedKeyId = null;
@@ -258,39 +283,6 @@ function deleteKeyById(keyId) {
 function markKeyConfiguredById(keyId) {
     selectedKeyId = keyId;
     markKeyConfigured();
-}
-
-function showKeyContextMenu(event, keyId) {
-    event.preventDefault();
-
-    selectedKeyId = keyId;
-    const menu = document.getElementById('key-context-menu');
-
-    // Make visible so we can measure it
-    menu.classList.remove('hidden');
-
-    const rect = menu.getBoundingClientRect();
-    const margin = 8;
-
-    let x = event.clientX;
-    let y = event.clientY;
-
-    // Horizontal clamp
-    if (x + rect.width > window.innerWidth) {
-        x = window.innerWidth - rect.width - margin;
-    }
-
-    // Vertical: flip above cursor if needed
-    if (y + rect.height > window.innerHeight) {
-        y = y - rect.height - margin;
-    }
-
-    // Final safety clamp
-    x = Math.max(margin, x);
-    y = Math.max(margin, y);
-
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
 }
 
 async function addKeyBtn() {
@@ -628,28 +620,48 @@ async function saveKeyFormBtn(event) {
     }
 
     // Sending request
+    const snapshot = cloneConfig();
+    const isAdd = key.id === '';
+    const optimisticKey = {
+        ...key,
+        id: isAdd ? getNextSequentialId(config.keys, 'K') : key.id,
+        pending: isAdd,
+    };
+    replaceConfigItem('keys', optimisticKey, key.id || optimisticKey.id);
+    renderKeyTable(key.event);
+
     showLoading();
     if (key.id === '') {
         // Adding new row
         document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);
 
-        const newKey = processResponse(await api('addKey', key));
-        if (newKey !== null) {
-            config.keys.push(newKey);
+        try {
+            const newKey = processResponse(await api('addKey', key));
+            if (newKey === null) {
+                restoreConfig(snapshot, key.event);
+                return;
+            }
+            replaceConfigItem('keys', newKey, optimisticKey.id);
+            renderKeyTable(newKey.event);
+        } finally {
+            document.querySelector('#add-key-btn').disabled = false;
+            hideLoading();
         }
-        document.querySelector('#add-key-btn').disabled = false;
     } else {
         // Updating existing row
-        const newKey = processResponse(await api('editKey', key));
-        if (newKey !== null) {
-            const oldKey = config.keys.find((k) => k.id === newKey.id);
-            console.assert(oldKey);
-            config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
+        try {
+            const newKey = processResponse(await api('editKey', key));
+            if (newKey === null) {
+                restoreConfig(snapshot, key.event);
+                return;
+            }
+            replaceConfigItem('keys', newKey);
+            renderKeyTable(newKey.event);
+        } finally {
+            hideLoading();
         }
     }
-    renderKeyTable(key.event);
-    hideLoading();
 }
 
 async function markKeyConfigured() {
@@ -665,15 +677,22 @@ async function markKeyConfigured() {
         return;
     }
 
-    showLoading();
-    const newKey = processResponse(await api('editKey', { ...key, color: KEY_COLORS.NONE }));
-    if (newKey !== null) {
-        const oldKey = config.keys.find((k) => k.id === newKey.id);
-        console.assert(oldKey);
-        config.keys.splice(config.keys.indexOf(oldKey), 1, newKey);
-    }
+    const snapshot = cloneConfig();
+    replaceConfigItem('keys', { ...key, color: KEY_COLORS.NONE });
     renderKeyTable(key.event);
-    hideLoading();
+
+    showLoading();
+    try {
+        const newKey = processResponse(await api('editKey', { ...key, color: KEY_COLORS.NONE }));
+        if (newKey === null) {
+            restoreConfig(snapshot, key.event);
+            return;
+        }
+        replaceConfigItem('keys', newKey);
+        renderKeyTable(newKey.event);
+    } finally {
+        hideLoading();
+    }
 }
 
 async function deleteKeyRow() {
@@ -688,13 +707,19 @@ async function deleteKeyRow() {
         return;
     }
 
-    showLoading();
-    const res = processResponse(await api('deleteKey', key.id));
-    if (res !== null) {
-        config.keys = config.keys.filter((k) => k.id !== key.id);
-    }
+    const snapshot = cloneConfig();
+    config.keys = config.keys.filter((k) => k.id !== key.id);
     renderKeyTable(key.event);
-    hideLoading();
+
+    showLoading();
+    try {
+        const res = processResponse(await api('deleteKey', key.id));
+        if (res === null) {
+            restoreConfig(snapshot, key.event);
+        }
+    } finally {
+        hideLoading();
+    }
 }
 
 function showCopiedNotification() {
@@ -707,45 +732,8 @@ function showCopiedNotification() {
     }, 2000);
 }
 
-async function copyLinkBtn() {
-    if (!selectedKeyId) return;
-    const key = config.keys.find((k) => k.id === selectedKeyId);
-    if (!key) {
-        console.error('Key not found:', selectedKeyId);
-        return;
-    }
-
-    if (await copyText(key.link)) {
-        showCopiedNotification();
-    }
-}
-
-async function copyKeyBtn() {
-    if (!selectedKeyId) return;
-    const key = config.keys.find((k) => k.id === selectedKeyId);
-    if (!key) {
-        console.error('Key not found:', selectedKeyId);
-        return;
-    }
-
-    if (await copyText(key.key)) {
-        showCopiedNotification();
-    }
-}
-
-async function copyRtmpBtn(suffix = '') {
-    if (!selectedKeyId) return;
-    const key = config.keys.find((k) => k.id === selectedKeyId);
-    if (!key) {
-        console.error('Key not found:', selectedKeyId);
-        return;
-    }
-
-    const text =
-        suffix === '2'
-            ? getKeyBackupUrl(key)
-            : getRtmpValue(key['server' + suffix], key['key' + suffix]);
-    if (await copyText(text)) {
+async function copyTextValue(text) {
+    if (text && (await copyText(text))) {
         showCopiedNotification();
     }
 }

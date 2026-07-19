@@ -29,8 +29,8 @@ test('keeps only safe HTTP and HTTPS URLs', () => {
 test('updates and reads query parameters', () => {
     const runtime = loadUtils();
 
-    runtime.get('setUrlParam')('event', 'E02');
-    assert.equal(runtime.get('getUrlParam')('event'), 'E02');
+    runtime.get('setUrlParam')('event', 'E2');
+    assert.equal(runtime.get('getUrlParam')('event'), 'E2');
 
     runtime.get('setUrlParam')('event', null);
     assert.equal(runtime.get('getUrlParam')('event'), null);

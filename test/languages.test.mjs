@@ -17,9 +17,9 @@ function loadLanguages() {
     runtime.set('config', {
         languages: [
             { id: '2', name: 'German', order: '2' },
-            { id: 'L01', name: 'English', order: '1' },
+            { id: 'L1', name: 'English', order: '1' },
             { id: 'bad', name: 'Broken', order: '3' },
-            { id: 'L03', name: '', order: '4' },
+            { id: 'L3', name: '', order: '4' },
         ],
     });
     return runtime;
@@ -30,38 +30,38 @@ test('normalizes and validates language identifiers', () => {
     const normalizeLanguageId = runtime.get('normalizeLanguageId');
     const isValidLanguageId = runtime.get('isValidLanguageId');
 
-    assert.equal(normalizeLanguageId('1'), 'L01');
-    assert.equal(normalizeLanguageId('lang9'), 'L09');
+    assert.equal(normalizeLanguageId('1'), 'L1');
+    assert.equal(normalizeLanguageId('lang9'), 'L9');
     assert.equal(normalizeLanguageId('L12'), 'L12');
     assert.equal(normalizeLanguageId('*'), '*');
     assert.equal(isValidLanguageId('L00'), false);
-    assert.equal(isValidLanguageId('L99'), true);
+    assert.equal(isValidLanguageId('L100'), true);
 });
 
 test('returns clean, ordered languages and resolves labels', () => {
     const runtime = loadLanguages();
 
     assert.deepEqual(plain(runtime.get('getLanguages')()), [
-        { id: 'L01', name: 'English', order: '1' },
-        { id: 'L02', name: 'German', order: '2' },
+        { id: 'L1', name: 'English', order: '1' },
+        { id: 'L2', name: 'German', order: '2' },
     ]);
     assert.equal(runtime.get('getLanguageName')('2'), 'German');
     assert.equal(runtime.get('getLanguageName')('*'), '* (All)');
-    assert.equal(runtime.get('hasMissingLanguage')('L09'), true);
+    assert.equal(runtime.get('hasMissingLanguage')('L9'), true);
 });
 
 test('finds the next available language id', () => {
     const runtime = loadLanguages();
 
-    assert.equal(runtime.get('getNextLanguageId')(), 'L03');
+    assert.equal(runtime.get('getNextLanguageId')(), 'L3');
 
     runtime.set('config', {
-        languages: Array.from({ length: 99 }, (_, index) => ({
-            id: `L${String(index + 1).padStart(2, '0')}`,
+        languages: Array.from({ length: 100 }, (_, index) => ({
+            id: `L${index + 1}`,
             name: `Language ${index + 1}`,
             order: String(index + 1),
         })),
     });
 
-    assert.equal(runtime.get('getNextLanguageId')(), '');
+    assert.equal(runtime.get('getNextLanguageId')(), 'L101');
 });

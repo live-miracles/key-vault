@@ -28,7 +28,7 @@ export function loadFrontendScripts(files) {
                     context.window.location = new URL(url, context.window.location.href);
                 },
             },
-            location: new URL('https://example.test/app?event=E01'),
+            location: new URL('https://example.test/app?event=E1'),
         },
     };
     context.globalThis = context;

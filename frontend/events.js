@@ -2,16 +2,15 @@ function renderEventTabBar(eventId = null) {
     const events = config.events.filter((e) => e.id && e.name);
     const event = events.find((e) => e.id === eventId);
     const name = event?.name || '';
+    const isPending = Boolean(event?.pending);
+    const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
+    const canManageLanguages = hasLanguageAccess(eventRoles);
     document.getElementById('event-name').innerText = name;
 
-    if (hasEventAccess(eventRoles, ACTIONS.CREATE)) {
-        document.querySelector('#add-event-btn').disabled = false;
-        document.querySelector('#add-event-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#add-event-btn').classList.add('hidden');
-    }
+    document.querySelector('#add-event-btn').disabled = !canCreateEvents;
+    document.querySelector('#add-event-btn').classList.toggle('hidden', !canCreateEvents);
 
-    if (hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId)) {
+    if (hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId) && !isPending) {
         document.querySelector('#edit-event-btn').classList.remove('hidden');
         document.querySelector('#delete-event-btn').classList.remove('hidden');
     } else {
@@ -19,12 +18,11 @@ function renderEventTabBar(eventId = null) {
         document.querySelector('#delete-event-btn').classList.add('hidden');
     }
 
-    document
-        .querySelector('#show-settings-btn')
-        .classList.toggle('hidden', !hasLanguageAccess(eventRoles));
+    document.querySelector('#show-settings-btn').disabled = !canManageLanguages;
+    document.querySelector('#show-settings-btn').classList.toggle('hidden', !canManageLanguages);
 
-    document.querySelector('#edit-event-btn').disabled = false;
-    document.querySelector('#delete-event-btn').disabled = events.length <= 1;
+    document.querySelector('#edit-event-btn').disabled = isPending;
+    document.querySelector('#delete-event-btn').disabled = isPending;
 
     const tabsElem = document.querySelector('.tabs');
     tabsElem.replaceChildren(
@@ -40,18 +38,34 @@ function renderEventTabBar(eventId = null) {
 }
 
 async function addEventBtn() {
+    if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) return;
+
     const eventNumbers = config.events
         .filter((e) => e.name.startsWith('Event '))
         .map((e) => parseInt(e.name.split(' ')[1], 10));
     const maxNumber = Math.max(...eventNumbers, 0);
     const nextNumber = maxNumber + 1;
 
+    const snapshot = cloneConfig();
+    const optimisticEvent = {
+        id: getNextSequentialId(config.events, 'E'),
+        name: `Event ${nextNumber}`,
+        pending: true,
+    };
+
+    config.events.push(optimisticEvent);
+    updateEventRoles(config);
+    selectEvent(optimisticEvent.id);
+
     showLoading();
     document.querySelector('#add-event-btn').disabled = true;
     try {
         const event = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
-        if (event === null) return;
-        config.events.push(event);
+        if (event === null) {
+            restoreConfig(snapshot);
+            return;
+        }
+        replaceConfigItem('events', event, optimisticEvent.id);
         updateEventRoles(config);
         selectEvent(event.id);
     } finally {
@@ -94,16 +108,26 @@ async function saveEventFormBtn(evt) {
     }
 
     // Sending request
+    const snapshot = cloneConfig();
+    replaceConfigItem('events', event);
+    updateEventRoles(config);
+    selectEvent(event.id);
+
     showLoading();
     document.querySelector('#edit-event-btn').disabled = true;
-    const newEvent = processResponse(await api('editEvent', event));
-    if (newEvent !== null) {
-        const old = config.events.find((e) => e.id === newEvent.id);
-        console.assert(old);
-        config.events.splice(config.events.indexOf(old), 1, newEvent);
+    try {
+        const newEvent = processResponse(await api('editEvent', event));
+        if (newEvent === null) {
+            restoreConfig(snapshot, event.id);
+            return;
+        }
+        replaceConfigItem('events', newEvent);
+        updateEventRoles(config);
+        selectEvent(newEvent.id);
+    } finally {
+        document.querySelector('#edit-event-btn').disabled = false;
+        hideLoading();
     }
-    selectEvent(event.id);
-    hideLoading();
 }
 
 async function deleteEventBtn() {
@@ -118,21 +142,35 @@ async function deleteEventBtn() {
         return;
     }
 
+    const snapshot = cloneConfig();
+    config.events = config.events.filter((e) => e.id !== event.id);
+    updateEventRoles(config);
+    selectEvent(config.events[0]?.id || '');
+
     showLoading();
     document.querySelector('#delete-event-btn').disabled = true;
-    const res = processResponse(await api('deleteEvent', event.id));
-    if (res !== null) {
-        config.events = config.events.filter((e) => e.id !== event.id);
+    try {
+        const res = processResponse(await api('deleteEvent', event.id));
+        if (res === null) {
+            restoreConfig(snapshot, event.id);
+        }
+    } finally {
+        document.querySelector('#delete-event-btn').disabled = false;
+        hideLoading();
     }
-    selectEvent(config.events[0]?.id || '');
-    hideLoading();
 }
 
 function selectEvent(id) {
     setUrlParam('event', id);
 
     const hasEvents = config.events.length > 0;
-    document.querySelector('#no-events-email').innerText = config.userEmail || 'this email';
+    const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
+    document.querySelector('#no-events-message').innerText = canCreateEvents
+        ? 'No events currently configured. Please add them.'
+        : 'No events are available for the signed-in email:';
+    document.querySelector('#no-events-email').innerText = canCreateEvents
+        ? ''
+        : `${config.userEmail || 'unknown email'}.`;
     document.querySelector('#no-events-access').classList.toggle('hidden', hasEvents);
     document.querySelector('#no-events-access').classList.toggle('flex', !hasEvents);
     document.querySelector('#key-table').classList.toggle('hidden', !hasEvents);

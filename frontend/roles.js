@@ -18,8 +18,10 @@ function renderRoleTable(eventId = null) {
         const isCurrentUser = r.email.toLowerCase() === config.userEmail.toLowerCase();
         const canManageRole = hasRoleAccess(eventRoles, ACTIONS.UPDATE, r.event, r.type);
         const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
-        const actions = canManageRole
-            ? `
+        const actions = r.pending
+            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+            : canManageRole
+              ? `
                         <div class="flex justify-center gap-1">
                             <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" onclick="editRoleById(this.closest('tr').dataset.roleId)">
                                 ${iconSvg('pen')}
@@ -29,13 +31,13 @@ function renderRoleTable(eventId = null) {
                             </button>
                         </div>
                     `
-            : '';
+              : '';
 
         return `
             <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
-                <th style="padding: 5px;">${emailLabel}</th>
-                <td style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
-                <td style="padding: 5px;">${languageLabelHtml(r.language)}</td>
+                <th class="w-100" style="padding: 5px;">${emailLabel}</th>
+                <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
+                <td class="w-50" style="padding: 5px;">${languageLabelHtml(r.language)}</td>
                 <td style="padding: 5px;">${actions}</td>
             </tr>
         `;
@@ -65,6 +67,7 @@ function renderRoleTable(eventId = null) {
                 console.error('Role not found');
                 return;
             }
+            if (role.pending) return;
             if (hasRoleAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type)) {
                 showRoleContextMenu(e, roleId);
             } else {
@@ -79,17 +82,17 @@ let selectedRoleId = null;
 function renderRoleEditRow(role) {
     return `
         <tr class="text-center" data-role-id="${escapeHtml(role.id)}" data-editing="true">
-            <th style="padding: 5px;">
+            <th class="w-100" style="padding: 5px;">
                 <input type="email" class="input input-sm role-email-input w-full" value="${escapeHtml(role.email)}" placeholder="email@example.com" maxlength="100" />
             </th>
-            <td style="padding: 5px;">
-                <select class="select select-sm role-type-input w-full">
+            <td class="w-30" style="padding: 5px;">
+                <select class="select select-sm role-type-input w-full" onchange="renderRoleLanguageForRow(this)">
                     ${roleTypeOptions(role.event, role.type)}
                 </select>
             </td>
-            <td style="padding: 5px;">
+            <td class="w-50" style="padding: 5px;">
                 <select class="select select-sm role-language-input w-full">
-                    ${roleLanguageOptions(role.language)}
+                    ${roleLanguageOptions(role.language, role.type)}
                 </select>
             </td>
             <td style="padding: 5px;">
@@ -195,6 +198,9 @@ async function saveRoleInlineBtn(button) {
         type: row.querySelector('.role-type-input').value.trim(),
         language: row.querySelector('.role-language-input').value.trim(),
     };
+    if (role.type === ROLES.ADMIN || role.type === ROLES.OWNER) {
+        role.language = '*';
+    }
 
     // Validation
     const emailInput = row.querySelector('.role-email-input');
@@ -209,30 +215,53 @@ async function saveRoleInlineBtn(button) {
     }
 
     // Send request
+    const snapshot = cloneConfig();
+    const isAdd = role.id === '';
+    const optimisticRole = {
+        ...role,
+        id: isAdd ? getNextSequentialId(config.roles, 'R') : role.id,
+        pending: isAdd,
+    };
+
+    selectedRoleId = null;
+    replaceConfigItem('roles', optimisticRole, role.id || optimisticRole.id);
+    updateEventRoles(config);
+    renderRoleTable(role.event);
+
     showLoading();
     if (role.id === '') {
         // Adding new row
         document.querySelector('#add-role-btn').disabled = true;
         console.assert(role.event);
 
-        const newRole = processResponse(await api('addRole', role));
-        if (newRole !== null) {
-            config.roles.push(newRole);
+        try {
+            const newRole = processResponse(await api('addRole', role));
+            if (newRole === null) {
+                restoreConfig(snapshot, role.event);
+                return;
+            }
+            replaceConfigItem('roles', newRole, optimisticRole.id);
+            updateEventRoles(config);
+            renderRoleTable(newRole.event);
+        } finally {
+            document.querySelector('#add-role-btn').disabled = false;
+            hideLoading();
         }
-        document.querySelector('#add-role-btn').disabled = false;
     } else {
         // Editing existing row
-        const newRole = processResponse(await api('editRole', role));
-        if (newRole !== null) {
-            const old = config.roles.find((r) => r.id === newRole.id);
-            console.assert(old);
-            config.roles.splice(config.roles.indexOf(old), 1, newRole);
+        try {
+            const newRole = processResponse(await api('editRole', role));
+            if (newRole === null) {
+                restoreConfig(snapshot, role.event);
+                return;
+            }
+            replaceConfigItem('roles', newRole);
+            updateEventRoles(config);
+            renderRoleTable(newRole.event);
+        } finally {
+            hideLoading();
         }
     }
-    selectedRoleId = null;
-    updateEventRoles(config);
-    renderRoleTable(role.event);
-    hideLoading();
 }
 
 async function deleteRoleRow() {
@@ -247,14 +276,20 @@ async function deleteRoleRow() {
         return;
     }
 
-    showLoading();
-    const res = processResponse(await api('deleteRole', role.id));
-    if (res !== null) {
-        config.roles = config.roles.filter((r) => r.id !== role.id);
-    }
+    const snapshot = cloneConfig();
+    config.roles = config.roles.filter((r) => r.id !== role.id);
     updateEventRoles(config);
     renderRoleTable(role.event);
-    hideLoading();
+
+    showLoading();
+    try {
+        const res = processResponse(await api('deleteRole', role.id));
+        if (res === null) {
+            restoreConfig(snapshot, role.event);
+        }
+    } finally {
+        hideLoading();
+    }
 }
 
 function renderRoleTypes(eventId) {
@@ -264,7 +299,8 @@ function renderRoleTypes(eventId) {
 }
 
 function roleTypeOptions(eventId, selectedType = ROLES.VIEWER) {
-    return Object.values(ROLES)
+    return [...Object.values(ROLES)]
+        .reverse()
         .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))
         .map(
             (role) =>
@@ -275,12 +311,27 @@ function roleTypeOptions(eventId, selectedType = ROLES.VIEWER) {
 
 function renderRoleLanguages() {
     document.querySelectorAll('.role-language-input').forEach((input) => {
-        input.innerHTML = roleLanguageOptions(input.value);
+        const row = input.closest('tr');
+        const type = row?.querySelector('.role-type-input')?.value || ROLES.VIEWER;
+        input.innerHTML = roleLanguageOptions(input.value, type);
     });
 }
 
-function roleLanguageOptions(selectedLanguage = '*') {
-    return languageOptions({ includeAll: true })
+function renderRoleLanguageForRow(typeInput) {
+    const row = typeInput.closest('tr');
+    const languageInput = row?.querySelector('.role-language-input');
+    if (!languageInput) return;
+
+    languageInput.innerHTML = roleLanguageOptions(languageInput.value, typeInput.value);
+}
+
+function roleLanguageOptions(selectedLanguage = '*', roleType = ROLES.VIEWER) {
+    const options =
+        roleType === ROLES.ADMIN || roleType === ROLES.OWNER
+            ? [{ id: '*', name: '* (All)' }]
+            : languageOptions({ includeAll: true });
+
+    return options
         .map(
             (language) =>
                 `<option value="${escapeHtml(language.id)}" ${language.id === selectedLanguage ? 'selected' : ''}>${escapeHtml(language.name)}</option>`,

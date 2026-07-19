@@ -1,5 +1,13 @@
-function getEventRoles(email, events, roles) {
+function getEventRoles(email, events, roles, isAppOwner = false) {
     const userRoles = roles.filter((r) => r.email === email);
+    if (isAppOwner) {
+        userRoles.push({
+            event: '*',
+            email,
+            type: ROLES.OWNER,
+            language: '*',
+        });
+    }
     const eventRoles = events.reduce((acc, e) => {
         acc[e.id] = [];
         return acc;
@@ -46,7 +54,7 @@ function hasRoleAccess(eventRoles, action, eventId, type = null) {
 
     if (action === ACTIONS.VIEW) return isEditor;
 
-    if (type === ROLES.OWNER) return false;
+    if (type === ROLES.OWNER) return isOwner;
     if (type === ROLES.ADMIN) return isOwner;
 
     return isAdmin;

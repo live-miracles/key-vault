@@ -28,7 +28,7 @@
       <span class="msg"></span>
     </div>
 
-    <div id="copied-notification" role="alert" class="alert alert-success fixed bottom-3 left-1/2 z-60 hidden w-fit -translate-x-1/2 transform">
+    <div id="copied-notification" role="alert" class="alert bg-primary text-primary-content fixed bottom-3 left-1/2 z-60 hidden w-fit -translate-x-1/2 transform">
       <span data-icon="check" class="h-6 w-6 shrink-0"></span>
       <span>Copied</span>
     </div>
@@ -72,7 +72,7 @@
           <div class="flex items-center">
             <fieldset class="fieldset inline-block w-32">
               <legend class="fieldset-legend">ID<span class="text-error">*</span></legend>
-              <input type="text" id="language-id-input" class="input w-full" placeholder="L01" maxlength="3" />
+              <input type="text" id="language-id-input" class="input w-full" placeholder="L1" />
               <p class="label text-error"></p>
             </fieldset>
 
@@ -92,16 +92,6 @@
         </div>
       </div>
     </dialog>
-
-    <!-- Context Menu -->
-    <div id="key-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-50 hidden border shadow-lg">
-      <ul class="menu w-fit p-2">
-        <li><a onclick="copyKeyBtn()">Copy Key</a></li>
-        <li><a onclick="copyRtmpBtn()">Copy Main URL</a></li>
-        <li><a onclick="copyRtmpBtn('2')" id="copy-backup-url-btn">Copy Backup URL</a></li>
-        <li><a onclick="copyLinkBtn()" id="copy-link-btn">Copy Link</a></li>
-      </ul>
-    </div>
 
     <dialog id="key-modal" class="modal">
       <div class="modal-box w-[95vw] max-w-200">
@@ -411,21 +401,21 @@
           </div>
           <div class="mx-auto min-h-0 w-full max-w-200 flex-1 overflow-x-auto overflow-y-auto" id="role-table">
             <div class="overflow-x-auto">
-              <table class="table">
+              <table class="table table-fixed">
                 <!-- head -->
                 <thead>
                   <tr class="text-center">
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Language</th>
+                    <th class="w-100">Email</th>
+                    <th class="w-30">Role</th>
+                    <th class="w-50">Language</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody id="role-rows">
                   <tr>
-                    <th><span class="loading loading-dots loading-xs"></span></th>
-                    <td><span class="loading loading-dots loading-xs"></span></td>
-                    <td><span class="loading loading-dots loading-xs"></span></td>
+                    <th class="w-100"><span class="loading loading-dots loading-xs"></span></th>
+                    <td class="w-30"><span class="loading loading-dots loading-xs"></span></td>
+                    <td class="w-50"><span class="loading loading-dots loading-xs"></span></td>
                     <td><span class="loading loading-dots loading-xs"></span></td>
                   </tr>
                 </tbody>
@@ -459,7 +449,6 @@
                 <thead>
                   <tr class="text-center">
                     <th></th>
-                    <th>ID</th>
                     <th>Name</th>
                     <th></th>
                   </tr>
@@ -467,7 +456,6 @@
                 <tbody id="language-rows">
                   <tr>
                     <th><span class="loading loading-dots loading-xs"></span></th>
-                    <td><span class="loading loading-dots loading-xs"></span></td>
                     <td><span class="loading loading-dots loading-xs"></span></td>
                     <td><span class="loading loading-dots loading-xs"></span></td>
                   </tr>
@@ -487,11 +475,11 @@
       </dialog>
 
       <div class="hidden flex-1 items-center justify-center px-4 text-center" id="no-events-access">
-        <div class="alert alert-info max-w-xl justify-center">
+        <div class="alert alert-accent max-w-xl justify-center">
           <span data-icon="error" class="h-6 w-6 shrink-0"></span>
           <span>
-            No events are available for
-            <span class="font-semibold" id="no-events-email"></span>.
+            <span id="no-events-message">No events are available for the signed-in email:</span>
+            <span class="font-semibold" id="no-events-email"></span>
           </span>
         </div>
       </div>
@@ -533,13 +521,13 @@
         </div>
       </div>
 
-      <div class="bg-base-200 sticky bottom-0 z-40 mt-1">
-        <div class="flex shrink-0 items-center">
-          <button class="btn btn-accent btn-square btn-xs ml-3 hidden" id="add-event-btn" title="Add" aria-label="Add event" onclick="addEventBtn()">
+      <div class="bg-base-200 sticky bottom-0 z-40 mt-1 min-h-10">
+        <div class="flex min-h-10 shrink-0 items-center px-3 py-1">
+          <button class="btn btn-accent btn-square btn-xs hidden" id="add-event-btn" title="Add" aria-label="Add event" onclick="addEventBtn()">
             <span data-icon="plus" class="h-4 w-4"></span>
           </button>
 
-          <div role="tablist" class="tabs tabs-sm tabs-box ml-3">
+          <div role="tablist" class="tabs tabs-sm tabs-box ml-3 min-h-8">
             <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
           </div>
         </div>

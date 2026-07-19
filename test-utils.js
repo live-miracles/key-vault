@@ -3,32 +3,33 @@ function getRandomWaitTime() {
 }
 
 function isValidLanguageIdMock(id) {
-    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L([1-9][0-9]*)$/.test(String(id));
 }
 
 function normalizeLanguageIdMock(id, allowAll = false) {
     const languageId = String(id ?? '').trim();
     if (allowAll && languageId === '*') return languageId;
-    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+    if (/^[1-9][0-9]*$/.test(languageId)) return `L${languageId}`;
 
-    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
-    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+    const prefixedMatch = languageId.match(/^(?:L|lang)([1-9][0-9]*)$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1]}`;
 
     return languageId;
 }
 
-function getNextEventIdMock(events) {
-    const usedNumbers = new Set(
-        events
-            .map((event) => String(event.id ?? '').match(/^E([1-9][0-9]*)$/))
-            .filter(Boolean)
-            .map((match) => Number(match[1])),
-    );
+function getSequentialIdNumberMock(id, prefix) {
+    const match = String(id ?? '').match(new RegExp(`^${prefix}([1-9][0-9]*)$`));
+    return match ? Number(match[1]) : null;
+}
 
-    for (let i = 1; ; i++) {
-        if (!usedNumbers.has(i)) return `E${String(i).padStart(2, '0')}`;
-    }
+function getNextSequentialIdMock(items, prefix) {
+    const maxNumber = Math.max(
+        ...items
+            .map((item) => getSequentialIdNumberMock(item.id, prefix))
+            .filter((number) => number !== null),
+        0,
+    );
+    return `${prefix}${maxNumber + 1}`;
 }
 
 function getAllDataMock(etag) {
@@ -74,7 +75,7 @@ function addEventMock(event) {
     }
 
     etagMock += 1;
-    event.id = getNextEventIdMock(testEvents);
+    event.id = getNextSequentialIdMock(testEvents, 'E');
     testEvents.push(event);
     event.row = testEvents.length + 1;
 
@@ -138,7 +139,7 @@ function addRoleMock(role) {
     role.language = normalizeLanguageIdMock(role.language, true);
 
     etagMock += 1;
-    role.id = String(Date.now());
+    role.id = getNextSequentialIdMock(testRoles, 'R');
     testRoles.push(role);
     role.row = testRoles.length + 1;
 
@@ -205,14 +206,7 @@ function addLanguageMock(language) {
     if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between L01 and L99',
-        };
-    }
-
-    if (testLanguages.length >= 99) {
-        return {
-            success: false,
-            error: 'Cannot add more than 99 languages',
+            error: 'Language id must be L1 or higher',
         };
     }
 
@@ -251,7 +245,7 @@ function editLanguageMock(language) {
     if (!isValidLanguageIdMock(language.id)) {
         return {
             success: false,
-            error: 'Language id must be between L01 and L99',
+            error: 'Language id must be L1 or higher',
         };
     }
 
@@ -338,7 +332,7 @@ function addKeyMock(key) {
     key.language = normalizeLanguageIdMock(key.language);
 
     etagMock += 1;
-    key.id = String(Date.now());
+    key.id = getNextSequentialIdMock(testKeys, 'K');
     testKeys.push(key);
     key.row = testKeys.length + 1;
 
@@ -432,70 +426,70 @@ const testEmail3 = 'test3@mail.com';
 
 const testEvents = [
     {
-        id: 'E01',
+        id: 'E1',
         name: 'Event 1',
     },
     {
-        id: 'E02',
+        id: 'E2',
         name: 'Event 2',
     },
     {
-        id: 'E03',
+        id: 'E3',
         name: 'Event 3',
     },
 ];
 
 const testRoles = [
     {
-        id: 'ROLE01',
-        event: 'E01',
+        id: 'R1',
+        event: 'E1',
         email: testEmail1,
         type: ROLES.ADMIN,
         language: '*',
     },
     {
-        id: 'ROLE02',
+        id: 'R2',
         event: '*',
         email: testEmail2,
         type: ROLES.OWNER,
         language: '*',
     },
     {
-        id: 'ROLE03',
-        event: 'E02',
+        id: 'R3',
+        event: 'E2',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'L01',
+        language: 'L1',
     },
     {
-        id: 'ROLE04',
-        event: 'E02',
+        id: 'R4',
+        event: 'E2',
         email: testEmail1,
         type: ROLES.EDITOR,
-        language: 'L02',
+        language: 'L2',
     },
     {
-        id: 'ROLE05',
-        event: 'E01',
+        id: 'R5',
+        event: 'E1',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'L09',
+        language: 'L9',
     },
 ];
 
 const testLanguages = [
     {
-        id: 'L01',
+        id: 'L1',
         name: 'English',
         order: '1',
     },
     {
-        id: 'L02',
+        id: 'L2',
         name: 'German',
         order: '2',
     },
     {
-        id: 'L03',
+        id: 'L3',
         name: 'Hindi',
         order: '3',
     },
@@ -504,10 +498,10 @@ const testLanguages = [
 const testKeys = [
     {
         row: 1,
-        id: 'KEY01',
-        event: 'E01',
+        id: 'K1',
+        event: 'E1',
         name: 'Channel 1',
-        language: 'L01',
+        language: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -518,10 +512,10 @@ const testKeys = [
     },
     {
         row: 2,
-        id: 'KEY02',
-        event: 'E01',
+        id: 'K2',
+        event: 'E1',
         name: 'Very Long Platform Name Channel Demo',
-        language: 'L02',
+        language: 'L2',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -532,10 +526,10 @@ const testKeys = [
     },
     {
         row: 3,
-        id: 'KEY03',
-        event: 'E01',
+        id: 'K3',
+        event: 'E1',
         name: 'Channel 3',
-        language: 'L01',
+        language: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -546,10 +540,10 @@ const testKeys = [
     },
     {
         row: 4,
-        id: 'KEY04',
-        event: 'E02',
+        id: 'K4',
+        event: 'E2',
         name: 'Channel 4',
-        language: 'L01',
+        language: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -560,10 +554,10 @@ const testKeys = [
     },
     {
         row: 5,
-        id: 'KEY05',
-        event: 'E01',
+        id: 'K5',
+        event: 'E1',
         name: 'Channel 5',
-        language: 'L01',
+        language: 'L1',
         server: 'rtmp',
         key: 'rtmp://123.123.123.123/live/abc-123-abc-123-abc-123',
         server2: '',
@@ -574,10 +568,10 @@ const testKeys = [
     },
     {
         row: 6,
-        id: 'KEY06',
-        event: 'E02',
+        id: 'K6',
+        event: 'E2',
         name: 'Channel 6',
-        language: 'L02',
+        language: 'L2',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -588,10 +582,10 @@ const testKeys = [
     },
     {
         row: 7,
-        id: 'KEY07',
-        event: 'E01',
+        id: 'K7',
+        event: 'E1',
         name: 'Missing Language Demo',
-        language: 'L09',
+        language: 'L9',
         server: 'yt',
         key: 'abc-123-abc-123-missing',
         server2: '',
@@ -602,10 +596,10 @@ const testKeys = [
     },
     {
         row: 8,
-        id: 'KEY08',
-        event: 'E01',
+        id: 'K8',
+        event: 'E1',
         name: 'Instagram Demo',
-        language: 'L03',
+        language: 'L3',
         server: 'ig',
         key: 'IG-abc-123-abc-123?s_prp=demo',
         server2: '',
@@ -616,10 +610,10 @@ const testKeys = [
     },
     {
         row: 9,
-        id: 'KEY09',
-        event: 'E01',
+        id: 'K9',
+        event: 'E1',
         name: 'Custom SRT Demo',
-        language: 'L03',
+        language: 'L3',
         server: 'srt',
         key: 'srt://stream.example.com:10000?mode=caller&latency=240000&passphrase=demo-passphrase&pbkeylen=16&streamid=%23%21%3A%3Ar%3Dlive%2Fdemo%2Cm%3Dpublish',
         server2: '',
@@ -627,6 +621,20 @@ const testKeys = [
         color: '',
         link: '',
         remarks: '',
+    },
+    {
+        row: 10,
+        id: 'K9',
+        event: 'E1',
+        name: 'Duplicate ID Demo',
+        language: 'L2',
+        server: 'yt',
+        key: 'duplicate-id-demo-key',
+        server2: '',
+        key2: '',
+        color: '',
+        link: '',
+        remarks: 'Mock row with the same ID as another key',
     },
 ];
 

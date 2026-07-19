@@ -2826,6 +2826,12 @@
   .min-h-0 {
     min-height: 0px;
   }
+  .min-h-8 {
+    min-height: calc(var(--spacing) * 8);
+  }
+  .min-h-10 {
+    min-height: calc(var(--spacing) * 10);
+  }
   .min-h-screen {
     min-height: 100vh;
   }
@@ -2858,11 +2864,17 @@
   .w-28 {
     width: calc(var(--spacing) * 28);
   }
+  .w-30 {
+    width: calc(var(--spacing) * 30);
+  }
   .w-32 {
     width: calc(var(--spacing) * 32);
   }
   .w-40 {
     width: calc(var(--spacing) * 40);
+  }
+  .w-50 {
+    width: calc(var(--spacing) * 50);
   }
   .w-56 {
     width: calc(var(--spacing) * 56);
@@ -2872,6 +2884,9 @@
   }
   .w-80 {
     width: calc(var(--spacing) * 80);
+  }
+  .w-100 {
+    width: calc(var(--spacing) * 100);
   }
   .w-\[95vw\] {
     width: 95vw;
@@ -2914,6 +2929,9 @@
   }
   .basis-full {
     flex-basis: 100%;
+  }
+  .table-fixed {
+    table-layout: fixed;
   }
   .-translate-x-1\/2 {
     --tw-translate-x: calc(calc(1 / 2 * 100%) * -1);
@@ -3029,6 +3047,15 @@
   .bg-base-300 {
     background-color: var(--color-base-300);
   }
+  .bg-error\/10 {
+    background-color: var(--color-error);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-error) 10%, transparent);
+    }
+  }
+  .bg-primary {
+    background-color: var(--color-primary);
+  }
   .bg-red-500\/30 {
     background-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 30%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -3089,6 +3116,9 @@
   }
   .px-5 {
     padding-inline: calc(var(--spacing) * 5);
+  }
+  .py-1 {
+    padding-block: var(--spacing);
   }
   .pt-3 {
     padding-top: calc(var(--spacing) * 3);
@@ -3152,11 +3182,6 @@
       --alert-border-color: var(--color-error);
       --alert-color: var(--color-error);
     }
-    .alert-info {
-      color: var(--color-info-content);
-      --alert-border-color: var(--color-info);
-      --alert-color: var(--color-info);
-    }
     .alert-success {
       color: var(--color-success-content);
       --alert-border-color: var(--color-success);
@@ -3180,6 +3205,9 @@
   }
   .text-error {
     color: var(--color-error);
+  }
+  .text-primary-content {
+    color: var(--color-primary-content);
   }
   .text-warning {
     color: var(--color-warning);

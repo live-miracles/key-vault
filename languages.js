@@ -9,6 +9,17 @@ function getLanguages() {
         });
 }
 
+function getLanguagesForTable() {
+    return [...(config.languages || [])]
+        .map((language) => ({ ...language, id: normalizeLanguageId(language.id) }))
+        .filter((language) => language.id || language.name)
+        .sort((a, b) => {
+            const orderDiff = Number(a.order || 0) - Number(b.order || 0);
+            if (orderDiff !== 0) return orderDiff;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+}
+
 function getLanguageName(id) {
     if (id === '*') return '* (All)';
     const languageId = normalizeLanguageId(id);
@@ -38,25 +49,19 @@ function getLanguageOrder(id) {
 }
 
 function getNextLanguageId() {
-    const usedIds = new Set(getLanguages().map((language) => language.id));
-    for (let i = 1; i <= 99; i++) {
-        const id = `L${String(i).padStart(2, '0')}`;
-        if (!usedIds.has(id)) return id;
-    }
-    return '';
+    return getNextSequentialId(getLanguages(), 'L');
 }
 
 function isValidLanguageId(id) {
-    return /^L(0[1-9]|[1-9][0-9])$/.test(String(id));
+    return /^L([1-9][0-9]*)$/.test(String(id));
 }
 
 function normalizeLanguageId(id) {
     const languageId = String(id ?? '').trim();
-    if (/^[1-9]$/.test(languageId)) return `L${languageId.padStart(2, '0')}`;
-    if (/^(0[1-9]|[1-9][0-9])$/.test(languageId)) return `L${languageId}`;
+    if (/^[1-9][0-9]*$/.test(languageId)) return `L${languageId}`;
 
-    const prefixedMatch = languageId.match(/^(?:L|lang)(0?[1-9]|[1-9][0-9])$/i);
-    if (prefixedMatch) return `L${prefixedMatch[1].padStart(2, '0')}`;
+    const prefixedMatch = languageId.match(/^(?:L|lang)([1-9][0-9]*)$/i);
+    if (prefixedMatch) return `L${prefixedMatch[1]}`;
 
     return languageId;
 }
@@ -79,22 +84,23 @@ function renderLanguageSelect(selector, options) {
 }
 
 function renderLanguageTable() {
-    document.querySelector('#add-language-btn').disabled = getLanguages().length >= 99;
-    document.querySelector('#language-rows').innerHTML = getLanguages()
+    document.querySelector('#add-language-btn').disabled = false;
+    const languages = getLanguagesForTable();
+    document.querySelector('#language-rows').innerHTML = languages
         .map((language) => {
+            const idIssue = getIdIssue(languages, language);
+            const isPending = Boolean(language.pending);
             const usedByKeys = config.keys.some((key) => key.language === language.id);
             const usedByRoles = config.roles.some((role) => role.language === language.id);
-            const deleteDisabled = usedByKeys || usedByRoles ? 'disabled' : '';
-            const deleteTitle = deleteDisabled ? 'Language is in use' : 'Delete';
-
-            return `
-                <tr class="hover:bg-base-300 text-center" data-language-id="${escapeHtml(language.id)}" draggable="true">
-                    <td style="padding: 5px;" class="cursor-move text-base-content/60" title="Drag to reorder">
-                        ${iconSvg('grip', 'mx-auto h-4 w-4')}
-                    </td>
-                    <th style="padding: 5px;">${escapeHtml(language.id)}</th>
-                    <td style="padding: 5px;">${escapeHtml(language.name)}</td>
-                    <td style="padding: 5px;">
+            const deleteDisabled = isPending || usedByKeys || usedByRoles ? 'disabled' : '';
+            const deleteTitle = isPending
+                ? 'Saving'
+                : deleteDisabled
+                  ? 'Language is in use'
+                  : 'Delete';
+            const actions = isPending
+                ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+                : `
                         <div class="flex justify-center gap-1">
                             <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit language" onclick="editLanguageById(this.closest('tr').dataset.languageId)">
                                 ${iconSvg('pen')}
@@ -103,13 +109,29 @@ function renderLanguageTable() {
                                 ${iconSvg('trash')}
                             </button>
                         </div>
+                    `;
+
+            return `
+                <tr class="hover:bg-base-300 text-center ${idIssueClass(idIssue)}" data-language-id="${escapeHtml(language.id)}" draggable="${isPending ? 'false' : 'true'}" title="${escapeHtml(idIssue)}">
+                    <td style="padding: 5px;" class="cursor-move text-base-content/60" title="Drag to reorder">
+                        ${iconSvg('grip', 'mx-auto h-4 w-4')}
                     </td>
+                    <td style="padding: 5px;">
+                        <div class="flex items-center justify-center gap-2">
+                            <span>${escapeHtml(language.name || '(unnamed)')}</span>
+                            ${idIssueBadgeHtml(idIssue)}
+                        </div>
+                    </td>
+                    <td style="padding: 5px;">${actions}</td>
                 </tr>
             `;
         })
         .join('');
 
     document.querySelectorAll('#language-rows tr').forEach((row) => {
+        if (languages.find((language) => language.id === row.dataset.languageId)?.pending) {
+            return;
+        }
         row.addEventListener('dragstart', dragLanguageStart);
         row.addEventListener('dragover', dragLanguageOver);
         row.addEventListener('drop', dropLanguage);
@@ -118,17 +140,14 @@ function renderLanguageTable() {
 }
 
 function showSettingsModal() {
+    if (!hasLanguageAccess(eventRoles)) return;
+
     renderLanguageTable();
     document.querySelector('#settings-modal').showModal();
 }
 
 function addLanguageBtn() {
     const nextId = getNextLanguageId();
-    if (!nextId) {
-        showErrorAlert('Cannot add more than 99 languages');
-        return;
-    }
-
     document.querySelector('#language-id-input').value = nextId;
     document.querySelector('#language-id-input').readOnly = true;
     document.querySelector('#language-modal').dataset.mode = 'add';
@@ -166,7 +185,7 @@ async function saveLanguageFormBtn(event) {
         event.preventDefault();
         return;
     } else if (!isValidLanguageId(language.id)) {
-        errorElem.innerText = 'Use L01 to L99';
+        errorElem.innerText = 'Use L1 or higher';
         event.preventDefault();
         return;
     } else if (
@@ -189,24 +208,43 @@ async function saveLanguageFormBtn(event) {
         errorElem.innerText = '';
     }
 
-    showLoading();
     const isEdit = document.querySelector('#language-modal').dataset.mode === 'edit';
-    const newLanguage = processResponse(
-        await api(isEdit ? 'editLanguage' : 'addLanguage', language),
-    );
-    if (newLanguage !== null) {
-        const oldLanguage = config.languages.find((l) => l.id === newLanguage.id);
-        if (oldLanguage) {
-            config.languages.splice(config.languages.indexOf(oldLanguage), 1, newLanguage);
-        } else {
-            config.languages.push(newLanguage);
+    const snapshot = cloneConfig();
+    const oldLanguage = config.languages.find((l) => l.id === language.id);
+    const optimisticLanguage = {
+        ...oldLanguage,
+        ...language,
+        pending: !isEdit,
+        order:
+            oldLanguage?.order ||
+            String(Math.max(...config.languages.map((l) => Number(l.order) || 0), 0) + 1),
+    };
+
+    replaceConfigItem('languages', optimisticLanguage);
+    renderLanguageTable();
+    renderRoleLanguages();
+    renderKeyLanguages(getUrlParam('event'));
+    renderKeyTable(getUrlParam('event'));
+
+    showLoading();
+    try {
+        const newLanguage = processResponse(
+            await api(isEdit ? 'editLanguage' : 'addLanguage', language),
+        );
+        if (newLanguage === null) {
+            restoreConfig(snapshot);
+            renderLanguageTable();
+            renderRoleLanguages();
+            return;
         }
+        replaceConfigItem('languages', newLanguage);
         renderLanguageTable();
         renderRoleLanguages();
         renderKeyLanguages(getUrlParam('event'));
         renderKeyTable(getUrlParam('event'));
+    } finally {
+        hideLoading();
     }
-    hideLoading();
 }
 
 async function deleteLanguageById(languageId) {
@@ -220,16 +258,24 @@ async function deleteLanguageById(languageId) {
         return;
     }
 
-    showLoading();
-    const res = processResponse(await api('deleteLanguage', language.id));
-    if (res !== null) {
-        config.languages = config.languages.filter((l) => l.id !== language.id);
-    }
+    const snapshot = cloneConfig();
+    config.languages = config.languages.filter((l) => l.id !== language.id);
     renderLanguageTable();
     renderRoleLanguages();
     renderKeyLanguages(getUrlParam('event'));
     renderKeyTable(getUrlParam('event'));
-    hideLoading();
+
+    showLoading();
+    try {
+        const res = processResponse(await api('deleteLanguage', language.id));
+        if (res === null) {
+            restoreConfig(snapshot);
+            renderLanguageTable();
+            renderRoleLanguages();
+        }
+    } finally {
+        hideLoading();
+    }
 }
 
 let draggedLanguageId = null;
@@ -267,18 +313,33 @@ async function dropLanguage(event) {
     const currentIds = getLanguages().map((language) => language.id);
     if (languageIds.join('|') === currentIds.join('|')) return;
 
+    const snapshot = cloneConfig();
+    config.languages = languageIds.map((id, index) => {
+        const language = config.languages.find((l) => l.id === id);
+        return { ...language, order: String(index + 1) };
+    });
+    renderLanguageTable();
+    renderRoleLanguages();
+    renderKeyLanguages(getUrlParam('event'));
+    renderKeyTable(getUrlParam('event'));
+
     showLoading();
-    const newLanguages = processResponse(await api('reorderLanguages', languageIds));
-    if (newLanguages !== null) {
-        config.languages = newLanguages;
-        renderLanguageTable();
-        renderRoleLanguages();
-        renderKeyLanguages(getUrlParam('event'));
-        renderKeyTable(getUrlParam('event'));
-    } else {
-        renderLanguageTable();
+    try {
+        const newLanguages = processResponse(await api('reorderLanguages', languageIds));
+        if (newLanguages !== null) {
+            config.languages = newLanguages;
+            renderLanguageTable();
+            renderRoleLanguages();
+            renderKeyLanguages(getUrlParam('event'));
+            renderKeyTable(getUrlParam('event'));
+        } else {
+            restoreConfig(snapshot);
+            renderLanguageTable();
+            renderRoleLanguages();
+        }
+    } finally {
+        hideLoading();
     }
-    hideLoading();
 }
 
 function dragLanguageEnd(event) {

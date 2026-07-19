@@ -77,6 +77,12 @@ function hasKeyAccess(eventRoles, action, eventId, language = null) {
     return isEditor;
 }
 
+function hasKeyColorAccess(eventRoles, eventId) {
+    if (!eventRoles[eventId]) return false;
+
+    return eventRoles[eventId].some((r) => r.type === ROLES.OWNER || r.type === ROLES.ADMIN);
+}
+
 const ACTIONS = {
     VIEW: 'view',
     CREATE: 'create',

@@ -11,3 +11,15 @@
 .q-hidden {
     @apply opacity-50;
 }
+
+.stream-url-config .fieldset {
+    @apply gap-1;
+}
+
+.stream-url-config .label:empty {
+    @apply hidden;
+}
+
+#key-modal .label:empty {
+    @apply hidden;
+}

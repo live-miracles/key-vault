@@ -6,6 +6,12 @@ function getShortText(str, len) {
     return str.length > len ? str.slice(0, len / 2) + ' … ' + str.slice(-len / 2) : str;
 }
 
+function getMiddleEllipsisText(value, maxLength, startLength, endLength) {
+    const text = String(value ?? '');
+    if (text.length <= maxLength) return text;
+    return text.slice(0, startLength) + ' ... ' + text.slice(-endLength);
+}
+
 function escapeHtml(value) {
     return String(value ?? '')
         .replaceAll('&', '&amp;')

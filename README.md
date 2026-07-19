@@ -55,8 +55,6 @@ Pushing a git tag publishes a versioned frontend snapshot to GitHub Pages at
 load that pinned asset version, so future frontend changes do not affect older releases.
 
 ```bash
-git add ...
-git commit -m "..."
 npm version 0.3.2
 git push origin master --tags
 ```

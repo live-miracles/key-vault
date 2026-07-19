@@ -98,7 +98,27 @@ test('labels visible key colors with color markers', () => {
     assert.equal(COLORS[KEY_COLORS.NONE].name, 'None');
     assert.equal(COLORS[KEY_COLORS.ERROR].name, '🔴 Error');
     assert.equal(COLORS[KEY_COLORS.WARNING].name, '🟡 Warning');
-    assert.equal(COLORS[KEY_COLORS.NEW].name, '🟣 New');
+    assert.equal(COLORS[KEY_COLORS.CONFIGURED].name, '🟣 Configured');
+});
+
+test('keeps changed streaming configurations uncolored until configured', () => {
+    const runtime = loadKeys();
+    const { KEY_COLORS } = runtime.get('({ KEY_COLORS })');
+    const hasStreamingConfigChanged = runtime.get('hasStreamingConfigChanged');
+    const oldKey = {
+        server: 'yt',
+        key: 'abc123',
+        server2: '',
+        key2: '',
+        color: KEY_COLORS.CONFIGURED,
+    };
+    const changedKey = { ...oldKey, key: 'updated', color: KEY_COLORS.CONFIGURED };
+
+    if (hasStreamingConfigChanged(oldKey, changedKey)) {
+        changedKey.color = KEY_COLORS.NONE;
+    }
+
+    assert.equal(changedKey.color, KEY_COLORS.NONE);
 });
 
 test('allows only owners and admins to edit key colors in the UI', () => {

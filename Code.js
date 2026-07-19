@@ -144,7 +144,7 @@ const KEY_COLORS = {
     NONE: '',
     ERROR: '1',
     WARNING: '3',
-    NEW: '6',
+    CONFIGURED: '6',
 };
 
 function normalizeKeyColor(color) {
@@ -879,7 +879,7 @@ function editKey(key) {
     const oldColor = normalizeKeyColor(old.color);
     const streamingConfigChanged = hasStreamingConfigChanged(old, key);
     if (streamingConfigChanged) {
-        key.color = KEY_COLORS.NEW;
+        key.color = KEY_COLORS.NONE;
     } else if (key.color !== oldColor && !hasKeyColorAccess(eventRoles, key.event)) {
         return {
             success: false,

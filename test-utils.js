@@ -357,7 +357,7 @@ function editKeyMock(key) {
     }
 
     if (hasStreamingConfigChanged(old, key)) {
-        key.color = KEY_COLORS.NEW;
+        key.color = KEY_COLORS.NONE;
     }
 
     etagMock += 1;

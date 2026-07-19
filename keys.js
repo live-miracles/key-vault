@@ -167,15 +167,14 @@ function renderKeyTable(eventId = null) {
             const link = safeUrl(k.link);
             const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
             const isPending = Boolean(k.pending);
-            const hasVisibleColor = Boolean(COLORS[k.color]?.bgCss);
-            const canClearColor =
-                hasKeyColorAccess(eventRoles, k.event) && hasVisibleColor && !isPending;
+            const canMarkConfigured =
+                hasKeyColorAccess(eventRoles, k.event) && k.color === KEY_COLORS.NONE && !isPending;
             const actions = isPending
                 ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
                 : canManageKey
                   ? `
                     <div class="flex justify-center gap-1">
-                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent ${canClearColor ? '' : 'invisible'}" title="Mark configured" aria-label="Mark key configured" ${canClearColor ? `onclick="markKeyConfiguredById(this.closest('tr').dataset.keyId)"` : 'disabled'}>
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent ${canMarkConfigured ? '' : 'invisible'}" title="Mark configured" aria-label="Mark key configured" ${canMarkConfigured ? `onclick="markKeyConfiguredById(this.closest('tr').dataset.keyId)"` : 'disabled'}>
                             ${iconSvg('check')}
                         </button>
                         <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" onclick="editKeyById(this.closest('tr').dataset.keyId)">
@@ -557,7 +556,7 @@ async function saveKeyFormBtn(event) {
 
     const oldKey = key.id ? config.keys.find((k) => k.id === key.id) : null;
     if (oldKey && hasStreamingConfigChanged(oldKey, key)) {
-        key.color = KEY_COLORS.NEW;
+        key.color = KEY_COLORS.NONE;
     } else if (!hasKeyColorAccess(eventRoles, key.event)) {
         key.color = oldKey ? oldKey.color : KEY_COLORS.NONE;
     }
@@ -686,12 +685,14 @@ async function markKeyConfigured() {
     }
 
     const snapshot = cloneConfig();
-    replaceConfigItem('keys', { ...key, color: KEY_COLORS.NONE });
+    replaceConfigItem('keys', { ...key, color: KEY_COLORS.CONFIGURED });
     renderKeyTable(key.event);
 
     showLoading();
     try {
-        const newKey = processResponse(await api('editKey', { ...key, color: KEY_COLORS.NONE }));
+        const newKey = processResponse(
+            await api('editKey', { ...key, color: KEY_COLORS.CONFIGURED }),
+        );
         if (newKey === null) {
             restoreConfig(snapshot, key.event);
             return;
@@ -844,14 +845,14 @@ const KEY_COLORS = {
     NONE: '',
     ERROR: '1',
     WARNING: '3',
-    NEW: '6',
+    CONFIGURED: '6',
 };
 
 const COLORS = {
     [KEY_COLORS.NONE]: { name: 'None', css: '', bgCss: '' },
     [KEY_COLORS.ERROR]: { name: '🔴 Error', css: 'text-error', bgCss: 'bg-red-500/30' },
     [KEY_COLORS.WARNING]: { name: '🟡 Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
-    [KEY_COLORS.NEW]: { name: '🟣 New', css: 'text-accent', bgCss: 'bg-accent/10' },
+    [KEY_COLORS.CONFIGURED]: { name: '🟣 Configured', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
 
 const LOCKED_BACKUP_BY_SERVER = {

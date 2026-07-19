@@ -26,6 +26,16 @@ test('keeps only safe HTTP and HTTPS URLs', () => {
     assert.equal(safeUrl(''), '');
 });
 
+test('detects empty and duplicate ids', () => {
+    const runtime = loadUtils();
+    const getIdIssue = runtime.get('getIdIssue');
+    const items = [{ id: 'K1' }, { id: 'K1' }, { id: '   ' }, { id: 'K2' }];
+
+    assert.equal(getIdIssue(items, items[0]), 'Duplicate ID: K1');
+    assert.equal(getIdIssue(items, items[2]), 'Empty ID');
+    assert.equal(getIdIssue(items, items[3]), '');
+});
+
 test('updates and reads query parameters', () => {
     const runtime = loadUtils();
 

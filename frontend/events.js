@@ -1,11 +1,14 @@
 function renderEventTabBar(eventId = null) {
-    const events = config.events.filter((e) => e.id && e.name);
+    const events = config.events.filter((e) => e.id || e.name);
     const event = events.find((e) => e.id === eventId);
     const name = event?.name || '';
+    const headerIssue = event ? getIdIssue(config.events, event) : '';
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
     const canManageLanguages = hasLanguageAccess(eventRoles);
     document.getElementById('event-name').innerText = name;
+    document.getElementById('event-name').className = headerIssue ? 'text-error' : '';
+    document.getElementById('event-name').title = headerIssue;
 
     document.querySelector('#add-event-btn').disabled = !canCreateEvents;
     document.querySelector('#add-event-btn').classList.toggle('hidden', !canCreateEvents);
@@ -27,10 +30,12 @@ function renderEventTabBar(eventId = null) {
     const tabsElem = document.querySelector('.tabs');
     tabsElem.replaceChildren(
         ...events.map((e) => {
+            const idIssue = getIdIssue(config.events, e);
             const tab = document.createElement('a');
             tab.role = 'tab';
-            tab.className = `tab ${eventId === e.id ? 'tab-active' : ''}`;
-            tab.textContent = e.name;
+            tab.className = `tab ${eventId === e.id ? 'tab-active' : ''} ${idIssue ? 'text-error bg-error/10' : ''}`;
+            tab.textContent = idIssue ? `${e.name || '(unnamed)'} (ID issue)` : e.name;
+            tab.title = idIssue;
             tab.addEventListener('click', () => selectEvent(e.id));
             return tab;
         }),

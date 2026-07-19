@@ -9,6 +9,17 @@ function getLanguages() {
         });
 }
 
+function getLanguagesForTable() {
+    return [...(config.languages || [])]
+        .map((language) => ({ ...language, id: normalizeLanguageId(language.id) }))
+        .filter((language) => language.id || language.name)
+        .sort((a, b) => {
+            const orderDiff = Number(a.order || 0) - Number(b.order || 0);
+            if (orderDiff !== 0) return orderDiff;
+            return String(a.name || '').localeCompare(String(b.name || ''));
+        });
+}
+
 function getLanguageName(id) {
     if (id === '*') return '* (All)';
     const languageId = normalizeLanguageId(id);
@@ -74,8 +85,10 @@ function renderLanguageSelect(selector, options) {
 
 function renderLanguageTable() {
     document.querySelector('#add-language-btn').disabled = false;
-    document.querySelector('#language-rows').innerHTML = getLanguages()
+    const languages = getLanguagesForTable();
+    document.querySelector('#language-rows').innerHTML = languages
         .map((language) => {
+            const idIssue = getIdIssue(languages, language);
             const isPending = Boolean(language.pending);
             const usedByKeys = config.keys.some((key) => key.language === language.id);
             const usedByRoles = config.roles.some((role) => role.language === language.id);
@@ -99,11 +112,16 @@ function renderLanguageTable() {
                     `;
 
             return `
-                <tr class="hover:bg-base-300 text-center" data-language-id="${escapeHtml(language.id)}" draggable="${isPending ? 'false' : 'true'}">
+                <tr class="hover:bg-base-300 text-center ${idIssueClass(idIssue)}" data-language-id="${escapeHtml(language.id)}" draggable="${isPending ? 'false' : 'true'}" title="${escapeHtml(idIssue)}">
                     <td style="padding: 5px;" class="cursor-move text-base-content/60" title="Drag to reorder">
                         ${iconSvg('grip', 'mx-auto h-4 w-4')}
                     </td>
-                    <td style="padding: 5px;">${escapeHtml(language.name)}</td>
+                    <td style="padding: 5px;">
+                        <div class="flex items-center justify-center gap-2">
+                            <span>${escapeHtml(language.name || '(unnamed)')}</span>
+                            ${idIssueBadgeHtml(idIssue)}
+                        </div>
+                    </td>
                     <td style="padding: 5px;">${actions}</td>
                 </tr>
             `;
@@ -111,7 +129,7 @@ function renderLanguageTable() {
         .join('');
 
     document.querySelectorAll('#language-rows tr').forEach((row) => {
-        if (config.languages.find((language) => language.id === row.dataset.languageId)?.pending) {
+        if (languages.find((language) => language.id === row.dataset.languageId)?.pending) {
             return;
         }
         row.addEventListener('dragstart', dragLanguageStart);

@@ -66,8 +66,8 @@ function hideLoading() {
 }
 
 function updateEventRoles(config) {
-    config.events = config.events.filter((e) => e.id && e.name);
-    eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const validEvents = config.events.filter((e) => e.id && e.name);
+    eventRoles = getEventRoles(config.userEmail, validEvents, config.roles, config.isAppOwner);
 }
 
 async function fetchDataAndRerender() {

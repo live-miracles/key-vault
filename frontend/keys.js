@@ -160,6 +160,7 @@ function renderKeyTable(eventId = null) {
 
     document.querySelector('#key-rows').innerHTML = keys
         .map((k, i) => {
+            const idIssue = getIdIssue(config.keys, k);
             const color = COLORS[k.color] || COLORS[''];
             const link = safeUrl(k.link);
             const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
@@ -220,10 +221,15 @@ function renderKeyTable(eventId = null) {
                 (key, index) => index <= i && key.language === k.language,
             ).length;
             return `
-                <tr class="hover:bg-base-300 ${color.bgCss} text-center" data-key-id="${escapeHtml(k.id)}">
+                <tr class="hover:bg-base-300 ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${escapeHtml(k.id)}" title="${escapeHtml(idIssue)}">
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
                     <td style="padding: 2px">${languageLabelHtml(k.language)}</td>
-                    <td style="padding: 2px" title="${escapeHtml(k.name)}">${escapeHtml(getPlatformNamePreview(k.name))}</td>
+                    <td style="padding: 2px" title="${escapeHtml(k.name)}">
+                        <div class="flex items-center justify-center gap-2">
+                            <span>${escapeHtml(getPlatformNamePreview(k.name))}</span>
+                            ${idIssueBadgeHtml(idIssue)}
+                        </div>
+                    </td>
                     <td style="padding: 2px">${mainUrlCell}</td>
                     <td style="padding: 2px">${backupUrlCell}</td>
                     <td style="padding: 2px">${webLinkCell}</td>

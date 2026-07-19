@@ -40,6 +40,33 @@ function getNextSequentialId(items, prefix) {
     return `${prefix}${maxNumber + 1}`;
 }
 
+function getItemId(item) {
+    return String(item?.id ?? '').trim();
+}
+
+function getIdIssue(items, item) {
+    const id = getItemId(item);
+    if (!id) return 'Empty ID';
+
+    const count = items.filter((entry) => getItemId(entry) === id).length;
+    return count > 1 ? `Duplicate ID: ${id}` : '';
+}
+
+function idIssueClass(issue) {
+    return issue ? 'bg-error/10 text-error' : '';
+}
+
+function idIssueBadgeHtml(issue) {
+    if (!issue) return '';
+
+    return `
+        <span class="text-error inline-flex items-center justify-center gap-1 text-xs font-semibold" title="${escapeHtml(issue)}">
+            ${iconSvg('error', 'h-4 w-4')}
+            <span>ID issue</span>
+        </span>
+    `;
+}
+
 const ICON_PATHS = {
     check: '<path d="M9 12l2 2 4-4" /><circle cx="12" cy="12" r="9" />',
     error: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /><circle cx="12" cy="12" r="9" />',

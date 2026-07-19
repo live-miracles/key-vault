@@ -120,7 +120,7 @@ function parseCache(text) {
 
     return {
         etag: tmp.etag,
-        events: sheetStringsToObjects(tmp.events).filter((event) => event.id && event.name),
+        events: sheetStringsToObjects(tmp.events).filter((event) => event.id || event.name),
         roles,
         keys,
         languages: tmp.languages
@@ -129,7 +129,7 @@ function parseCache(text) {
                       ...language,
                       id: normalizeLanguageId(language.id),
                   }))
-                  .filter((language) => language.id && isValidLanguageId(language.id))
+                  .filter((language) => language.id || language.name)
             : [],
     };
 }
@@ -164,7 +164,12 @@ function getAllData(etag) {
     config.userEmail = getUserEmail();
     config.isAppOwner = isAppOwnerEmail(config.userEmail);
 
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     config.events = config.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id));
     config.roles = config.roles.filter((r) =>
         hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type),
@@ -210,7 +215,12 @@ function addEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
 
     if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) {
         return {
@@ -246,7 +256,12 @@ function editEvent(event) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const old = config.events.find((e) => e.id === event.id);
     if (!old) {
         return { success: false, error: 'Event not found: ' + event.id };
@@ -279,7 +294,12 @@ function deleteEvent(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const event = config.events.find((e) => e.id === id);
     if (!event) {
         return { success: false, error: 'Event not found: ' + id };
@@ -330,7 +350,12 @@ function addRole(role) {
             : normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
 
     if (!isValidLanguage(config, role.language, true)) {
         return { success: false, error: 'Language not found: ' + role.language };
@@ -372,7 +397,12 @@ function editRole(role) {
             : normalizeLanguageId(role.language, true);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const old = config.roles.find((r) => r.id === role.id);
     if (!old) {
         return { success: false, error: 'Role not found: ' + role.id };
@@ -415,7 +445,12 @@ function deleteRole(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const role = config.roles.find((r) => r.id === id);
 
     if (!role) {
@@ -451,7 +486,12 @@ function addLanguage(language) {
     language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
 
     if (!hasLanguageAccess(eventRoles)) {
         return {
@@ -497,7 +537,12 @@ function editLanguage(language) {
     language.id = normalizeLanguageId(language.id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const old = config.languages.find((l) => l.id === language.id);
     if (!old) {
         return { success: false, error: 'Language not found: ' + language.id };
@@ -534,7 +579,12 @@ function reorderLanguages(languageIds) {
     languageIds = languageIds.map((id) => normalizeLanguageId(id));
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
 
     if (!hasLanguageAccess(eventRoles)) {
         return {
@@ -592,7 +642,12 @@ function deleteLanguage(id) {
     id = normalizeLanguageId(id);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const language = config.languages.find((l) => l.id === id);
 
     if (!language) {
@@ -632,7 +687,12 @@ function addKey(key) {
     key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
 
     if (!isValidLanguage(config, key.language)) {
         return { success: false, error: 'Language not found: ' + key.language };
@@ -697,7 +757,12 @@ function editKey(key) {
     key.color = normalizeKeyColor(key.color);
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const old = config.keys.find((k) => k.id === key.id);
 
     if (!old) {
@@ -772,7 +837,12 @@ function deleteKey(id) {
     }
 
     const config = getAllData().data;
-    const eventRoles = getEventRoles(config.userEmail, config.events, config.roles, config.isAppOwner);
+    const eventRoles = getEventRoles(
+        config.userEmail,
+        config.events,
+        config.roles,
+        config.isAppOwner,
+    );
     const key = config.keys.find((k) => k.id === id);
 
     if (!key) {

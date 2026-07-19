@@ -15,6 +15,7 @@ function renderRoleTable(eventId = null) {
             return renderRoleEditRow(r);
         }
 
+        const idIssue = getIdIssue(config.roles, r);
         const isCurrentUser = r.email.toLowerCase() === config.userEmail.toLowerCase();
         const canManageRole = hasRoleAccess(eventRoles, ACTIONS.UPDATE, r.event, r.type);
         const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
@@ -34,8 +35,13 @@ function renderRoleTable(eventId = null) {
               : '';
 
         return `
-            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
-                <th class="w-100" style="padding: 5px;">${emailLabel}</th>
+            <tr class="hover:bg-base-300 text-center ${idIssueClass(idIssue)}" data-role-id="${escapeHtml(r.id)}" title="${escapeHtml(idIssue)}">
+                <th class="w-100" style="padding: 5px;">
+                    <div class="flex items-center justify-center gap-2">
+                        <span>${emailLabel}</span>
+                        ${idIssueBadgeHtml(idIssue)}
+                    </div>
+                </th>
                 <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
                 <td class="w-50" style="padding: 5px;">${languageLabelHtml(r.language)}</td>
                 <td style="padding: 5px;">${actions}</td>

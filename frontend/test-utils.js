@@ -622,6 +622,20 @@ const testKeys = [
         link: '',
         remarks: '',
     },
+    {
+        row: 10,
+        id: 'K9',
+        event: 'E1',
+        name: 'Duplicate ID Demo',
+        language: 'L2',
+        server: 'yt',
+        key: 'duplicate-id-demo-key',
+        server2: '',
+        key2: '',
+        color: '',
+        link: '',
+        remarks: 'Mock row with the same ID as another key',
+    },
 ];
 
 const googleMock = {};

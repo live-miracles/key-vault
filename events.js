@@ -23,33 +23,8 @@ function renderEventTabBar(eventId = null) {
         .querySelector('#show-settings-btn')
         .classList.toggle('hidden', !hasLanguageAccess(eventRoles));
 
-    const canLockEvent = hasEventAccess(eventRoles, ACTIONS.LOCK, eventId);
-    document.querySelector('#lock-event-btn').disabled = !event || !canLockEvent;
-    document.querySelector('#lock-event-btn').classList.toggle('hidden', !event || !canLockEvent);
-
-    if (event?.status === EVENT_STATUS.LOCKED) {
-        document.querySelector('#lock-event-btn').classList.add('btn-neutral');
-        document.querySelector('#lock-event-btn').classList.remove('btn-accent');
-        document.querySelector('#lock-event-btn').title = 'Locked';
-        document.querySelector('#lock-event-btn').setAttribute('aria-label', 'Event locked');
-        document
-            .querySelector('#lock-event-btn [data-lock-icon="lock"]')
-            .classList.remove('hidden');
-        document.querySelector('#lock-event-btn [data-lock-icon="unlock"]').classList.add('hidden');
-        document.querySelector('#edit-event-btn').disabled = true;
-        document.querySelector('#delete-event-btn').disabled = true;
-    } else {
-        document.querySelector('#lock-event-btn').classList.remove('btn-neutral');
-        document.querySelector('#lock-event-btn').classList.add('btn-accent');
-        document.querySelector('#lock-event-btn').title = 'Unlocked';
-        document.querySelector('#lock-event-btn').setAttribute('aria-label', 'Event unlocked');
-        document.querySelector('#lock-event-btn [data-lock-icon="lock"]').classList.add('hidden');
-        document
-            .querySelector('#lock-event-btn [data-lock-icon="unlock"]')
-            .classList.remove('hidden');
-        document.querySelector('#edit-event-btn').disabled = false;
-        document.querySelector('#delete-event-btn').disabled = events.length <= 1;
-    }
+    document.querySelector('#edit-event-btn').disabled = false;
+    document.querySelector('#delete-event-btn').disabled = events.length <= 1;
 
     const tabsElem = document.querySelector('.tabs');
     tabsElem.replaceChildren(
@@ -64,41 +39,6 @@ function renderEventTabBar(eventId = null) {
     );
 }
 
-async function lockEventBtn() {
-    const eventId = getUrlParam('event');
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        console.error('Event not found:', eventId);
-        return;
-    }
-
-    const locked = event.status === EVENT_STATUS.LOCKED;
-    if (!hasEventAccess(eventRoles, ACTIONS.LOCK, eventId)) {
-        alert(`Only owners or admins can ${locked ? 'unlock' : 'lock'} the event.`);
-        return;
-    }
-
-    if (
-        !confirm(
-            `Are you sure you want to ${locked ? 'unlock' : 'lock'} the event "${event.name}"?`,
-        )
-    ) {
-        return;
-    }
-
-    showLoading();
-    document.querySelector('#lock-event-btn').disabled = true;
-    const newEvent = processResponse(
-        await api('lockEvent', { id: event.id, status: locked ? '' : EVENT_STATUS.LOCKED }),
-    );
-    if (newEvent !== null) {
-        event.status = newEvent.status;
-    }
-    document.querySelector('#lock-event-btn').disabled = false;
-    selectEvent(event.id);
-    hideLoading();
-}
-
 async function addEventBtn() {
     const eventNumbers = config.events
         .filter((e) => e.name.startsWith('Event '))
@@ -109,9 +49,7 @@ async function addEventBtn() {
     showLoading();
     document.querySelector('#add-event-btn').disabled = true;
     try {
-        const event = processResponse(
-            await api('addEvent', { name: `Event ${nextNumber}`, status: '' }),
-        );
+        const event = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
         if (event === null) return;
         config.events.push(event);
         updateEventRoles(config);
@@ -132,7 +70,6 @@ function editEventBtn() {
 
     document.querySelector('#event-id-input').value = event.id;
     document.querySelector('#event-name-input').value = event.name;
-    document.querySelector('#event-status-input').value = event.status;
     document.getElementById('event-modal').showModal();
 }
 
@@ -194,7 +131,24 @@ async function deleteEventBtn() {
 function selectEvent(id) {
     setUrlParam('event', id);
 
+    const hasEvents = config.events.length > 0;
+    document.querySelector('#no-events-email').innerText = config.userEmail || 'this email';
+    document.querySelector('#no-events-access').classList.toggle('hidden', hasEvents);
+    document.querySelector('#no-events-access').classList.toggle('flex', !hasEvents);
+    document.querySelector('#key-table').classList.toggle('hidden', !hasEvents);
+
     renderEventTabBar(id);
+
+    if (!hasEvents) {
+        document.querySelector('#show-roles-btn').classList.add('hidden');
+        document.querySelector('#add-role-btn').classList.add('hidden');
+        document.querySelector('#edit-role-btn').classList.add('hidden');
+        document.querySelector('#delete-role-btn').classList.add('hidden');
+        document.querySelector('#add-key-btn').classList.add('hidden');
+        renderRoleTable(id);
+        renderKeyTable(id);
+        return;
+    }
 
     renderRoleTable(id);
     if (hasRoleAccess(eventRoles, ACTIONS.VIEW, id)) {
@@ -213,14 +167,9 @@ function selectEvent(id) {
         document.querySelector('#delete-role-btn').classList.add('hidden');
     }
 
-    const event = config.events.find((e) => e.id === id);
     renderKeyTable(id);
     renderKeyLanguages(id);
-    if (
-        hasKeyAccess(eventRoles, ACTIONS.CREATE, id) &&
-        event &&
-        event.status !== EVENT_STATUS.LOCKED
-    ) {
+    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, id) && config.events.some((e) => e.id === id)) {
         document.querySelector('#add-key-btn').classList.remove('hidden');
     } else {
         document.querySelector('#add-key-btn').classList.add('hidden');

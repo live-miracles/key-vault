@@ -100,6 +100,7 @@ let eventRoles = {};
     document.addEventListener('click', () =>
         document.getElementById('role-context-menu').classList.add('hidden'),
     );
+    document.getElementById('share-modal').addEventListener('close', resetRoleInlineEdit);
     // ===== Keys =====
     document.addEventListener('click', () =>
         document.getElementById('key-context-menu').classList.add('hidden'),
@@ -110,6 +111,7 @@ let eventRoles = {};
         .join('');
 
     document.querySelector('#key-server-input').innerHTML = Object.keys(SERVERS)
+        .filter((id) => id !== '')
         .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
         .join('');
 

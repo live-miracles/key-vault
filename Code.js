@@ -73,6 +73,19 @@ function generateId() {
     );
 }
 
+function getNextEventId(events) {
+    const usedNumbers = new Set(
+        events
+            .map((event) => String(event.id ?? '').match(/^E([1-9][0-9]*)$/))
+            .filter(Boolean)
+            .map((match) => Number(match[1])),
+    );
+
+    for (let i = 1; ; i++) {
+        if (!usedNumbers.has(i)) return `E${String(i).padStart(2, '0')}`;
+    }
+}
+
 const KEY_COLORS = {
     NONE: '',
     ERROR: '1',
@@ -205,7 +218,10 @@ function addEvent(event) {
 
     return withLock(() => {
         const sheet = getSheet(SHEETS.EVENT);
-        event.id = generateId();
+        const { headers, rows } = getAllRows(sheet);
+        const idIndex = headers.indexOf('id');
+        const events = rows.map((row) => ({ id: row[idIndex] }));
+        event.id = getNextEventId(events);
         sheet.appendRow([event.id, event.name]);
         event.row = sheet.getLastRow();
 

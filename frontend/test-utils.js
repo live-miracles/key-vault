@@ -18,6 +18,19 @@ function normalizeLanguageIdMock(id, allowAll = false) {
     return languageId;
 }
 
+function getNextEventIdMock(events) {
+    const usedNumbers = new Set(
+        events
+            .map((event) => String(event.id ?? '').match(/^E([1-9][0-9]*)$/))
+            .filter(Boolean)
+            .map((match) => Number(match[1])),
+    );
+
+    for (let i = 1; ; i++) {
+        if (!usedNumbers.has(i)) return `E${String(i).padStart(2, '0')}`;
+    }
+}
+
 function getAllDataMock(etag) {
     const serverEtag = String(etagMock);
     if (etag === serverEtag) {
@@ -61,7 +74,7 @@ function addEventMock(event) {
     }
 
     etagMock += 1;
-    event.id = String(Date.now());
+    event.id = getNextEventIdMock(testEvents);
     testEvents.push(event);
     event.row = testEvents.length + 1;
 
@@ -419,15 +432,15 @@ const testEmail3 = 'test3@mail.com';
 
 const testEvents = [
     {
-        id: 'EVT01',
+        id: 'E01',
         name: 'Event 1',
     },
     {
-        id: 'EVT02',
+        id: 'E02',
         name: 'Event 2',
     },
     {
-        id: 'EVT03',
+        id: 'E03',
         name: 'Event 3',
     },
 ];
@@ -435,7 +448,7 @@ const testEvents = [
 const testRoles = [
     {
         id: 'ROLE01',
-        event: 'EVT01',
+        event: 'E01',
         email: testEmail1,
         type: ROLES.ADMIN,
         language: '*',
@@ -449,21 +462,21 @@ const testRoles = [
     },
     {
         id: 'ROLE03',
-        event: 'EVT02',
+        event: 'E02',
         email: testEmail3,
         type: ROLES.VIEWER,
         language: 'L01',
     },
     {
         id: 'ROLE04',
-        event: 'EVT02',
+        event: 'E02',
         email: testEmail1,
         type: ROLES.EDITOR,
         language: 'L02',
     },
     {
         id: 'ROLE05',
-        event: 'EVT01',
+        event: 'E01',
         email: testEmail3,
         type: ROLES.VIEWER,
         language: 'L09',
@@ -492,7 +505,7 @@ const testKeys = [
     {
         row: 1,
         id: 'KEY01',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Channel 1',
         language: 'L01',
         server: 'yt',
@@ -506,7 +519,7 @@ const testKeys = [
     {
         row: 2,
         id: 'KEY02',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Very Long Platform Name Channel Demo',
         language: 'L02',
         server: 'fb',
@@ -520,7 +533,7 @@ const testKeys = [
     {
         row: 3,
         id: 'KEY03',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Channel 3',
         language: 'L01',
         server: 'yt',
@@ -534,7 +547,7 @@ const testKeys = [
     {
         row: 4,
         id: 'KEY04',
-        event: 'EVT02',
+        event: 'E02',
         name: 'Channel 4',
         language: 'L01',
         server: 'yt',
@@ -548,7 +561,7 @@ const testKeys = [
     {
         row: 5,
         id: 'KEY05',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Channel 5',
         language: 'L01',
         server: 'rtmp',
@@ -562,7 +575,7 @@ const testKeys = [
     {
         row: 6,
         id: 'KEY06',
-        event: 'EVT02',
+        event: 'E02',
         name: 'Channel 6',
         language: 'L02',
         server: 'yt',
@@ -576,7 +589,7 @@ const testKeys = [
     {
         row: 7,
         id: 'KEY07',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Missing Language Demo',
         language: 'L09',
         server: 'yt',
@@ -590,7 +603,7 @@ const testKeys = [
     {
         row: 8,
         id: 'KEY08',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Instagram Demo',
         language: 'L03',
         server: 'ig',
@@ -604,7 +617,7 @@ const testKeys = [
     {
         row: 9,
         id: 'KEY09',
-        event: 'EVT01',
+        event: 'E01',
         name: 'Custom SRT Demo',
         language: 'L03',
         server: 'srt',

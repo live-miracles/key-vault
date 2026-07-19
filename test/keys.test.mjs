@@ -31,7 +31,7 @@ test('derives the YouTube backup endpoint and hides Instagram backups', () => {
     const runtime = loadKeys();
 
     assert.deepEqual(plain(runtime.get('getKeyBackupEndpoint')({ server: 'yt', key: 'abc123' })), {
-        server: 'yb',
+        server: 'rtmp://b.rtmp.youtube.com/live2?backup=1/',
         key: 'abc123',
     });
 

@@ -100,7 +100,7 @@ project.
 
 1. Create a spreadsheet with these tabs and columns:
    `Role`: `id`, `event`, `email`, `type`, `language`, `remarks`
-   `Event`: `id`, `name`
+   `Event`: `id`, `name` (`id` is generated as `E01`, `E02`, etc.)
    `Language`: `id`, `name`, `order` (`id` should be a string from `L01` to `L99`)
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`

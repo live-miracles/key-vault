@@ -131,7 +131,24 @@ async function deleteEventBtn() {
 function selectEvent(id) {
     setUrlParam('event', id);
 
+    const hasEvents = config.events.length > 0;
+    document.querySelector('#no-events-email').innerText = config.userEmail || 'this email';
+    document.querySelector('#no-events-access').classList.toggle('hidden', hasEvents);
+    document.querySelector('#no-events-access').classList.toggle('flex', !hasEvents);
+    document.querySelector('#key-table').classList.toggle('hidden', !hasEvents);
+
     renderEventTabBar(id);
+
+    if (!hasEvents) {
+        document.querySelector('#show-roles-btn').classList.add('hidden');
+        document.querySelector('#add-role-btn').classList.add('hidden');
+        document.querySelector('#edit-role-btn').classList.add('hidden');
+        document.querySelector('#delete-role-btn').classList.add('hidden');
+        document.querySelector('#add-key-btn').classList.add('hidden');
+        renderRoleTable(id);
+        renderKeyTable(id);
+        return;
+    }
 
     renderRoleTable(id);
     if (hasRoleAccess(eventRoles, ACTIONS.VIEW, id)) {

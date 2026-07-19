@@ -39,7 +39,7 @@ function getKeyMainUrl(key) {
 
 function getKeyBackupEndpoint(key) {
     if (key.server === 'yt' && key.key) {
-        return { server: 'yb', key: key.key };
+        return { server: YOUTUBE_BACKUP_SERVER_URL, key: key.key };
     }
     return { server: key.server2, key: key.key2 };
 }
@@ -867,12 +867,13 @@ const HIDDEN_BACKUP_BY_SERVER = {
     yt: true,
 };
 
+const YOUTUBE_BACKUP_SERVER_URL = 'rtmp://b.rtmp.youtube.com/live2?backup=1/';
+
 const SERVERS = {
     '': { name: 'None', value: '' },
     rtmp: { name: 'Custom RTMP', value: 'rtmp' },
     srt: { name: 'Custom SRT', value: 'srt' },
     yt: { name: 'YouTube', value: 'rtmp://a.rtmp.youtube.com/live2/' },
-    yb: { name: 'YT Backup', value: 'rtmp://b.rtmp.youtube.com/live2?backup=1/' },
     fb: { name: 'Facebook', value: 'rtmps://live-api-s.facebook.com:443/rtmp/' },
     ig: { name: 'Instagram', value: 'rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/' },
     vc: { name: 'VDO Cipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },

@@ -362,14 +362,9 @@
 
         <!-- CENTER -->
         <div class="absolute left-1/2 -translate-x-1/2">
-          <label class="swap">
-            <input id="saving-badge" type="checkbox" disabled />
-            <div class="swap-off"></div>
-            <div class="swap-on flex items-center gap-2">
-              <span class="loading loading-infinity loading-xs"></span>
-              Saving
-            </div>
-          </label>
+          <button class="btn btn-accent btn-square btn-xs hidden" id="add-key-btn" title="Add" aria-label="Add key" onclick="addKeyBtn()">
+            <span data-icon="plus" class="h-4 w-4"></span>
+          </button>
         </div>
 
         <!-- RIGHT -->
@@ -516,11 +511,6 @@
               </tr>
             </tbody>
           </table>
-          <div class="mt-3 pb-1 text-center">
-            <button class="btn btn-accent btn-square btn-sm hidden" id="add-key-btn" title="Add" aria-label="Add key" onclick="addKeyBtn()">
-              <span data-icon="plus" class="h-5 w-5"></span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -533,6 +523,15 @@
           <div role="tablist" class="tabs tabs-sm tabs-box ml-3 min-h-8">
             <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
           </div>
+
+          <label class="swap ml-auto">
+            <input id="saving-badge" type="checkbox" disabled />
+            <div class="swap-off"></div>
+            <div class="swap-on flex items-center gap-2">
+              <span class="loading loading-infinity loading-xs"></span>
+              Saving
+            </div>
+          </label>
         </div>
       </div>
     </div>

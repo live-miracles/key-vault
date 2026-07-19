@@ -2,6 +2,23 @@ const props = PropertiesService.getScriptProperties();
 const SPREADSHEET_ID = props.getProperty('SPREADSHEET_ID');
 const CACHE_KEY = 'DATA_V2';
 const CACHE_TTL = 6 * 60 * 60;
+const CACHE_CELL_DELIMITER = String.fromCharCode(166);
+const EVENT_CACHE_FIELDS = ['id', 'name'];
+const ROLE_CACHE_FIELDS = ['id', 'event', 'email', 'type', 'language', 'remarks'];
+const LANGUAGE_CACHE_FIELDS = ['id', 'name', 'order'];
+const KEY_CACHE_FIELDS = [
+    'id',
+    'event',
+    'name',
+    'language',
+    'server',
+    'key',
+    'server2',
+    'key2',
+    'link',
+    'color',
+    'remarks',
+];
 
 const SHEETS = {
     ROLE: 'Role',
@@ -16,7 +33,7 @@ function sheetStringsToObjects(data) {
         const obj = { row: idx + 2 };
 
         headers.forEach((h, i) => {
-            obj[h] = String(r[i]);
+            obj[h] = r[i] == null ? '' : String(r[i]);
         });
 
         return obj;
@@ -28,6 +45,26 @@ function sheetToStrings(sheet) {
         .getDataRange()
         .getValues()
         .map((r) => r.join('¦'));
+}
+
+function sheetToCacheStrings(sheet) {
+    return sheet
+        .getDataRange()
+        .getValues()
+        .map((r, rowIndex) => {
+            const delimiterColumn = r.findIndex((value) =>
+                String(value ?? '').includes(CACHE_CELL_DELIMITER),
+            );
+            if (delimiterColumn !== -1) {
+                const sheetName = sheet.getName ? sheet.getName() : 'Unknown';
+                throw new Error(
+                    `Reserved delimiter found in ${sheetName} row ${rowIndex + 1}, column ${
+                        delimiterColumn + 1
+                    }`,
+                );
+            }
+            return r.join(CACHE_CELL_DELIMITER);
+        });
 }
 
 // ===== Common Functions =====
@@ -45,6 +82,20 @@ function getAllRows(sheet) {
 
 function setTextCell(sheet, row, column, value) {
     sheet.getRange(row, column).setNumberFormat('@').setValue(value);
+}
+
+function getCacheDelimiterField(item, fields) {
+    return fields.find((field) => String(item?.[field] ?? '').includes(CACHE_CELL_DELIMITER));
+}
+
+function validateCacheSafeFields(item, fields) {
+    const field = getCacheDelimiterField(item, fields);
+    if (!field) return null;
+
+    return {
+        success: false,
+        error: `Invalid ${field}: value contains a reserved character.`,
+    };
 }
 
 function withLock(fn, name) {
@@ -102,7 +153,9 @@ function normalizeKeyColor(color) {
 }
 
 function hasStreamingConfigChanged(oldKey, key) {
-    return ['server', 'key', 'server2', 'key2'].some((field) => oldKey[field] !== key[field]);
+    return ['server', 'key', 'server2', 'key2'].some(
+        (field) => String(oldKey[field] ?? '') !== String(key[field] ?? ''),
+    );
 }
 
 // ===== Cached Data =====
@@ -138,14 +191,29 @@ function getCacheString() {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
     const data = {
-        etag: String(Date.now()),
-        events: sheetToStrings(ss.getSheetByName(SHEETS.EVENT)),
-        roles: sheetToStrings(ss.getSheetByName(SHEETS.ROLE)),
-        keys: sheetToStrings(ss.getSheetByName(SHEETS.KEY)),
-        languages: sheetToStrings(ss.getSheetByName(SHEETS.LANGUAGE)),
+        events: sheetToCacheStrings(ss.getSheetByName(SHEETS.EVENT)),
+        roles: sheetToCacheStrings(ss.getSheetByName(SHEETS.ROLE)),
+        keys: sheetToCacheStrings(ss.getSheetByName(SHEETS.KEY)),
+        languages: sheetToCacheStrings(ss.getSheetByName(SHEETS.LANGUAGE)),
     };
+    data.etag = getContentEtag(data);
 
     return JSON.stringify(data);
+}
+
+function getContentEtag(data) {
+    const text = JSON.stringify(data);
+    if (typeof Utilities !== 'undefined' && Utilities.computeDigest) {
+        return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text)
+            .map((byte) => (byte < 0 ? byte + 256 : byte).toString(16).padStart(2, '0'))
+            .join('');
+    }
+
+    let hash = 0;
+    for (let i = 0; i < text.length; i += 1) {
+        hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+    }
+    return String(hash);
 }
 
 function getAllData(etag) {
@@ -213,6 +281,8 @@ function addEvent(event) {
             error: 'Invalid parameters: ' + JSON.stringify(event),
         };
     }
+    const delimiterError = validateCacheSafeFields(event, EVENT_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -254,6 +324,8 @@ function editEvent(event) {
             error: 'Invalid parameters: ' + JSON.stringify(event),
         };
     }
+    const delimiterError = validateCacheSafeFields(event, EVENT_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -348,6 +420,8 @@ function addRole(role) {
         role.type === ROLES.ADMIN || role.type === ROLES.OWNER
             ? '*'
             : normalizeLanguageId(role.language, true);
+    const delimiterError = validateCacheSafeFields(role, ROLE_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -395,6 +469,8 @@ function editRole(role) {
         role.type === ROLES.ADMIN || role.type === ROLES.OWNER
             ? '*'
             : normalizeLanguageId(role.language, true);
+    const delimiterError = validateCacheSafeFields(role, ROLE_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -484,6 +560,8 @@ function addLanguage(language) {
         };
     }
     language.id = normalizeLanguageId(language.id);
+    const delimiterError = validateCacheSafeFields(language, LANGUAGE_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -535,6 +613,8 @@ function editLanguage(language) {
         };
     }
     language.id = normalizeLanguageId(language.id);
+    const delimiterError = validateCacheSafeFields(language, LANGUAGE_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -685,6 +765,8 @@ function addKey(key) {
     }
     key.language = normalizeLanguageId(key.language);
     key.color = normalizeKeyColor(key.color);
+    const delimiterError = validateCacheSafeFields(key, KEY_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(
@@ -755,6 +837,8 @@ function editKey(key) {
     }
     key.language = normalizeLanguageId(key.language);
     key.color = normalizeKeyColor(key.color);
+    const delimiterError = validateCacheSafeFields(key, KEY_CACHE_FIELDS);
+    if (delimiterError) return delimiterError;
 
     const config = getAllData().data;
     const eventRoles = getEventRoles(

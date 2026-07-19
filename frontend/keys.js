@@ -51,7 +51,9 @@ function getKeyBackupUrl(key) {
 
 function hasStreamingConfigChanged(oldKey, key) {
     if (!oldKey) return false;
-    return ['server', 'key', 'server2', 'key2'].some((field) => oldKey[field] !== key[field]);
+    return ['server', 'key', 'server2', 'key2'].some(
+        (field) => String(oldKey[field] ?? '') !== String(key[field] ?? ''),
+    );
 }
 
 function isFullUrlKeyServer(server) {

@@ -360,8 +360,7 @@ async function addKeyBtn() {
     setKeyColorInput('', eventId);
     document.querySelector('#key-name-input').value = '';
     renderKeyLanguages(eventId, ACTIONS.CREATE);
-    document.querySelector('#key-language-input').value =
-        document.querySelector('#key-language-input option')?.value || '';
+    document.querySelector('#key-language-input').value = '';
     renderServerInput('yt');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
@@ -627,6 +626,11 @@ async function saveKeyFormBtn(event) {
         event.preventDefault();
         return;
     }
+    if (key.language === '') {
+        setKeyFormError('Language is required', ['#key-language-input']);
+        event.preventDefault();
+        return;
+    }
 
     if (!validateEndpoint(mainEndpoint, '', true)) {
         event.preventDefault();
@@ -805,7 +809,7 @@ async function copyTextValue(text) {
 }
 
 function renderKeyLanguages(eventId, action = ACTIONS.CREATE) {
-    renderLanguageSelect('#key-language-input', { eventId, action });
+    renderLanguageSelect('#key-language-input', { eventId, action, placeholder: 'Language' });
 }
 
 function renderServerInput(server, suffix = '') {

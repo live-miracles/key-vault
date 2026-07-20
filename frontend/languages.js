@@ -74,11 +74,21 @@ function languageOptions({ includeAll = false, eventId = null, action = null } =
     return options.concat(languages.sort((a, b) => a.name.localeCompare(b.name)));
 }
 
-function renderLanguageSelect(selector, options) {
-    document.querySelector(selector).innerHTML = languageOptions(options)
+function renderLanguageSelect(selector, options = {}) {
+    const placeholder = options.placeholder
+        ? [
+              {
+                  id: '',
+                  name: options.placeholder,
+                  disabled: true,
+              },
+          ]
+        : [];
+    document.querySelector(selector).innerHTML = placeholder
+        .concat(languageOptions(options))
         .map(
             (language) =>
-                `<option value="${escapeHtml(language.id)}">${escapeHtml(language.name)}</option>`,
+                `<option value="${escapeHtml(language.id)}" ${language.disabled ? 'disabled' : ''}>${escapeHtml(language.name)}</option>`,
         )
         .join('');
 }

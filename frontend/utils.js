@@ -60,9 +60,8 @@ function idIssueBadgeHtml(issue) {
     if (!issue) return '';
 
     return `
-        <span class="text-error inline-flex items-center justify-center gap-1 text-xs font-semibold" title="${escapeHtml(issue)}">
+        <span class="text-error inline-flex items-center justify-center text-xs font-semibold" title="${escapeHtml(issue)}" aria-label="${escapeHtml(issue)}">
             ${iconSvg('error', 'h-4 w-4')}
-            <span>ID issue</span>
         </span>
     `;
 }

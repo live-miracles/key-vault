@@ -167,16 +167,11 @@ function renderKeyTable(eventId = null) {
             const link = safeUrl(k.link);
             const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
             const isPending = Boolean(k.pending);
-            const canMarkConfigured =
-                hasKeyColorAccess(eventRoles, k.event) && k.color === KEY_COLORS.NONE && !isPending;
             const actions = isPending
                 ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
                 : canManageKey
                   ? `
                     <div class="flex justify-center gap-1">
-                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent ${canMarkConfigured ? '' : 'invisible'}" title="Mark configured" aria-label="Mark key configured" ${canMarkConfigured ? `onclick="markKeyConfiguredById(this.closest('tr').dataset.keyId)"` : 'disabled'}>
-                            ${iconSvg('check')}
-                        </button>
                         <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" onclick="editKeyById(this.closest('tr').dataset.keyId)">
                             ${iconSvg('pen')}
                         </button>
@@ -221,6 +216,13 @@ function renderKeyTable(eventId = null) {
             const languageIndex = keys.filter(
                 (key, index) => index <= i && key.language === k.language,
             ).length;
+            const platformNameCopyButton = isPending
+                ? ''
+                : `
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy platform name" aria-label="Copy platform name" onclick="copyTextValue(this.dataset.copyValue)" data-copy-value="${escapeHtml(k.name)}">
+                        ${iconSvg('copy')}
+                    </button>
+                `;
             return `
                 <tr class="hover:bg-base-300 ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${escapeHtml(k.id)}" title="${escapeHtml(idIssue)}">
                     <td style="padding: 2px">${i + 1} (${languageIndex})</td>
@@ -228,6 +230,7 @@ function renderKeyTable(eventId = null) {
                     <td style="padding: 2px" title="${escapeHtml(k.name)}">
                         <div class="flex items-center justify-center gap-2">
                             <span>${escapeHtml(getPlatformNamePreview(k.name))}</span>
+                            ${platformNameCopyButton}
                             ${idIssueBadgeHtml(idIssue)}
                         </div>
                     </td>
@@ -239,6 +242,13 @@ function renderKeyTable(eventId = null) {
                 </tr>`;
         })
         .join('');
+
+    document.querySelectorAll('#key-rows tr[data-key-id]').forEach((row) => {
+        row.addEventListener('dblclick', (event) => {
+            if (event.target.closest('button, a, input, select, textarea')) return;
+            showKeyColorMenu(event, row.dataset.keyId);
+        });
+    });
 }
 
 function renderCopyableTextCell({
@@ -277,6 +287,56 @@ function setKeyColorInput(value, eventId) {
     input.disabled = !canEditKeyColor(eventId);
 }
 
+function hideKeyColorMenu() {
+    document.getElementById('key-color-menu')?.classList.add('hidden');
+}
+
+function showKeyColorMenu(event, keyId) {
+    event.preventDefault();
+
+    const key = config.keys.find((k) => k.id === keyId);
+    if (!key || key.pending || !hasKeyColorAccess(eventRoles, key.event)) {
+        hideKeyColorMenu();
+        return;
+    }
+
+    selectedKeyId = keyId;
+    document.getElementById('role-context-menu').classList.add('hidden');
+
+    const menu = document.getElementById('key-color-menu');
+    const options = document.getElementById('key-color-menu-options');
+    const currentColor = key.color || KEY_COLORS.NONE;
+    options.innerHTML = Object.keys(COLORS)
+        .filter((colorId) => colorId !== currentColor)
+        .map(
+            (colorId) => `
+                <li>
+                    <button type="button" class="${COLORS[colorId].css}" onclick="changeSelectedKeyColor('${escapeHtml(colorId)}')">
+                        ${escapeHtml(COLORS[colorId].name)}
+                    </button>
+                </li>
+            `,
+        )
+        .join('');
+
+    menu.classList.remove('hidden');
+
+    const rect = menu.getBoundingClientRect();
+    const margin = 8;
+    let x = event.clientX;
+    let y = event.clientY;
+
+    if (x + rect.width > window.innerWidth) {
+        x = window.innerWidth - rect.width - margin;
+    }
+    if (y + rect.height > window.innerHeight) {
+        y = y - rect.height - margin;
+    }
+
+    menu.style.left = `${Math.max(margin, x)}px`;
+    menu.style.top = `${Math.max(margin, y)}px`;
+}
+
 function editKeyById(keyId) {
     selectedKeyId = keyId;
     editKeyRow();
@@ -285,11 +345,6 @@ function editKeyById(keyId) {
 function deleteKeyById(keyId) {
     selectedKeyId = keyId;
     deleteKeyRow();
-}
-
-function markKeyConfiguredById(keyId) {
-    selectedKeyId = keyId;
-    markKeyConfigured();
 }
 
 async function addKeyBtn() {
@@ -671,8 +726,10 @@ async function saveKeyFormBtn(event) {
     }
 }
 
-async function markKeyConfigured() {
+async function changeSelectedKeyColor(color) {
     if (!selectedKeyId) return;
+    hideKeyColorMenu();
+
     const key = config.keys.find((k) => k.id === selectedKeyId);
     if (!key) {
         console.error('Key not found:', selectedKeyId);
@@ -680,19 +737,19 @@ async function markKeyConfigured() {
     }
 
     if (!hasKeyColorAccess(eventRoles, key.event)) {
-        showErrorAlert('Only owners or admins can mark a key as configured.');
+        showErrorAlert('Only owners or admins can edit key colors.');
         return;
     }
+    const currentColor = key.color || KEY_COLORS.NONE;
+    if (!Object.prototype.hasOwnProperty.call(COLORS, color) || color === currentColor) return;
 
     const snapshot = cloneConfig();
-    replaceConfigItem('keys', { ...key, color: KEY_COLORS.CONFIGURED });
+    replaceConfigItem('keys', { ...key, color });
     renderKeyTable(key.event);
 
     showLoading();
     try {
-        const newKey = processResponse(
-            await api('editKey', { ...key, color: KEY_COLORS.CONFIGURED }),
-        );
+        const newKey = processResponse(await api('editKey', { ...key, color }));
         if (newKey === null) {
             restoreConfig(snapshot, key.event);
             return;

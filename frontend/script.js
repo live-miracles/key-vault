@@ -117,9 +117,10 @@ let eventRoles = {};
     setInterval(fetchDataAndRerender, REFRESH_TIME);
 
     // ===== Roles =====
-    document.addEventListener('click', () =>
-        document.getElementById('role-context-menu').classList.add('hidden'),
-    );
+    document.addEventListener('click', () => {
+        document.getElementById('role-context-menu').classList.add('hidden');
+        hideKeyColorMenu();
+    });
     document.getElementById('share-modal').addEventListener('close', resetRoleInlineEdit);
     document.querySelector('#key-color-input').innerHTML = Object.keys(COLORS)
         .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)

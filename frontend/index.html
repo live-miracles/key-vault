@@ -69,6 +69,10 @@
       </ul>
     </div>
 
+    <div id="key-color-menu" class="bg-base-200 border-base-300 rounded-box fixed z-1000 hidden border shadow-lg">
+      <ul class="menu w-fit p-2" id="key-color-menu-options"></ul>
+    </div>
+
     <dialog id="language-modal" class="modal">
       <div class="modal-box max-w-150">
         <div class="focus mx-auto mt-2 w-full space-y-3 px-2">
@@ -116,7 +120,7 @@
             </fieldset>
 
             <fieldset class="fieldset ml-2 inline-block grow">
-              <legend class="fieldset-legend">Platform Name<span class="text-error">*</span></legend>
+              <legend class="fieldset-legend">Platform / Channel Name<span class="text-error">*</span></legend>
               <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
               <p class="label text-error"></p>
             </fieldset>

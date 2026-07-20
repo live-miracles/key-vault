@@ -126,10 +126,12 @@ let eventRoles = {};
         .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)
         .join('');
 
-    document.querySelector('#key-server-input').innerHTML = Object.keys(SERVERS)
-        .filter((id) => id !== '')
-        .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
-        .join('');
+    document.querySelector('#key-server-input').innerHTML =
+        '<option value="" disabled selected>Server URL</option>' +
+        Object.keys(SERVERS)
+            .filter((id) => id !== '')
+            .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)
+            .join('');
 
     document.querySelector('#key-server2-input').innerHTML = Object.keys(SERVERS)
         .map((id) => `<option value="${id}">${SERVERS[id].name}</option>`)

@@ -361,7 +361,7 @@ async function addKeyBtn() {
     document.querySelector('#key-name-input').value = '';
     renderKeyLanguages(eventId, ACTIONS.CREATE);
     document.querySelector('#key-language-input').value = '';
-    renderServerInput('yt');
+    renderServerInput('');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
     renderServerInput('', '2');

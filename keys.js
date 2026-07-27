@@ -343,20 +343,26 @@ function showKeyColorMenu(event, keyId) {
         hideKeyColorMenu();
         return;
     }
-    options.innerHTML = [...copyActions, ...divider, ...colorActions].join('');
+    options.innerHTML = [...colorActions, ...divider, ...copyActions].join('');
 
     menu.classList.remove('hidden');
 
     const rect = menu.getBoundingClientRect();
     const margin = 8;
     let x = event.clientX;
-    let y = event.clientY;
+    let y = event.clientY - rect.height / 2;
 
     if (x + rect.width > window.innerWidth) {
         x = window.innerWidth - rect.width - margin;
     }
-    if (y + rect.height > window.innerHeight) {
-        y = y - rect.height - margin;
+    if (y < margin || y + rect.height > window.innerHeight - margin) {
+        if (event.clientY + rect.height + margin <= window.innerHeight) {
+            y = event.clientY;
+        } else if (event.clientY - rect.height - margin >= 0) {
+            y = event.clientY - rect.height;
+        } else {
+            y = Math.min(window.innerHeight - rect.height - margin, Math.max(margin, y));
+        }
     }
 
     menu.style.left = `${Math.max(margin, x)}px`;

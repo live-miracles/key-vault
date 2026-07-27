@@ -42,6 +42,16 @@ test('derives the YouTube backup endpoint and hides Instagram backups', () => {
     assert.equal(instagramKey.key2, '');
 });
 
+test('builds key URL copy payload as a JSON string', () => {
+    const runtime = loadKeys();
+    const getKeyUrlCopyPayload = runtime.get('getKeyUrlCopyPayload');
+
+    assert.equal(
+        getKeyUrlCopyPayload({ name: 'YouTube Main' }, 'rtmp://example.test/live/abc123'),
+        '{"name":"YouTube Main","url":"rtmp://example.test/live/abc123"}',
+    );
+});
+
 test('parses and builds SRT URLs with defaults and encryption settings', () => {
     const runtime = loadKeys();
     const parseSrtUrl = runtime.get('parseSrtUrl');

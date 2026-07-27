@@ -49,6 +49,10 @@ function getKeyBackupUrl(key) {
     return getRtmpValue(backup.server, backup.key);
 }
 
+function getKeyUrlCopyPayload(key, url) {
+    return JSON.stringify({ name: key.name, url });
+}
+
 function hasStreamingConfigChanged(oldKey, key) {
     if (!oldKey) return false;
     return ['server', 'key', 'server2', 'key2'].some(
@@ -295,7 +299,7 @@ function showKeyColorMenu(event, keyId) {
     event.preventDefault();
 
     const key = config.keys.find((k) => k.id === keyId);
-    if (!key || key.pending || !hasKeyColorAccess(eventRoles, key.event)) {
+    if (!key || key.pending) {
         hideKeyColorMenu();
         return;
     }
@@ -306,18 +310,40 @@ function showKeyColorMenu(event, keyId) {
     const menu = document.getElementById('key-color-menu');
     const options = document.getElementById('key-color-menu-options');
     const currentColor = key.color || KEY_COLORS.NONE;
-    options.innerHTML = Object.keys(COLORS)
-        .filter((colorId) => colorId !== currentColor)
+    const copyActions = [
+        { type: 'main', label: 'Main', url: getKeyMainUrl(key) },
+        { type: 'backup', label: 'Backup', url: getKeyBackupUrl(key) },
+    ]
+        .filter((action) => action.url)
         .map(
-            (colorId) => `
+            (action) => `
+                <li>
+                    <button type="button" onclick="copySelectedKeyUrl('${escapeHtml(action.type)}')">
+                        ${iconSvg('copy')}
+                        <span>${escapeHtml(action.label)}</span>
+                    </button>
+                </li>
+            `,
+        );
+    const colorActions = hasKeyColorAccess(eventRoles, key.event)
+        ? Object.keys(COLORS)
+              .filter((colorId) => colorId !== currentColor)
+              .map(
+                  (colorId) => `
                 <li>
                     <button type="button" class="${COLORS[colorId].css}" onclick="changeSelectedKeyColor('${escapeHtml(colorId)}')">
                         ${escapeHtml(COLORS[colorId].name)}
                     </button>
                 </li>
             `,
-        )
-        .join('');
+              )
+        : [];
+    const divider = copyActions.length && colorActions.length ? ['<li></li>'] : [];
+    if (!copyActions.length && !colorActions.length) {
+        hideKeyColorMenu();
+        return;
+    }
+    options.innerHTML = [...copyActions, ...divider, ...colorActions].join('');
 
     menu.classList.remove('hidden');
 
@@ -335,6 +361,22 @@ function showKeyColorMenu(event, keyId) {
 
     menu.style.left = `${Math.max(margin, x)}px`;
     menu.style.top = `${Math.max(margin, y)}px`;
+}
+
+async function copySelectedKeyUrl(type) {
+    if (!selectedKeyId) return;
+    hideKeyColorMenu();
+
+    const key = config.keys.find((k) => k.id === selectedKeyId);
+    if (!key) {
+        console.error('Key not found:', selectedKeyId);
+        return;
+    }
+
+    const url = type === 'backup' ? getKeyBackupUrl(key) : getKeyMainUrl(key);
+    if (!url) return;
+
+    await copyTextValue(getKeyUrlCopyPayload(key, url));
 }
 
 function editKeyById(keyId) {

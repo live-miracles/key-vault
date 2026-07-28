@@ -870,7 +870,7 @@ function renderServerInput(server, suffix = '') {
     const isCustomRtmp = server === 'rtmp';
     const isCustomSrt = server === 'srt';
     const isKnownServer = Object.prototype.hasOwnProperty.call(SERVERS, server);
-    const shouldHideStreamKey = isCustomSrt || (suffix === '2' && !server);
+    const shouldHideStreamKey = isCustomSrt || !server;
 
     select.value = isKnownServer ? server : '';
     customServer.classList.toggle('hidden', !isCustomRtmp);
@@ -880,7 +880,7 @@ function renderServerInput(server, suffix = '') {
     srtServer.classList.toggle('hidden', !isCustomSrt);
     srtServer.classList.toggle('contents', isCustomSrt);
 
-    if (suffix === '2' && !server) {
+    if (!server) {
         streamKeyInput.value = '';
     }
 
@@ -929,7 +929,7 @@ function applyBackupServerLock() {
     const backupKeyInput = document.querySelector('#stream-key2-input');
     const backupServer = LOCKED_BACKUP_BY_SERVER[primaryServer];
     const isLocked = Boolean(backupServer);
-    const isHidden = Boolean(HIDDEN_BACKUP_BY_SERVER[primaryServer]);
+    const isHidden = !primaryServer || Boolean(HIDDEN_BACKUP_BY_SERVER[primaryServer]);
 
     backupServerRow.classList.toggle('hidden', isHidden);
     backupServerRow.classList.toggle('flex', !isHidden);

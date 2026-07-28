@@ -1,0 +1,36 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+@plugin 'daisyui' {
+    themes: dim;
+}
+
+.q-answered > .q-translation {
+    @apply line-through;
+}
+
+.q-hidden {
+    @apply opacity-50;
+}
+
+.stream-url-config .fieldset {
+    @apply gap-1;
+}
+
+.stream-url-config .label:empty {
+    @apply hidden;
+}
+
+#key-modal .label:empty {
+    @apply hidden;
+}
+
+.key-rows-refreshing {
+    opacity: 0.45;
+    transition: opacity 150ms ease;
+}
+
+.key-row-hover:hover > td {
+    box-shadow:
+        inset 0 2px 0 color-mix(in oklab, var(--color-base-content) 75%, transparent),
+        inset 0 -2px 0 color-mix(in oklab, var(--color-base-content) 75%, transparent);
+}

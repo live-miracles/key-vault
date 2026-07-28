@@ -228,9 +228,14 @@ function renderKeyTable(eventId = null) {
                     </button>
                 `;
             return `
-                <tr class="hover:bg-base-300 ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${escapeHtml(k.id)}" title="${escapeHtml(idIssue)}">
-                    <td style="padding: 2px">${i + 1} (${languageIndex})</td>
-                    <td style="padding: 2px">${languageLabelHtml(k.language)}</td>
+                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${escapeHtml(k.id)}" title="${escapeHtml(idIssue)}">
+                    <td style="padding: 2px">${i + 1}</td>
+                    <td style="padding: 2px">
+                        <div class="inline-flex items-center justify-center gap-1">
+                            ${languageLabelHtml(k.language)}
+                            <span>(${languageIndex})</span>
+                        </div>
+                    </td>
                     <td style="padding: 2px" title="${escapeHtml(k.name)}">
                         <div class="flex items-center justify-center gap-2">
                             <span>${escapeHtml(getPlatformNamePreview(k.name))}</span>

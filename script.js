@@ -94,6 +94,21 @@ async function fetchDataAndRerender() {
     document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
 }
 
+async function refreshDataBtn() {
+    const button = document.querySelector('#refresh-data-btn');
+    const keyRows = document.querySelector('#key-rows');
+    button.disabled = true;
+    keyRows.classList.add('key-rows-refreshing');
+    keyRows.setAttribute('aria-busy', 'true');
+    try {
+        await fetchDataAndRerender();
+    } finally {
+        keyRows.classList.remove('key-rows-refreshing');
+        keyRows.removeAttribute('aria-busy');
+        button.disabled = false;
+    }
+}
+
 const REFRESH_TIME = 5 * 60 * 1000;
 let userEmail = null;
 let config = {

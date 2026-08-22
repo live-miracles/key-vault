@@ -1,4 +1,4 @@
-# key-vault
+# Key Vault
 
 A safer way to store and manage stream keys for big events.
 

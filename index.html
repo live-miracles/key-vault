@@ -4,18 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Key Vault</title>
-
-    <link rel="icon" type="image/png" href="./logo.png" />
-    <link rel="stylesheet" href="./output.css" />
-    <script src="./bundle.umd.min.js"></script>
-    <script src="./utils.js"></script>
-    <script src="./access.js"></script>
-    <script src="./events.js"></script>
-    <script src="./languages.js"></script>
-    <script src="./roles.js"></script>
-    <script src="./keys.js"></script>
-    <script src="./test-utils.js" defer></script>
-    <script src="./script.js" defer></script>
+    <link rel="icon" type="image/png" href="logo.png" />
+    <link rel="stylesheet" href="app.css" />
+    <script src="app.js" defer></script>
   </head>
   <body class="bg-base-100 text-base-content flex min-h-screen min-w-155 flex-col">
     <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-175 -translate-x-1/2 transform">
@@ -51,7 +42,7 @@
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="saveEventFormBtn(event)">Save</button>
+            <button class="btn btn-accent" data-action="save-event">Save</button>
           </form>
         </div>
       </div>
@@ -61,10 +52,10 @@
     <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-1000 hidden border shadow-lg">
       <ul class="menu w-fit p-2">
         <li>
-          <a onclick="editRoleRow()" id="edit-role-btn" class="text-accent hidden font-semibold">Edit</a>
+          <a data-action="edit-role" id="edit-role-btn" class="text-accent hidden font-semibold">Edit</a>
         </li>
         <li>
-          <a onclick="deleteRoleRow()" id="delete-role-btn" class="text-error hidden font-semibold">Delete</a>
+          <a data-action="delete-role" id="delete-role-btn" class="text-error hidden font-semibold">Delete</a>
         </li>
       </ul>
     </div>
@@ -94,7 +85,7 @@
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="saveLanguageFormBtn(event)">Save</button>
+            <button class="btn btn-accent" data-action="save-language">Save</button>
           </form>
         </div>
       </div>
@@ -327,7 +318,7 @@
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" onclick="saveKeyFormBtn(event)">Save</button>
+            <button class="btn btn-accent" data-action="save-key">Save</button>
           </form>
         </div>
       </div>
@@ -342,7 +333,7 @@
           aria-label="Edit event"
           class="btn btn-accent btn-square btn-xs ml-3 hidden"
           id="edit-event-btn"
-          onclick="editEventBtn()"
+          data-action="edit-event"
           disabled>
           <span data-icon="pen" class="h-4 w-4"></span>
         </button>
@@ -351,7 +342,7 @@
           aria-label="Delete event"
           class="btn btn-error btn-square btn-xs ml-2 hidden"
           id="delete-event-btn"
-          onclick="deleteEventBtn()"
+          data-action="delete-event"
           disabled>
           <span data-icon="trash" class="h-4 w-4"></span>
         </button>
@@ -360,7 +351,7 @@
           aria-label="Event settings"
           class="btn btn-accent btn-square btn-xs ml-5 hidden"
           id="show-settings-btn"
-          onclick="showSettingsModal()">
+          data-action="show-settings">
           <span data-icon="settings" class="h-4 w-4"></span>
         </button>
         <button
@@ -368,13 +359,13 @@
           aria-label="Refresh data"
           class="btn btn-accent btn-square btn-xs ml-2"
           id="refresh-data-btn"
-          onclick="refreshDataBtn()">
+          data-action="refresh-data">
           <span data-icon="refresh" class="h-4 w-4"></span>
         </button>
 
         <!-- CENTER -->
         <div class="absolute left-1/2 -translate-x-1/2">
-          <button class="btn btn-accent btn-square btn-xs hidden" id="add-key-btn" title="Add" aria-label="Add key" onclick="addKeyBtn()">
+          <button class="btn btn-accent btn-square btn-xs hidden" id="add-key-btn" title="Add" aria-label="Add key" data-action="add-key">
             <span data-icon="plus" class="h-4 w-4"></span>
           </button>
         </div>
@@ -386,7 +377,7 @@
             aria-label="Share event"
             class="btn btn-primary btn-square btn-xs hidden"
             id="show-roles-btn"
-            onclick="showShareModal()">
+            data-action="show-share">
             <span data-icon="users" class="h-4 w-4"></span>
           </button>
           <span class="text-xl" id="user-email">
@@ -404,7 +395,7 @@
           <div class="relative mb-3 flex items-center justify-between">
             <h3 class="text-lg font-semibold">Share Event</h3>
             <div class="absolute left-1/2 -translate-x-1/2">
-              <button class="btn btn-accent btn-square btn-xs hidden" id="add-role-btn" onclick="addRoleBtn()" title="Add" aria-label="Add role">
+              <button class="btn btn-accent btn-square btn-xs hidden" id="add-role-btn" data-action="add-role" title="Add" aria-label="Add role">
                 <span data-icon="plus" class="h-4 w-4"></span>
               </button>
             </div>
@@ -473,7 +464,7 @@
               </table>
             </div>
             <div class="mt-3 text-center">
-              <button class="btn btn-accent btn-square btn-sm" id="add-language-btn" onclick="addLanguageBtn()" title="Add" aria-label="Add language">
+              <button class="btn btn-accent btn-square btn-sm" id="add-language-btn" data-action="add-language" title="Add" aria-label="Add language">
                 <span data-icon="plus" class="h-5 w-5"></span>
               </button>
             </div>
@@ -528,7 +519,7 @@
 
       <div class="bg-base-200 sticky bottom-0 z-40 mt-1 min-h-10">
         <div class="flex min-h-10 shrink-0 items-center px-3 py-1">
-          <button class="btn btn-accent btn-square btn-xs hidden" id="add-event-btn" title="Add" aria-label="Add event" onclick="addEventBtn()">
+          <button class="btn btn-accent btn-square btn-xs hidden" id="add-event-btn" title="Add" aria-label="Add event" data-action="add-event">
             <span data-icon="plus" class="h-4 w-4"></span>
           </button>
 

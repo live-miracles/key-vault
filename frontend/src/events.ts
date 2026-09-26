@@ -67,14 +67,18 @@ async function addEventBtn() {
     showLoading();
     document.querySelector('#add-event-btn').disabled = true;
     try {
-        const event = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
-        if (event === null) {
+        const savedEvent = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
+        if (savedEvent === null) {
             restoreConfig(snapshot);
             return;
         }
-        replaceConfigItem('events', event, optimisticEvent.id);
+        if (savedEvent.adminRole) {
+            config.roles.push(savedEvent.adminRole);
+        }
+        delete savedEvent.adminRole;
+        replaceConfigItem('events', savedEvent, optimisticEvent.id);
         updateEventRoles(config);
-        selectEvent(event.id);
+        selectEvent(savedEvent.id);
     } finally {
         document.querySelector('#add-event-btn').disabled = false;
         hideLoading();

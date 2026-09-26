@@ -314,6 +314,30 @@ function addEvent(event) {
         sheet.appendRow([event.id, event.name]);
         event.row = sheet.getLastRow();
 
+        if (!eventRoles['*']) {
+            const roleSheet = getSheet(SHEETS.ROLE);
+            const roleRows = getAllRows(roleSheet);
+            const roleIdIndex = roleRows.headers.indexOf('id');
+            const roles = roleRows.rows.map((row) => ({ id: row[roleIdIndex] }));
+            const adminRole = {
+                id: getNextSequentialId(roles, 'R'),
+                event: event.id,
+                email: config.userEmail,
+                type: ROLES.ADMIN,
+                language: '*',
+                row: roleSheet.getLastRow() + 1,
+            };
+            roleSheet.appendRow([
+                adminRole.id,
+                adminRole.event,
+                adminRole.email,
+                adminRole.type,
+                '',
+            ]);
+            setTextCell(roleSheet, adminRole.row, 5, adminRole.language);
+            event.adminRole = adminRole;
+        }
+
         expireCache();
 
         return {

@@ -33,9 +33,12 @@ function getEventRoles(email, events, roles, isAppOwner = false) {
 
 function hasEventAccess(eventRoles, action, eventId = null) {
     const isOwner = Boolean(eventRoles['*']);
+    const hasAdmin = Object.values(eventRoles).some((roles) =>
+        roles.some((role) => role.type === ROLES.ADMIN),
+    );
 
     if (!eventRoles[eventId]) {
-        if (action === ACTIONS.CREATE && isOwner) return true;
+        if (action === ACTIONS.CREATE && (isOwner || hasAdmin)) return true;
         return false;
     }
 

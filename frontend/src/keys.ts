@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function getRtmpValue(server, key) {
     if (!server || !key) {
         return '';
@@ -176,10 +178,10 @@ function renderKeyTable(eventId = null) {
                 : canManageKey
                   ? `
                     <div class="flex justify-center gap-1">
-                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" onclick="editKeyById(this.closest('tr').dataset.keyId)">
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" data-action="edit-key-by-id">
                             ${iconSvg('pen')}
                         </button>
-                        <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete key" onclick="deleteKeyById(this.closest('tr').dataset.keyId)">
+                        <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete key" data-action="delete-key-by-id">
                             ${iconSvg('trash')}
                         </button>
                     </div>
@@ -223,7 +225,7 @@ function renderKeyTable(eventId = null) {
             const platformNameCopyButton = isPending
                 ? ''
                 : `
-                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy platform name" aria-label="Copy platform name" onclick="copyTextValue(this.dataset.copyValue)" data-copy-value="${escapeHtml(k.name)}">
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy platform name" aria-label="Copy platform name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">
                         ${iconSvg('copy')}
                     </button>
                 `;
@@ -276,7 +278,7 @@ function renderCopyableTextCell({
     const copyButton = disabled
         ? ''
         : `
-            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy" aria-label="Copy" onclick="copyTextValue(this.dataset.copyValue)" data-copy-value="${escapeHtml(value)}">
+            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy" aria-label="Copy" data-action="copy-text" data-copy-value="${escapeHtml(value)}">
                 ${iconSvg('copy')}
             </button>
         `;
@@ -323,7 +325,7 @@ function showKeyColorMenu(event, keyId) {
         .map(
             (action) => `
                 <li>
-                    <button type="button" onclick="copySelectedKeyUrl('${escapeHtml(action.type)}')">
+                    <button type="button" data-action="copy-selected-key-url" data-action-type="${escapeHtml(action.type)}">
                         ${iconSvg('copy')}
                         <span>${escapeHtml(action.label)}</span>
                     </button>
@@ -336,7 +338,7 @@ function showKeyColorMenu(event, keyId) {
               .map(
                   (colorId) => `
                 <li>
-                    <button type="button" class="${COLORS[colorId].css}" onclick="changeSelectedKeyColor('${escapeHtml(colorId)}')">
+                    <button type="button" class="${COLORS[colorId].css}" data-action="change-key-color" data-color-id="${escapeHtml(colorId)}">
                         ${escapeHtml(COLORS[colorId].name)}
                     </button>
                 </li>

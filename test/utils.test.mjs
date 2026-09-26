@@ -4,7 +4,7 @@ import test from 'node:test';
 import { loadFrontendScripts } from './frontend-harness.mjs';
 
 function loadUtils() {
-    return loadFrontendScripts(['frontend/utils.js']);
+    return loadFrontendScripts(['frontend/src/utils.ts']);
 }
 
 test('escapes HTML-sensitive characters', () => {

@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function renderRoleTable(eventId = null) {
     const roles = config.roles
         .filter((r) => r.event === eventId || r.event === '*')
@@ -17,10 +19,10 @@ function renderRoleTable(eventId = null) {
             : canManageRole
               ? `
                         <div class="flex justify-center gap-1">
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" onclick="editRoleById(this.closest('tr').dataset.roleId)">
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" data-action="edit-role-by-id">
                                 ${iconSvg('pen')}
                             </button>
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" onclick="deleteRoleById(this.closest('tr').dataset.roleId)">
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" data-action="delete-role-by-id">
                                 ${iconSvg('trash')}
                             </button>
                         </div>
@@ -97,7 +99,7 @@ function renderRoleEditRow(role) {
                 <input type="email" class="input input-sm role-email-input w-full" value="${escapeHtml(role.email)}" placeholder="email@example.com" maxlength="100" />
             </th>
             <td class="w-30" style="padding: 5px;">
-                <select class="select select-sm role-type-input w-full" onchange="renderRoleLanguageForRow(this)">
+                <select class="select select-sm role-type-input w-full" data-action="render-role-language">
                     ${roleTypeOptions(role.event, role.type)}
                 </select>
             </td>
@@ -108,10 +110,10 @@ function renderRoleEditRow(role) {
             </td>
             <td style="padding: 5px;">
                 <div class="flex justify-center gap-1">
-                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Save" aria-label="Save role" onclick="saveRoleInlineBtn(this)">
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Save" aria-label="Save role" data-action="save-role-inline">
                         ${iconSvg('check')}
                     </button>
-                    <button type="button" class="btn btn-ghost btn-square btn-xs" title="Cancel" aria-label="Cancel role edit" onclick="cancelRoleInlineEdit()">
+                    <button type="button" class="btn btn-ghost btn-square btn-xs" title="Cancel" aria-label="Cancel role edit" data-action="cancel-role-inline">
                         ${iconSvg('x')}
                     </button>
                 </div>

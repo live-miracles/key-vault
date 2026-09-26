@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function getLanguages() {
     return [...(config.languages || [])]
         .map((language) => ({ ...language, id: normalizeLanguageId(language.id) }))
@@ -112,10 +114,10 @@ function renderLanguageTable() {
                 ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
                 : `
                         <div class="flex justify-center gap-1">
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit language" onclick="editLanguageById(this.closest('tr').dataset.languageId)">
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit language" data-action="edit-language-by-id">
                                 ${iconSvg('pen')}
                             </button>
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="${deleteTitle}" aria-label="Delete language" onclick="deleteLanguageById(this.closest('tr').dataset.languageId)" ${deleteDisabled}>
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="${deleteTitle}" aria-label="Delete language" data-action="delete-language-by-id" ${deleteDisabled}>
                                 ${iconSvg('trash')}
                             </button>
                         </div>

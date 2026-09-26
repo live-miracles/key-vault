@@ -31,8 +31,8 @@ function loadBackend() {
     context.globalThis = context;
 
     vm.createContext(context);
-    vm.runInContext(fs.readFileSync(path.join(root, 'Code.js'), 'utf8'), context, {
-        filename: 'Code.js',
+    vm.runInContext(fs.readFileSync(path.join(root, 'src', 'Code.ts'), 'utf8'), context, {
+        filename: 'src/Code.ts',
     });
 
     return {

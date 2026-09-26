@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 async function api(functionName, ...params) {
     try {
         const res = await new Promise((resolve, reject) =>
@@ -163,3 +165,54 @@ let eventRoles = {};
 
     document.querySelector('#stream-key-input').addEventListener('input', applyBackupServerLock);
 })();
+
+// Keep the frontend bundle scoped: the HTML uses data-action attributes and
+// this delegated layer routes them to the existing UI functions. Apps Script
+// RPC entry points remain global in the backend, but browser UI handlers do
+// not need to leak onto window.
+document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest('[data-action]') : null;
+    if (!target) return;
+
+    const row = target.closest('tr');
+    const action = target.dataset.action;
+    const actions = {
+        'save-event': () => saveEventFormBtn(event),
+        'edit-role': () => editRoleRow(),
+        'delete-role': () => deleteRoleRow(),
+        'save-language': () => saveLanguageFormBtn(event),
+        'save-key': () => saveKeyFormBtn(event),
+        'edit-event': () => editEventBtn(),
+        'delete-event': () => deleteEventBtn(),
+        'show-settings': () => showSettingsModal(),
+        'refresh-data': () => refreshDataBtn(),
+        'add-key': () => addKeyBtn(),
+        'show-share': () => showShareModal(),
+        'add-role': () => addRoleBtn(),
+        'add-language': () => addLanguageBtn(),
+        'add-event': () => addEventBtn(),
+        'edit-role-by-id': () => editRoleById(row?.dataset.roleId),
+        'delete-role-by-id': () => deleteRoleById(row?.dataset.roleId),
+        'save-role-inline': () => saveRoleInlineBtn(target),
+        'cancel-role-inline': () => cancelRoleInlineEdit(),
+        'edit-language-by-id': () => editLanguageById(row?.dataset.languageId),
+        'delete-language-by-id': () => deleteLanguageById(row?.dataset.languageId),
+        'edit-key-by-id': () => editKeyById(row?.dataset.keyId),
+        'delete-key-by-id': () => deleteKeyById(row?.dataset.keyId),
+        'copy-text': () => copyTextValue(target.dataset.copyValue),
+        'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
+        'change-key-color': () => changeSelectedKeyColor(target.dataset.colorId),
+    };
+
+    const handler = actions[action];
+    if (!handler) return;
+    void handler();
+});
+
+document.addEventListener('change', (event) => {
+    const target =
+        event.target instanceof Element
+            ? event.target.closest('[data-action="render-role-language"]')
+            : null;
+    if (target) renderRoleLanguageForRow(target);
+});

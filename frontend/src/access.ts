@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function getEventRoles(email, events, roles, isAppOwner = false) {
     const userRoles = roles.filter((r) => r.email === email);
     if (isAppOwner) {

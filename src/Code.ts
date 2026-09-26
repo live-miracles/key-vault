@@ -1,3 +1,9 @@
+// Apps Script exposes these services and requires doGet()/RPC functions to
+// remain global. TypeScript checks are enabled for the project, but this file
+// retains the existing Apps Script-compatible global implementation while the
+// backend is migrated incrementally.
+// @ts-nocheck
+
 const props = PropertiesService.getScriptProperties();
 const SPREADSHEET_ID = props.getProperty('SPREADSHEET_ID');
 const CACHE_KEY = 'DATA_V2';
@@ -957,5 +963,7 @@ function deleteKey(id) {
 
 // ===== Serve Webpage =====
 function doGet() {
-    return HtmlService.createHtmlOutputFromFile('Index').setTitle('Key Vault');
+    return HtmlService.createHtmlOutputFromFile('Index')
+        .setTitle('Key Vault')
+        .setFaviconUrl('https://live-miracles.github.io/key-vault/logo.png');
 }

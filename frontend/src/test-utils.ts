@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function getRandomWaitTime() {
     return parseInt((1 + Math.random()) * 1000);
 }

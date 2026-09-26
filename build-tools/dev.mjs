@@ -10,9 +10,13 @@ const { result } = concurrently(
             command: 'tailwindcss -i ./frontend/input.css -o ./frontend/output.css --watch',
         },
         {
+            name: 'build',
+            command: 'node build-tools/watch-build.mjs pages',
+        },
+        {
             name: 'server',
             command:
-                'browser-sync start --server ./frontend --files "frontend/*.js,frontend/*.html,frontend/output.css" --port 3000 --no-open --no-notify',
+                'browser-sync start --server ./site --files "site/*" --port 3000 --no-open --no-notify',
         },
     ],
     {

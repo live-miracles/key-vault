@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 function renderEventTabBar(eventId = null) {
     const events = config.events.filter((e) => e.id || e.name);
     const event = events.find((e) => e.id === eventId);

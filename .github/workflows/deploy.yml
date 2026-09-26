@@ -41,6 +41,9 @@ jobs:
             - name: Run unit tests
               run: npm test
 
+            - name: Type check
+              run: npm run typecheck
+
             - name: Check release version
               if: startsWith(github.ref, 'refs/tags/v')
               run: npm run version:check -- "$GITHUB_REF_NAME"
@@ -48,17 +51,8 @@ jobs:
             - name: Build CSS
               run: npm run css
 
-            - name: Stage site
-              run: |
-                  mkdir -p site
-                  cp -r frontend/. site/
-
-            - name: Stage versioned release
-              if: startsWith(github.ref, 'refs/tags/v')
-              run: |
-                  VERSION=${GITHUB_REF#refs/tags/v}
-                  mkdir -p site/v/$VERSION
-                  cp -r frontend/. site/v/$VERSION/
+            - name: Build demo site
+              run: npm run pages
 
             - name: Deploy to gh-pages
               if: github.event_name != 'pull_request'
@@ -67,11 +61,10 @@ jobs:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   publish_branch: gh-pages
                   publish_dir: ./site
-                  keep_files: true
 
             - name: Build Apps Script project
               if: startsWith(github.ref, 'refs/tags/v')
-              run: npm run apps-script:build -- "$GITHUB_REF_NAME"
+              run: npm run apps-script:build
 
             - name: Configure clasp
               if: startsWith(github.ref, 'refs/tags/v')
@@ -80,7 +73,15 @@ jobs:
                   APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
               run: |
                   printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
-                  printf '{"scriptId":"%s","rootDir":"dist/apps-script"}\n' "$APPS_SCRIPT_ID" > .clasp.json
+                  chmod 600 ~/.clasprc.json
+                  printf '{"scriptId":"%s","rootDir":".clasp-build"}\n' "$APPS_SCRIPT_ID" > .clasp.json
+
+            - name: Verify Apps Script files
+              if: startsWith(github.ref, 'refs/tags/v')
+              run: |
+                  FILE_STATUS=$(npx clasp --json show-file-status)
+                  echo "$FILE_STATUS"
+                  FILE_STATUS="$FILE_STATUS" node -e "const data = JSON.parse(process.env.FILE_STATUS); const files = data.filesToPush || []; for (const required of ['Code.js', 'appsscript.json', 'Index.html']) { if (!files.some(file => file.endsWith(required))) throw new Error('Missing required Apps Script file: ' + required); }"
 
             - name: Deploy Apps Script
               if: startsWith(github.ref, 'refs/tags/v')

@@ -4,7 +4,7 @@ import test from 'node:test';
 import { loadFrontendScripts } from './frontend-harness.mjs';
 
 function loadAccess() {
-    return loadFrontendScripts(['frontend/access.js']);
+    return loadFrontendScripts(['frontend/src/access.ts']);
 }
 
 test('owners receive access to every event and global language settings', () => {

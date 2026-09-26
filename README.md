@@ -12,19 +12,15 @@ Apps Script project, you will be able to:
 ## Project structure
 
 ```text
-├── Code.js              # Google Apps Script backend
+├── src/
+│   ├── Code.ts          # Google Apps Script backend source
+│   ├── Index.html       # Generated Apps Script HTML shell
+│   └── appsscript.json  # Apps Script manifest
 ├── frontend/
-│   ├── index.html       # Main HTML page
-│   ├── script.js        # UI logic
-│   ├── access.js        # Access control rules
-│   ├── events.js        # Event management UI
-│   ├── languages.js     # Language settings UI
-│   ├── roles.js         # Role management UI
-│   ├── keys.js          # Key management UI
-│   ├── utils.js         # Shared browser helpers
-│   ├── test-utils.js    # Local test/demo helpers
+│   ├── src/*.ts         # Frontend TypeScript source
+│   ├── index.html       # HTML shell template and demo page template
 │   └── input.css        # Tailwind CSS source
-└── build-tools/         # Local dev and release scripts
+└── build-tools/         # Build and release scripts
 ```
 
 ## Local development
@@ -50,9 +46,10 @@ Local development and release builds create it as needed.
 
 This repo now follows the same release pattern as `multi-lang-qa`.
 
-Pushing a git tag publishes a versioned frontend snapshot to GitHub Pages at
-`https://live-miracles.github.io/key-vault/v/x.y.z/`. The Apps Script deployment is then rebuilt to
-load that pinned asset version, so future frontend changes do not affect older releases.
+Pushing to `master` publishes the mock-backed demo frontend to GitHub Pages. Pushing a git tag
+also publishes the latest demo and deploys the production Apps Script build. The Apps Script
+deployment is rebuilt as a self-contained HTML project; it does not load its JavaScript or CSS from
+GitHub Pages.
 
 ```bash
 npm version 0.3.2
@@ -66,13 +63,16 @@ the git tag. With the default `tag-version-prefix` of `v`, `npm version 0.3.2` c
 The release tag must match `package.json`. GitHub Actions checks this before deploying. Run
 `npm version` from a clean git working tree.
 
-To preview the generated Apps Script project locally:
+To build the generated Apps Script project locally:
 
 ```bash
-npm run apps-script:build -- v0.3.2
+npm run css
+npm run apps-script:build
 ```
 
-The generated Apps Script files are written to `dist/apps-script/`.
+The generated Apps Script files are written to `.clasp-build/`. `Index.html` contains the
+frontend CSS and JavaScript inline. The logo and Apps Script favicon use the unversioned GitHub
+Pages logo URL.
 
 ### One-time Apps Script deployment setup
 
@@ -86,8 +86,8 @@ deployment:
 
 Once these are set, a tag like `v0.3.2` will:
 
-- publish `https://live-miracles.github.io/key-vault/v/0.3.2/`
-- generate the Apps Script project in `dist/apps-script/`
+- publish the mock-backed demo site and logo to GitHub Pages
+- generate a self-contained Apps Script project in `.clasp-build/`
 - push the generated project with `clasp`
 - create a new Apps Script version and update the existing deployment to point at it
 
@@ -103,8 +103,8 @@ project.
    `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
    `remarks`
 2. Create an Apps Script project and add a script property named `SPREADSHEET_ID`.
-3. Run `npm run apps-script:build -- v0.3.2`.
-4. Add the generated files from `dist/apps-script/` to the Apps Script project.
+3. Run `npm run css && npm run apps-script:build`.
+4. Add the generated files from `.clasp-build/` to the Apps Script project.
 5. Deploy the project as a web app.
 
 ## Roles

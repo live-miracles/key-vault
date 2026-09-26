@@ -7,7 +7,13 @@
     "scripts": {
         "dev": "node build-tools/dev.mjs",
         "css": "tailwindcss -i ./frontend/input.css -o ./frontend/output.css",
-        "apps-script:build": "node build-tools/build-apps-script.mjs",
+        "build": "node build-tools/build.mjs",
+        "build:backend": "node build-tools/build-backend.mjs",
+        "pages": "node build-tools/pages.mjs",
+        "apps-script:build": "npm run build && npm run build:backend",
+        "push": "npm run typecheck && npm run css && npm run build && npm run build:backend && clasp push --force",
+        "deploy": "npm run typecheck && npm run css && npm run build && npm run build:backend && clasp push --force && clasp deploy --deploymentId \"$APPS_SCRIPT_DEPLOYMENT_ID\" --description \"$(date +%Y-%m-%dT%H:%M:%S)\"",
+        "typecheck": "tsc --noEmit -p src/tsconfig.json && tsc --noEmit -p frontend/tsconfig.json",
         "version:check": "node build-tools/check-version.mjs",
         "test": "node test/run-tests.mjs",
         "format": "prettier --write .",
@@ -17,12 +23,15 @@
         "@google/clasp": "^3.3.0",
         "@tailwindcss/cli": "^4.2.1",
         "@tailwindcss/typography": "^0.5.19",
+        "@types/google-apps-script": "^2.0.13",
         "browser-sync": "^3.0.4",
         "concurrently": "^9.2.1",
         "daisyui": "^5.5.19",
+        "esbuild": "^0.28.2",
         "execa": "^9.6.0",
         "prettier": "^3.8.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
-        "tailwindcss": "^4.2.1"
+        "tailwindcss": "^4.2.1",
+        "typescript": "^5.9.3"
     }
 }

@@ -9,9 +9,9 @@ function plain(value) {
 
 function loadLanguages() {
     const runtime = loadFrontendScripts([
-        'frontend/utils.js',
-        'frontend/access.js',
-        'frontend/languages.js',
+        'frontend/src/utils.ts',
+        'frontend/src/access.ts',
+        'frontend/src/languages.ts',
     ]);
     runtime.set('eventRoles', {});
     runtime.set('config', {

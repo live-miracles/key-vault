@@ -8,11 +8,15 @@ function plain(value) {
 }
 
 function loadKeys() {
-    return loadFrontendScripts(['frontend/utils.js', 'frontend/keys.js']);
+    return loadFrontendScripts(['frontend/src/utils.ts', 'frontend/src/keys.ts']);
 }
 
 function loadKeyAccess() {
-    return loadFrontendScripts(['frontend/utils.js', 'frontend/access.js', 'frontend/keys.js']);
+    return loadFrontendScripts([
+        'frontend/src/utils.ts',
+        'frontend/src/access.ts',
+        'frontend/src/keys.ts',
+    ]);
 }
 
 test('builds RTMP values for known, custom, and empty endpoints', () => {

@@ -5,10 +5,10 @@ import { loadFrontendScripts } from './frontend-harness.mjs';
 
 function loadRoles() {
     const runtime = loadFrontendScripts([
-        'frontend/utils.js',
-        'frontend/access.js',
-        'frontend/languages.js',
-        'frontend/roles.js',
+        'frontend/src/utils.ts',
+        'frontend/src/access.ts',
+        'frontend/src/languages.ts',
+        'frontend/src/roles.ts',
     ]);
     runtime.set('config', {
         languages: [

@@ -1,4 +1,6 @@
 dist/
+.clasp-build/
+src/Index.html
 node_modules/
 .npm-cache/
 site/

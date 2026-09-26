@@ -39,7 +39,7 @@ test('app owner receives owner access without a role row', () => {
     assert.equal(runtime.get('hasLanguageAccess')(eventRoles), true);
 });
 
-test('admins can manage non-owner roles, and owners can manage owner roles', () => {
+test('admins can add admins and manage non-owner roles, and owners can manage owner roles', () => {
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const adminEventRoles = {
@@ -51,6 +51,10 @@ test('admins can manage non-owner roles, and owners can manage owner roles', () 
 
     assert.equal(
         runtime.get('hasRoleAccess')(adminEventRoles, ACTIONS.CREATE, 'E1', ROLES.EDITOR),
+        true,
+    );
+    assert.equal(
+        runtime.get('hasRoleAccess')(adminEventRoles, ACTIONS.CREATE, 'E1', ROLES.ADMIN),
         true,
     );
     assert.equal(

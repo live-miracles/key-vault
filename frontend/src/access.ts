@@ -57,7 +57,7 @@ function hasRoleAccess(eventRoles, action, eventId, type = null) {
     if (action === ACTIONS.VIEW) return isEditor;
 
     if (type === ROLES.OWNER) return isOwner;
-    if (type === ROLES.ADMIN) return isOwner;
+    if (type === ROLES.ADMIN) return action === ACTIONS.CREATE ? isAdmin : isOwner;
 
     return isAdmin;
 }

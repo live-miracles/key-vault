@@ -190,7 +190,7 @@ function renderKeyTable(eventId = null) {
             const mainUrl = getKeyMainUrl(k);
             const backupEndpoint = getKeyBackupEndpoint(k);
             const backupUrl = getKeyBackupUrl(k);
-            const allUrls = config.keys.flatMap((key) =>
+            const allUrls = keys.flatMap((key) =>
                 [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
             );
             const cnt = allUrls.filter((url) => url === mainUrl).length;
@@ -694,7 +694,7 @@ async function saveKeyFormBtn(event) {
 
     if (
         config.keys
-            .filter((k) => k.id !== key.id)
+            .filter((k) => k.id !== key.id && k.event === key.event)
             .some(
                 (k) =>
                     getKeyMainUrl(k) === getKeyMainUrl(key) ||
@@ -713,19 +713,8 @@ async function saveKeyFormBtn(event) {
 
     if (
         getKeyBackupUrl(key) &&
-        !isLockedBackupServer(key.server) &&
-        getKeyMainUrl(key) === getKeyBackupUrl(key)
-    ) {
-        setKeyFormError(
-            "Backup URL can't be the same as the Main",
-            getEndpointErrorSelectors(backupEndpoint, '2'),
-        );
-        event.preventDefault();
-        return;
-    } else if (
-        getKeyBackupUrl(key) &&
         config.keys
-            .filter((k) => k.id !== key.id)
+            .filter((k) => k.id !== key.id && k.event === key.event)
             .some(
                 (k) =>
                     getKeyMainUrl(k) === getKeyBackupUrl(key) ||
@@ -734,6 +723,19 @@ async function saveKeyFormBtn(event) {
     ) {
         setKeyFormError(
             'This URL has already been added',
+            getEndpointErrorSelectors(backupEndpoint, '2'),
+        );
+        event.preventDefault();
+        return;
+    }
+
+    if (
+        getKeyBackupUrl(key) &&
+        !isLockedBackupServer(key.server) &&
+        getKeyMainUrl(key) === getKeyBackupUrl(key)
+    ) {
+        setKeyFormError(
+            "Backup URL can't be the same as the Main",
             getEndpointErrorSelectors(backupEndpoint, '2'),
         );
         event.preventDefault();

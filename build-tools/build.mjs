@@ -51,6 +51,6 @@ if (replaced === shell) {
 
 const output = replaced
     .replace(/<title>.*?<\/title>/, '<title>Key Vault</title>')
-    .replace('</body>', `<script>${escapeInlineScript(code)}</script>\n  </body>`);
+    .replace('</body>', () => `<script>${escapeInlineScript(code)}</script>\n  </body>`);
 await writeFile(path.join(root, 'src', 'Index.html'), output);
 console.log('Frontend build complete: src/Index.html (bundled inline assets)');

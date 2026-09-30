@@ -30,8 +30,12 @@ function toCssEscapes(source) {
     return source.replace(/[^\x00-\x7f]/gu, (ch) => `\\${ch.codePointAt(0).toString(16)} `);
 }
 
+// Apps Script treats `//` inside a template literal as a line comment, which truncates the
+// string and breaks everything after it ("Invalid or unexpected token"). `/\/` is identical in
+// strings, templates and regexes, and minified output has no real comments to confuse it with.
 function escapeInlineScript(source) {
     return toLegacyEscapes(source)
+        .replace(/\/\//g, '/\\/')
         .replace(/<\/script/gi, '<\\/script')
         .replace(/<!--/g, '<\\!--')
         .replace(/-->/g, '--\\>');

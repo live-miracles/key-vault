@@ -81,7 +81,7 @@ jobs:
               run: |
                   FILE_STATUS=$(npx clasp --json show-file-status)
                   echo "$FILE_STATUS"
-                  FILE_STATUS="$FILE_STATUS" node -e "const data = JSON.parse(process.env.FILE_STATUS); const files = data.filesToPush || []; for (const required of ['Code.js', 'appsscript.json', 'Index.html']) { if (!files.some(file => file.endsWith(required))) throw new Error('Missing required Apps Script file: ' + required); }"
+                  FILE_STATUS="$FILE_STATUS" node -e "const data = JSON.parse(process.env.FILE_STATUS); const files = data.filesToPush || []; for (const required of ['Code.js', 'access.js', 'appsscript.json', 'Index.html']) { if (!files.some(file => file.endsWith(required))) throw new Error('Missing required Apps Script file: ' + required); }"
 
             - name: Deploy Apps Script
               if: startsWith(github.ref, 'refs/tags/v')

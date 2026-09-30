@@ -1,6 +1,6 @@
 {
     "name": "key-vault",
-    "version": "4.0.3",
+    "version": "4.0.4",
     "description": "A Google Apps Script web app for managing event stream keys with role-based access.",
     "private": true,
     "type": "module",

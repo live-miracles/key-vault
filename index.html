@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="app.css" />
     <script src="app.js" defer></script>
   </head>
-  <body class="bg-base-100 text-base-content flex min-h-screen min-w-155 flex-col">
+  <body class="bg-base-100 text-base-content flex min-h-screen flex-col overflow-x-hidden">
     <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-175 -translate-x-1/2 transform">
       <span data-icon="check" class="h-6 w-6 shrink-0"></span>
       <span class="msg"></span>
@@ -325,9 +325,9 @@
     </dialog>
 
     <div class="bg-base-200 sticky top-0 z-50">
-      <div class="relative flex items-center px-5 pt-3 pb-3">
+      <div class="app-header relative flex items-center gap-2 px-5 pt-3 pb-3">
         <!-- LEFT -->
-        <span class="text-xl" id="event-name"></span>
+        <span class="min-w-0 truncate text-xl" id="event-name"></span>
         <button
           title="Edit"
           aria-label="Edit event"
@@ -371,7 +371,7 @@
         </div>
 
         <!-- RIGHT -->
-        <div class="ml-auto flex items-center gap-3">
+        <div class="header-status ml-auto flex min-w-0 items-center gap-3">
           <button
             title="Share Event"
             aria-label="Share event"
@@ -380,7 +380,7 @@
             data-action="show-share">
             <span data-icon="users" class="h-4 w-4"></span>
           </button>
-          <span class="text-xl" id="user-email">
+          <span class="min-w-0 truncate text-xl" id="user-email">
             <span class="loading loading-dots"></span>
           </span>
           <span class="mx-3">|</span>
@@ -486,7 +486,8 @@
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-3" id="key-table">
-        <div class="overflow-x-auto">
+        <div id="key-cards" class="hidden"></div>
+        <div class="key-table-scroll overflow-x-auto">
           <table class="table-pin-rows table">
             <!-- head -->
             <thead>
@@ -523,7 +524,7 @@
             <span data-icon="plus" class="h-4 w-4"></span>
           </button>
 
-          <div role="tablist" class="tabs tabs-sm tabs-box ml-3 min-h-8">
+          <div role="tablist" class="tabs tabs-sm tabs-box ml-3 min-h-8 min-w-0 overflow-x-auto">
             <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
           </div>
 

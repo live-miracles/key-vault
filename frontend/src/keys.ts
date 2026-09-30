@@ -95,6 +95,24 @@ function joinRtmpUrl(serverUrl, streamKey) {
     return normalizedServerUrl + streamKey;
 }
 
+function detectKnownRtmpServerUrl(url) {
+    const value = String(url ?? '').trim();
+    if (!value) return null;
+
+    for (const serverId of KNOWN_RTMP_URL_SERVER_IDS) {
+        const serverUrl = SERVERS[serverId].value;
+        if (value === serverUrl) return { server: serverId, streamKey: '' };
+        if (value.startsWith(serverUrl)) {
+            return {
+                server: serverId,
+                streamKey: value.slice(serverUrl.length),
+            };
+        }
+    }
+
+    return null;
+}
+
 function parseSrtUrl(url) {
     if (!String(url ?? '').startsWith('srt://')) return { ...DEFAULT_SRT_SETTINGS };
 
@@ -166,17 +184,17 @@ function renderKeyTable(eventId = null) {
             return getLanguageName(a.language).localeCompare(getLanguageName(b.language));
         });
 
-    document.querySelector('#key-rows').innerHTML = keys
-        .map((k, i) => {
-            const idIssue = getIdIssue(config.keys, k);
-            const color = COLORS[k.color] || COLORS[''];
-            const link = safeUrl(k.link);
-            const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
-            const isPending = Boolean(k.pending);
-            const actions = isPending
-                ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
-                : canManageKey
-                  ? `
+    const renderedKeys = keys.map((k, i) => {
+        const idIssue = getIdIssue(config.keys, k);
+        const color = COLORS[k.color] || COLORS[''];
+        const link = safeUrl(k.link);
+        const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
+        const isPending = Boolean(k.pending);
+        const keyIdAttr = escapeHtml(k.id);
+        const actions = isPending
+            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+            : canManageKey
+              ? `
                     <div class="flex justify-center gap-1">
                         <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit key" data-action="edit-key-by-id">
                             ${iconSvg('pen')}
@@ -186,51 +204,51 @@ function renderKeyTable(eventId = null) {
                         </button>
                     </div>
                 `
-                  : '';
-            const mainUrl = getKeyMainUrl(k);
-            const backupEndpoint = getKeyBackupEndpoint(k);
-            const backupUrl = getKeyBackupUrl(k);
-            const allUrls = keys.flatMap((key) =>
-                [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
-            );
-            const cnt = allUrls.filter((url) => url === mainUrl).length;
-            const cnt2 = backupUrl ? allUrls.filter((url) => url === backupUrl).length : 0;
-            const mainUrlCell = renderCopyableTextCell({
-                text: getRtmpPreview(k.server, k.key),
-                value: mainUrl,
-                title: mainUrl,
-                className: cnt > 1 ? 'text-error' : '',
-                disabled: isPending || !mainUrl,
-            });
-            const backupUrlCell = renderCopyableTextCell({
-                text: getRtmpPreview(backupEndpoint.server, backupEndpoint.key),
-                value: backupUrl,
-                title: backupUrl,
-                className: cnt2 > 1 ? 'text-error' : '',
-                disabled: isPending || !backupUrl,
-            });
-            const webLinkCell = link
-                ? renderCopyableTextCell({
-                      text: getMiddleEllipsisText(k.link, 20, 15, 3),
-                      value: k.link,
-                      title: k.link,
-                      href: link,
-                      disabled: isPending,
-                  })
-                : '';
+              : '';
+        const mainUrl = getKeyMainUrl(k);
+        const backupEndpoint = getKeyBackupEndpoint(k);
+        const backupUrl = getKeyBackupUrl(k);
+        const allUrls = keys.flatMap((key) =>
+            [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
+        );
+        const cnt = allUrls.filter((url) => url === mainUrl).length;
+        const cnt2 = backupUrl ? allUrls.filter((url) => url === backupUrl).length : 0;
+        const mainUrlCell = renderCopyableTextCell({
+            text: getRtmpPreview(k.server, k.key),
+            value: mainUrl,
+            title: mainUrl,
+            className: cnt > 1 ? 'text-error' : '',
+            disabled: isPending || !mainUrl,
+        });
+        const backupUrlCell = renderCopyableTextCell({
+            text: getRtmpPreview(backupEndpoint.server, backupEndpoint.key),
+            value: backupUrl,
+            title: backupUrl,
+            className: cnt2 > 1 ? 'text-error' : '',
+            disabled: isPending || !backupUrl,
+        });
+        const webLinkCell = link
+            ? renderCopyableTextCell({
+                  text: getMiddleEllipsisText(k.link, 20, 15, 3),
+                  value: k.link,
+                  title: k.link,
+                  href: link,
+                  disabled: isPending,
+              })
+            : '';
 
-            const languageIndex = keys.filter(
-                (key, index) => index <= i && key.language === k.language,
-            ).length;
-            const platformNameCopyButton = isPending
-                ? ''
-                : `
+        const languageIndex = keys.filter(
+            (key, index) => index <= i && key.language === k.language,
+        ).length;
+        const platformNameCopyButton = isPending
+            ? ''
+            : `
                     <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy platform name" aria-label="Copy platform name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">
                         ${iconSvg('copy')}
                     </button>
                 `;
-            return `
-                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${escapeHtml(k.id)}" title="${escapeHtml(idIssue)}">
+        const tableRow = `
+                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue)}">
                     <td style="padding: 2px">${i + 1}</td>
                     <td style="padding: 2px">
                         <div class="inline-flex items-center justify-center gap-1">
@@ -251,7 +269,37 @@ function renderKeyTable(eventId = null) {
                     <td style="padding: 2px" title="${escapeHtml(k.remarks)}">${escapeHtml(getMiddleEllipsisText(k.remarks, 40, 30, 5))}</td>
                     <td style="padding: 2px">${actions}</td>
                 </tr>`;
-        })
+        const cardActions = actions ? `<div class="key-card-actions">${actions}</div>` : '';
+        const mobileCard = `
+                <article class="key-mobile-card ${color.bgCss} ${idIssueClass(idIssue)}" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue)}">
+                    <div class="key-card-topline">
+                        <div class="min-w-0">
+                            <div class="key-card-title" title="${escapeHtml(k.name)}">
+                                <span>${i + 1}. ${escapeHtml(k.name || '(unnamed)')}</span>
+                                ${idIssueBadgeHtml(idIssue)}
+                            </div>
+                            <div class="key-card-meta">
+                                ${languageLabelHtml(k.language)}
+                                <span>(${languageIndex})</span>
+                            </div>
+                        </div>
+                        ${cardActions}
+                    </div>
+                    <div class="key-card-fields">
+                        ${renderMobileKeyField('Main Streaming URL', mainUrlCell)}
+                        ${renderMobileKeyField('Backup Streaming URL', backupUrlCell)}
+                        ${renderMobileKeyField('Web Link', webLinkCell)}
+                        ${renderMobileKeyField('Remarks', escapeHtml(k.remarks || ''))}
+                    </div>
+                </article>`;
+        return { tableRow, mobileCard };
+    });
+
+    document.querySelector('#key-rows').innerHTML = renderedKeys
+        .map((key) => key.tableRow)
+        .join('');
+    document.querySelector('#key-cards').innerHTML = renderedKeys
+        .map((key) => key.mobileCard)
         .join('');
 
     document.querySelectorAll('#key-rows tr[data-key-id]').forEach((row) => {
@@ -260,6 +308,24 @@ function renderKeyTable(eventId = null) {
             showKeyColorMenu(event, row.dataset.keyId);
         });
     });
+
+    document.querySelectorAll('#key-cards [data-key-id]').forEach((card) => {
+        card.addEventListener('dblclick', (event) => {
+            if (event.target.closest('button, a, input, select, textarea')) return;
+            showKeyColorMenu(event, card.dataset.keyId);
+        });
+    });
+}
+
+function renderMobileKeyField(label, content) {
+    if (!content) return '';
+
+    return `
+        <div class="key-card-field">
+            <div class="key-card-label">${escapeHtml(label)}</div>
+            <div class="key-card-value">${content}</div>
+        </div>
+    `;
 }
 
 function renderCopyableTextCell({
@@ -908,6 +974,20 @@ function renderServerInput(server, suffix = '') {
     }
 }
 
+function convertKnownCustomServerUrl(suffix = '') {
+    const customServerInput = document.querySelector('#key-custom-server' + suffix + '-input');
+    const streamKeyInput = document.querySelector('#stream-key' + suffix + '-input');
+    const knownServer = detectKnownRtmpServerUrl(customServerInput.value);
+    if (!knownServer) return false;
+
+    if (knownServer.streamKey) {
+        streamKeyInput.value = knownServer.streamKey;
+    }
+    renderServerInput(knownServer.server, suffix);
+    if (!suffix) applyBackupServerLock();
+    return true;
+}
+
 function isLockedBackupServer(server) {
     return Object.prototype.hasOwnProperty.call(LOCKED_BACKUP_BY_SERVER, server);
 }
@@ -983,6 +1063,8 @@ const HIDDEN_BACKUP_BY_SERVER = {
 };
 
 const YOUTUBE_BACKUP_SERVER_URL = 'rtmp://b.rtmp.youtube.com/live2?backup=1/';
+
+const KNOWN_RTMP_URL_SERVER_IDS = ['yt', 'fb'];
 
 const SERVERS = {
     '': { name: 'None', value: '' },

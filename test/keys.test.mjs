@@ -31,6 +31,25 @@ test('builds RTMP values for known, custom, and empty endpoints', () => {
     assert.equal(getRtmpValue('', 'abc123'), '');
 });
 
+test('detects known RTMP server URLs pasted into custom URL fields', () => {
+    const runtime = loadKeys();
+    const detectKnownRtmpServerUrl = runtime.get('detectKnownRtmpServerUrl');
+
+    assert.deepEqual(
+        plain(detectKnownRtmpServerUrl('rtmp://a.rtmp.youtube.com/live2/abc123')),
+        { server: 'yt', streamKey: 'abc123' },
+    );
+    assert.deepEqual(
+        plain(detectKnownRtmpServerUrl('rtmps://live-api-s.facebook.com:443/rtmp/live_123')),
+        { server: 'fb', streamKey: 'live_123' },
+    );
+    assert.deepEqual(
+        plain(detectKnownRtmpServerUrl('rtmp://a.rtmp.youtube.com/live2/')),
+        { server: 'yt', streamKey: '' },
+    );
+    assert.equal(detectKnownRtmpServerUrl('rtmp://custom.example/live/key'), null);
+});
+
 test('derives the YouTube backup endpoint and hides Instagram backups', () => {
     const runtime = loadKeys();
 

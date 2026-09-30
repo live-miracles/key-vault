@@ -163,6 +163,14 @@ let eventRoles = {};
         .querySelector('#key-server2-input')
         .addEventListener('change', (event) => renderServerInput(event.target.value, '2'));
 
+    document
+        .querySelector('#key-custom-server-input')
+        .addEventListener('input', () => convertKnownCustomServerUrl());
+
+    document
+        .querySelector('#key-custom-server2-input')
+        .addEventListener('input', () => convertKnownCustomServerUrl('2'));
+
     document.querySelector('#stream-key-input').addEventListener('input', applyBackupServerLock);
 })();
 
@@ -175,6 +183,7 @@ document.addEventListener('click', (event) => {
     if (!target) return;
 
     const row = target.closest('tr');
+    const keyContainer = target.closest('[data-key-id]');
     const action = target.dataset.action;
     const actions = {
         'save-event': () => saveEventFormBtn(event),
@@ -197,8 +206,8 @@ document.addEventListener('click', (event) => {
         'cancel-role-inline': () => cancelRoleInlineEdit(),
         'edit-language-by-id': () => editLanguageById(row?.dataset.languageId),
         'delete-language-by-id': () => deleteLanguageById(row?.dataset.languageId),
-        'edit-key-by-id': () => editKeyById(row?.dataset.keyId),
-        'delete-key-by-id': () => deleteKeyById(row?.dataset.keyId),
+        'edit-key-by-id': () => editKeyById(keyContainer?.dataset.keyId),
+        'delete-key-by-id': () => deleteKeyById(keyContainer?.dataset.keyId),
         'copy-text': () => copyTextValue(target.dataset.copyValue),
         'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
         'change-key-color': () => changeSelectedKeyColor(target.dataset.colorId),

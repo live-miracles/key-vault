@@ -13,8 +13,25 @@ const sourceFiles = [
     'script.ts',
 ];
 
-function escapeInlineScript(source) {
+// Apps Script's HTML service is fragile with non-ASCII text and ES2015 code point escapes in
+// inline assets, so keep the generated output plain ASCII with legacy escapes.
+function toLegacyEscapes(source) {
     return source
+        .replace(/\\u\{([0-9a-fA-F]+)\}/g, (_, hex) => {
+            const n = parseInt(hex, 16) - 0x10000;
+            const high = (0xd800 + (n >> 10)).toString(16);
+            const low = (0xdc00 + (n & 0x3ff)).toString(16);
+            return n < 0 ? `\\u${hex.padStart(4, '0')}` : `\\u${high}\\u${low}`;
+        })
+        .replace(/[^\x00-\x7f]/g, (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+function toCssEscapes(source) {
+    return source.replace(/[^\x00-\x7f]/gu, (ch) => `\\${ch.codePointAt(0).toString(16)} `);
+}
+
+function escapeInlineScript(source) {
+    return toLegacyEscapes(source)
         .replace(/<\/script/gi, '<\\/script')
         .replace(/<!--/g, '<\\!--')
         .replace(/-->/g, '--\\>');
@@ -42,7 +59,8 @@ const assetBlockPattern =
 const logoUrl = process.env.LOGO_URL || 'https://live-miracles.github.io/key-vault/logo.png';
 const replaced = shell.replace(
     assetBlockPattern,
-    `\n    <link rel="icon" type="image/png" href="${logoUrl}" />\n    <style>${css}</style>`,
+    () =>
+        `\n    <link rel="icon" type="image/png" href="${logoUrl}" />\n    <style>${toCssEscapes(css)}</style>`,
 );
 
 if (replaced === shell) {

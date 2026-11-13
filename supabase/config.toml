@@ -1,0 +1,13 @@
+# Supabase CLI project configuration. Project-specific values and all secrets
+# belong in the Supabase dashboard or local environment files, never here.
+project_id = "key-vault"
+
+# bunryu calls this with a shared bearer token, not a Supabase user token; the function
+# checks the token itself.
+[functions.ingest]
+verify_jwt = false
+
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]

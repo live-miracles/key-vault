@@ -3,3 +3,8 @@ import './backend-cache.test.mjs';
 import './keys.test.mjs';
 import './languages.test.mjs';
 import './utils.test.mjs';
+import './supabase-access.test.mjs';
+import './key-url.test.mjs';
+import './status.test.mjs';
+import './operations.test.mjs';
+import './sheet-to-sql.test.mjs';

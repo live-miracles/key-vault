@@ -1,0 +1,57 @@
+name: Deploy Supabase
+
+on:
+    push:
+        branches:
+            - master
+        paths:
+            - 'supabase/**'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: supabase-deploy
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - run: npm ci
+
+            - run: npm test
+
+            # GitHub-hosted runners have no IPv6 route and Supabase's direct database
+            # host is IPv6-only, so link first: `db push` then goes through the IPv4
+            # connection pooler.
+            - name: Link Supabase project
+              env:
+                  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+                  SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+              run: npx supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+            - name: Apply database migrations
+              env:
+                  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+                  SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+              run: npx supabase db push
+
+            - name: Deploy the api function
+              env:
+                  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+              run: npx supabase functions deploy api --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"
+
+            # bunryu authenticates with its own bearer token, not a Supabase user token.
+            - name: Deploy the ingest function
+              env:
+                  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+              run: npx supabase functions deploy ingest --no-verify-jwt --project-ref "${{ secrets.SUPABASE_PROJECT_REF }}"

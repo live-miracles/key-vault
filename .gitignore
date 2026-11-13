@@ -8,3 +8,8 @@ site/
 .clasprc.json
 output.css
 frontend/output.css
+
+.migration/
+supabase/.temp/
+supabase/.branches/
+.env.local

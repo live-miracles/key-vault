@@ -1048,14 +1048,18 @@ const KEY_COLORS = {
 
 const COLORS = {
     [KEY_COLORS.NONE]: { name: 'None', css: '', bgCss: '' },
-    [KEY_COLORS.ERROR]: { name: '🔴 Error', css: 'text-error', bgCss: 'bg-red-500/30' },
-    [KEY_COLORS.WARNING]: { name: '🟡 Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
-    [KEY_COLORS.CONFIGURED]: { name: '🟣 Configured', css: 'text-accent', bgCss: 'bg-accent/10' },
+    [KEY_COLORS.ERROR]: { name: '🔴 Error', css: 'text-error', bgCss: 'tint-error' },
+    [KEY_COLORS.WARNING]: { name: '🟡 Warning', css: 'text-warning', bgCss: 'tint-warning' },
+    [KEY_COLORS.CONFIGURED]: {
+        name: '🟣 Configured',
+        css: 'text-accent',
+        bgCss: 'tint-configured',
+    },
 };
 
 // What bunryu reports shows as a color of its own unless an owner or admin set one by hand.
 const STATUS_COLORS = {
-    running: { name: '🟢 Running', css: 'text-success', bgCss: 'bg-success/10' },
+    running: { name: '🟢 Running', css: 'text-success', bgCss: 'tint-running' },
     warning: COLORS[KEY_COLORS.WARNING],
     error: COLORS[KEY_COLORS.ERROR],
     stopped: COLORS[KEY_COLORS.CONFIGURED],

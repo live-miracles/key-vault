@@ -29,10 +29,10 @@ test('a key with no status and no manual color has no color', () => {
 
 test('each reported status gets its own color and an explanation', () => {
     const cases = {
-        running: 'bg-success/10',
-        warning: 'bg-warning/10',
-        error: 'bg-red-500/30',
-        stopped: 'bg-accent/10',
+        running: 'tint-running',
+        warning: 'tint-warning',
+        error: 'tint-error',
+        stopped: 'tint-configured',
     };
     for (const [state, css] of Object.entries(cases)) {
         const { color, title } = getKeyDisplay(
@@ -78,6 +78,6 @@ test('a color set by hand wins over the reported status', () => {
         key({ color: KEY_COLORS.WARNING }),
         report({ K1: { main: status('running'), backup: null } }),
     );
-    assert.equal(color.bgCss, 'bg-warning/10');
+    assert.equal(color.bgCss, 'tint-warning');
     assert.match(title, /set by hand/i);
 });

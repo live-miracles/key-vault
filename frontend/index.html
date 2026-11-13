@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="dim">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -10,7 +10,35 @@
     <link rel="stylesheet" href="./output.css" />
     <!-- assets:end -->
   </head>
-  <body class="bg-base-100 text-base-content flex min-h-screen flex-col overflow-x-hidden">
+  <body class="text-base-content flex min-h-screen flex-col overflow-x-hidden">
+    <svg class="wave-bg" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="seigaiha" width="96" height="48" patternUnits="userSpaceOnUse">
+          <circle class="wave-ring" cx="0" cy="24" r="48" />
+          <circle class="wave-ring" cx="0" cy="24" r="36" />
+          <circle class="wave-ring" cx="0" cy="24" r="24" />
+          <circle class="wave-ring" cx="0" cy="24" r="12" />
+          <circle class="wave-ring" cx="96" cy="24" r="48" />
+          <circle class="wave-ring" cx="96" cy="24" r="36" />
+          <circle class="wave-ring" cx="96" cy="24" r="24" />
+          <circle class="wave-ring" cx="96" cy="24" r="12" />
+          <circle class="wave-ring" cx="48" cy="48" r="48" />
+          <circle class="wave-ring" cx="48" cy="48" r="36" />
+          <circle class="wave-ring" cx="48" cy="48" r="24" />
+          <circle class="wave-ring" cx="48" cy="48" r="12" />
+          <circle class="wave-ring" cx="0" cy="72" r="48" />
+          <circle class="wave-ring" cx="0" cy="72" r="36" />
+          <circle class="wave-ring" cx="0" cy="72" r="24" />
+          <circle class="wave-ring" cx="0" cy="72" r="12" />
+          <circle class="wave-ring" cx="96" cy="72" r="48" />
+          <circle class="wave-ring" cx="96" cy="72" r="36" />
+          <circle class="wave-ring" cx="96" cy="72" r="24" />
+          <circle class="wave-ring" cx="96" cy="72" r="12" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#seigaiha)" />
+    </svg>
+
     <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-175 -translate-x-1/2 transform">
       <span data-icon="check" class="h-6 w-6 shrink-0"></span>
       <span class="msg"></span>
@@ -549,7 +577,7 @@
           <label class="swap ml-auto">
             <input id="saving-badge" type="checkbox" disabled />
             <div class="swap-off"></div>
-            <div class="swap-on flex items-center gap-2">
+            <div class="swap-on">
               <span class="loading loading-infinity loading-xs"></span>
               Saving
             </div>

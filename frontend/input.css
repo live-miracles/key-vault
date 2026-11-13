@@ -1,7 +1,517 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
-@plugin 'daisyui' {
-    themes: dim;
+
+/*
+ * Key Vault design tokens. The palette, radii and type follow DESIGN.md (adapted from the
+ * Linear analysis in awesome-design-md). The color names are the ones the templates already
+ * use (bg-base-200, text-error, bg-accent/10 ...), so a theme change happens here only.
+ */
+@theme {
+    --color-base-100: #010102; /* canvas */
+    --color-base-200: #0f1011; /* surface 1: cards, tables, menus */
+    --color-base-300: #23252a; /* hairline: borders, inset panels */
+    --color-base-content: #f7f8f8; /* ink */
+
+    --color-surface-2: #141516;
+    --color-surface-3: #1b1c1e;
+    --color-hairline-strong: #34343a;
+    --color-ink-muted: #d0d6e0;
+    --color-ink-subtle: #8a8f98;
+
+    --color-primary: #5e6ad2;
+    --color-primary-hover: #828fff;
+    --color-primary-content: #ffffff;
+    --color-accent: #828fff;
+    --color-accent-content: #010102;
+    --color-info: #5e6ad2;
+    --color-info-content: #ffffff;
+
+    /* Status. running, warning and error are what bunryu reports; "configured" uses accent. */
+    --color-success: #4cb782;
+    --color-success-content: #010102;
+    --color-warning: #e5a23c;
+    --color-warning-content: #010102;
+    --color-error: #f0616d;
+    --color-error-content: #010102;
+
+    --radius-box: 0.75rem;
+    --radius-field: 0.5rem;
+
+    --font-sans:
+        'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue',
+        Arial, 'Noto Sans', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+    :root {
+        color-scheme: dark;
+        --wave-fill: #010102;
+        --wave-line: #1f2331;
+    }
+
+    html {
+        background: var(--color-base-100);
+    }
+
+    body {
+        font-family: var(--font-sans);
+        font-feature-settings: 'cv01', 'ss03';
+        -webkit-font-smoothing: antialiased;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--color-primary-hover);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: color-mix(in oklab, var(--color-primary) 45%, transparent);
+    }
+}
+
+/* Seigaiha (blue ocean waves): a fixed layer behind the page that fades out toward the top,
+   so the table and cards sit on calm canvas. Cells are opaque and match the canvas, which
+   is what lets each row of scales cover the one before it. */
+.wave-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    mask-image: linear-gradient(to top, #000 0%, rgb(0 0 0 / 0.55) 22%, transparent 62%);
+}
+
+.wave-ring {
+    fill: var(--wave-fill);
+    stroke: var(--wave-line);
+    stroke-width: 1.25;
+}
+
+@layer components {
+    /* ----- Buttons ----- */
+    .btn {
+        display: inline-flex;
+        height: 2rem;
+        flex-shrink: 0;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        border: 1px solid var(--color-hairline-strong);
+        border-radius: var(--radius-field);
+        background: var(--color-surface-2);
+        padding: 0 0.875rem;
+        color: var(--color-base-content);
+        font-size: 0.875rem;
+        font-weight: 500;
+        line-height: 1;
+        white-space: nowrap;
+        transition:
+            background-color 120ms ease,
+            border-color 120ms ease;
+    }
+    .btn:hover {
+        background: var(--color-surface-3);
+    }
+    .btn:disabled,
+    .btn[disabled] {
+        cursor: not-allowed;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+    .btn-xs {
+        height: 1.5rem;
+        padding: 0 0.5rem;
+        font-size: 0.75rem;
+    }
+    .btn-sm {
+        height: 1.75rem;
+        padding: 0 0.75rem;
+        font-size: 0.8125rem;
+    }
+    .btn-square {
+        width: 2rem;
+        padding: 0;
+    }
+    .btn-square.btn-xs {
+        width: 1.5rem;
+    }
+    .btn-square.btn-sm {
+        width: 1.75rem;
+    }
+    .btn-ghost {
+        border-color: transparent;
+        background: transparent;
+    }
+    .btn-ghost:hover {
+        background: var(--color-surface-2);
+    }
+    .btn-primary,
+    .btn-accent {
+        border-color: transparent;
+        background: var(--color-primary);
+        color: var(--color-primary-content);
+    }
+    .btn-primary:hover,
+    .btn-accent:hover {
+        background: var(--color-primary-hover);
+    }
+    .btn-error {
+        border-color: transparent;
+        background: var(--color-error);
+        color: var(--color-error-content);
+    }
+    .btn-error:hover {
+        background: color-mix(in oklab, var(--color-error) 85%, white);
+    }
+
+    /* ----- Form fields ----- */
+    .input,
+    .select {
+        width: 20rem;
+        max-width: 100%;
+        height: 2.25rem;
+        border: 1px solid var(--color-hairline-strong);
+        border-radius: var(--radius-field);
+        background-color: var(--color-base-200);
+        padding: 0 0.75rem;
+        color: var(--color-base-content);
+        font-size: 0.875rem;
+        transition:
+            border-color 120ms ease,
+            box-shadow 120ms ease;
+    }
+    .input::placeholder {
+        color: var(--color-ink-subtle);
+    }
+    .input:focus,
+    .select:focus {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 30%, transparent);
+        outline: none;
+    }
+    .input:disabled,
+    .select:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+    }
+    .input-sm,
+    .select-sm {
+        height: 1.75rem;
+        padding: 0 0.5rem;
+        font-size: 0.8125rem;
+    }
+    .input-error,
+    .select-error {
+        border-color: var(--color-error);
+    }
+    .select {
+        appearance: none;
+        padding-right: 2rem;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8f98' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1rem;
+    }
+    .select-sm {
+        padding-right: 1.75rem;
+    }
+
+    .fieldset {
+        display: grid;
+        /* A fieldset is as wide as its contents by default, which let a 20rem select
+           push a narrow column open. */
+        min-inline-size: 0;
+        gap: 0.375rem;
+    }
+    .fieldset-legend {
+        color: var(--color-ink-muted);
+        font-size: 0.8125rem;
+        font-weight: 500;
+    }
+    .label {
+        color: var(--color-ink-subtle);
+        font-size: 0.75rem;
+    }
+
+    /* ----- Dialogs ----- */
+    .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        display: grid;
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        margin: 0;
+        place-items: center;
+        overflow: hidden;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        color: inherit;
+    }
+    .modal:not([open]) {
+        display: none;
+    }
+    .modal::backdrop {
+        background: rgb(0 0 0 / 0.65);
+    }
+    .modal-box,
+    .modal-backdrop {
+        grid-column-start: 1;
+        grid-row-start: 1;
+    }
+    .modal-box {
+        z-index: 1;
+        width: 91.667%;
+        max-width: 32rem;
+        max-height: calc(100vh - 5em);
+        overflow-y: auto;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box);
+        background: var(--color-surface-2);
+        padding: 1.5rem;
+        box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
+    }
+    .modal-backdrop {
+        z-index: 0;
+        display: grid;
+        width: 100%;
+        height: 100%;
+    }
+    .modal-backdrop button {
+        cursor: default;
+        background: transparent;
+        color: transparent;
+    }
+    .modal-action {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+    }
+
+    /* ----- Messages, cards, links ----- */
+    .alert {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        border: 1px solid var(--color-hairline-strong);
+        border-radius: var(--radius-box);
+        background: var(--color-surface-2);
+        padding: 0.625rem 1rem;
+        color: var(--color-base-content);
+        font-size: 0.875rem;
+    }
+    .alert-success {
+        border-color: color-mix(in oklab, var(--color-success) 50%, transparent);
+        background: color-mix(in oklab, var(--color-success) 16%, var(--color-surface-2));
+    }
+    .alert-warning {
+        border-color: color-mix(in oklab, var(--color-warning) 50%, transparent);
+        background: color-mix(in oklab, var(--color-warning) 14%, var(--color-surface-2));
+    }
+    .alert-error {
+        border-color: color-mix(in oklab, var(--color-error) 50%, transparent);
+        background: color-mix(in oklab, var(--color-error) 16%, var(--color-surface-2));
+    }
+    .alert-accent {
+        border-color: color-mix(in oklab, var(--color-accent) 50%, transparent);
+        background: color-mix(in oklab, var(--color-accent) 16%, var(--color-surface-2));
+    }
+
+    .card {
+        display: flex;
+        flex-direction: column;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box);
+        background: var(--color-base-200);
+    }
+    .card-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1.5rem;
+    }
+
+    .link {
+        cursor: pointer;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+    .link:hover {
+        color: var(--color-accent);
+    }
+
+    /* ----- Menus and tabs ----- */
+    .menu {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .menu li > * {
+        display: flex;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 6px;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .menu li > *:hover {
+        background: var(--color-surface-3);
+    }
+
+    .tabs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+    }
+    .tabs-box {
+        border-radius: var(--radius-field);
+        background: var(--color-surface-2);
+        padding: 3px;
+    }
+    .tab {
+        display: inline-flex;
+        height: 1.75rem;
+        flex-shrink: 0;
+        cursor: pointer;
+        align-items: center;
+        gap: 0.375rem;
+        border-radius: 6px;
+        padding: 0 0.75rem;
+        color: var(--color-ink-subtle);
+        font-size: 0.875rem;
+        font-weight: 500;
+        white-space: nowrap;
+        transition: background-color 120ms ease;
+    }
+    .tab:hover {
+        color: var(--color-base-content);
+    }
+    .tab-active {
+        background: var(--color-surface-3);
+        color: var(--color-base-content);
+    }
+    .tabs-sm .tab {
+        font-size: 0.8125rem;
+    }
+
+    /* ----- Tables ----- */
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    .table th,
+    .table td {
+        padding: 0.5rem 0.75rem;
+    }
+    .table thead th {
+        color: var(--color-ink-subtle);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .table tbody tr:not(:last-child),
+    .table thead tr {
+        border-bottom: 1px solid var(--color-base-300);
+    }
+    .table-fixed {
+        table-layout: fixed;
+    }
+    .table-pin-rows thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--color-base-200);
+    }
+
+    /* ----- Loading indicators ----- */
+    .loading {
+        display: inline-block;
+        width: 1.25rem;
+        height: 1.25rem;
+        vertical-align: middle;
+        border: 2px solid color-mix(in oklab, currentColor 25%, transparent);
+        border-top-color: currentColor;
+        border-radius: 9999px;
+        animation: loading-spin 0.8s linear infinite;
+    }
+    .loading-xs {
+        width: 0.75rem;
+        height: 0.75rem;
+        border-width: 1.5px;
+    }
+    .loading-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+    .loading-dots {
+        width: 1.5em;
+        height: 0.4em;
+        border: 0;
+        border-radius: 0;
+        background:
+            radial-gradient(circle closest-side, currentColor 90%, transparent) 0 50% / 33.3% 100%
+                no-repeat,
+            radial-gradient(circle closest-side, currentColor 90%, transparent) 50% 50% / 33.3% 100%
+                no-repeat,
+            radial-gradient(circle closest-side, currentColor 90%, transparent) 100% 50% / 33.3%
+                100% no-repeat;
+        opacity: 0.6;
+        animation: loading-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes loading-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    @keyframes loading-pulse {
+        50% {
+            opacity: 0.2;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .loading {
+            animation: none;
+        }
+    }
+
+    /* A checkbox that swaps two states: the "Saving" badge. */
+    .swap {
+        position: relative;
+        display: inline-grid;
+        cursor: default;
+        place-content: center;
+    }
+    .swap > input {
+        position: absolute;
+        appearance: none;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .swap > * {
+        grid-column-start: 1;
+        grid-row-start: 1;
+    }
+    .swap-on,
+    .swap > input:checked ~ .swap-off {
+        display: none;
+    }
+    .swap > input:checked ~ .swap-on {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
 }
 
 .q-answered > .q-translation {
@@ -39,8 +549,28 @@
     @apply space-y-3 py-3;
 }
 
-.key-mobile-card {
-    @apply border-base-300 bg-base-200 rounded-lg border p-3 shadow-sm;
+/* The color of a key's row or card: a tint mixed over the surface, never transparent, so
+   the waves behind the page cannot show through. In the components layer so the tint
+   wins over the card's own background. */
+@layer components {
+    .key-mobile-card {
+        @apply border-base-300 bg-base-200 rounded-lg border p-3 shadow-sm;
+    }
+    .tint-running {
+        background-color: color-mix(in oklab, var(--color-success) 12%, var(--color-base-200));
+    }
+    .tint-warning {
+        background-color: color-mix(in oklab, var(--color-warning) 12%, var(--color-base-200));
+    }
+    .tint-error {
+        background-color: color-mix(in oklab, var(--color-error) 22%, var(--color-base-200));
+    }
+    .tint-configured {
+        background-color: color-mix(in oklab, var(--color-accent) 12%, var(--color-base-200));
+    }
+    .key-table-scroll {
+        background: var(--color-base-200);
+    }
 }
 
 .key-card-topline {
@@ -102,10 +632,6 @@
 
     #user-email {
         @apply text-sm;
-    }
-
-    #storage-progress {
-        @apply w-20 shrink-0;
     }
 
     #key-table {

@@ -186,7 +186,7 @@ function renderKeyTable(eventId = null) {
 
     const renderedKeys = keys.map((k, i) => {
         const idIssue = getIdIssue(config.keys, k);
-        const color = COLORS[k.color] || COLORS[''];
+        const { color, title: statusTitle } = getKeyDisplay(k, keyStatus);
         const link = safeUrl(k.link);
         const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
         const isPending = Boolean(k.pending);
@@ -248,7 +248,7 @@ function renderKeyTable(eventId = null) {
                     </button>
                 `;
         const tableRow = `
-                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue)}">
+                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue || statusTitle)}">
                     <td style="padding: 2px">${i + 1}</td>
                     <td style="padding: 2px">
                         <div class="inline-flex items-center justify-center gap-1">
@@ -271,7 +271,7 @@ function renderKeyTable(eventId = null) {
                 </tr>`;
         const cardActions = actions ? `<div class="key-card-actions">${actions}</div>` : '';
         const mobileCard = `
-                <article class="key-mobile-card ${color.bgCss} ${idIssueClass(idIssue)}" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue)}">
+                <article class="key-mobile-card ${color.bgCss} ${idIssueClass(idIssue)}" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue || statusTitle)}">
                     <div class="key-card-topline">
                         <div class="min-w-0">
                             <div class="key-card-title" title="${escapeHtml(k.name)}">
@@ -1052,6 +1052,65 @@ const COLORS = {
     [KEY_COLORS.WARNING]: { name: '🟡 Warning', css: 'text-warning', bgCss: 'bg-warning/10' },
     [KEY_COLORS.CONFIGURED]: { name: '🟣 Configured', css: 'text-accent', bgCss: 'bg-accent/10' },
 };
+
+// What bunryu reports shows as a color of its own unless an owner or admin set one by hand.
+const STATUS_COLORS = {
+    running: { name: '🟢 Running', css: 'text-success', bgCss: 'bg-success/10' },
+    warning: COLORS[KEY_COLORS.WARNING],
+    error: COLORS[KEY_COLORS.ERROR],
+    stopped: COLORS[KEY_COLORS.CONFIGURED],
+};
+
+const STATUS_LABELS = {
+    running: 'Running',
+    warning: 'Warning',
+    error: 'Error',
+    stopped: 'Configured, not running',
+};
+
+// A problem outranks a healthy stream, which outranks one that was stopped on purpose.
+const STATUS_RANK = { stopped: 0, running: 1, warning: 2, error: 3 };
+
+// The worse of a key's main and backup status, or null when neither is configured in bunryu.
+function getKeyStatus(key, report) {
+    const entry = report?.keys?.[key.id];
+    if (!entry) return null;
+    return [entry.main, entry.backup]
+        .filter(Boolean)
+        .reduce(
+            (worst, status) =>
+                !worst || STATUS_RANK[status.status] > STATUS_RANK[worst.status] ? status : worst,
+            null,
+        );
+}
+
+function describeKeyStatus(status) {
+    const parts = [STATUS_LABELS[status.status] || status.status];
+    if (status.pipeline || status.output) {
+        parts.push([status.pipeline, status.output].filter(Boolean).join(' → '));
+    }
+    if (status.stoppedAfterFailures) {
+        parts.push(`stopped after ${status.failures} failed attempts`);
+    }
+    if (status.message) parts.push(status.message);
+    return parts.join(' • ');
+}
+
+// The color of a key's row and the hover text that explains it.
+function getKeyDisplay(key, report) {
+    const manual = COLORS[key.color];
+    if (key.color && manual) {
+        return { color: manual, title: 'Color set by hand: ' + manual.name };
+    }
+    const status = getKeyStatus(key, report);
+    if (status) {
+        return {
+            color: STATUS_COLORS[status.status] || COLORS[''],
+            title: describeKeyStatus(status),
+        };
+    }
+    return { color: COLORS[''], title: '' };
+}
 
 const LOCKED_BACKUP_BY_SERVER = {
     fb: 'fb',

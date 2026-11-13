@@ -5,17 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Key Vault</title>
 
+    <!-- assets:start -->
     <link rel="icon" type="image/png" href="./logo.png" />
     <link rel="stylesheet" href="./output.css" />
-    <script src="./bundle.umd.min.js"></script>
-    <script src="./utils.js"></script>
-    <script src="./access.js"></script>
-    <script src="./events.js"></script>
-    <script src="./languages.js"></script>
-    <script src="./roles.js"></script>
-    <script src="./keys.js"></script>
-    <script src="./test-utils.js" defer></script>
-    <script src="./script.js" defer></script>
+    <!-- assets:end -->
   </head>
   <body class="bg-base-100 text-base-content flex min-h-screen flex-col overflow-x-hidden">
     <div id="success-alert" role="alert" class="alert alert-success fixed top-3 left-1/2 z-60 hidden w-fit max-w-175 -translate-x-1/2 transform">
@@ -34,6 +27,23 @@
       class="alert bg-primary text-primary-content fixed bottom-3 left-1/2 z-60 hidden w-fit -translate-x-1/2 transform">
       <span data-icon="check" class="h-6 w-6 shrink-0"></span>
       <span>Copied</span>
+    </div>
+
+    <div id="status-banner" role="status" class="alert alert-warning mx-3 mt-3 hidden text-sm">
+      <span data-icon="error" class="h-5 w-5 shrink-0"></span>
+      <span>bunryu has not reported for a few minutes, so stream status is unknown. Colors you set by hand still show.</span>
+    </div>
+
+    <div id="login-panel" class="bg-base-100 fixed inset-0 z-70 hidden place-items-center p-4">
+      <div class="card bg-base-200 w-full max-w-sm shadow-sm">
+        <div class="card-body items-center text-center">
+          <img src="./logo.png" alt="" class="h-12 w-12" />
+          <h1 class="text-2xl font-semibold">Key Vault</h1>
+          <p class="text-base-content/70 text-sm">Sign in with your Google account to see your events.</p>
+          <button type="button" id="sign-in-btn" class="btn btn-accent mt-2 w-full">Sign in with Google</button>
+          <p id="login-message" class="text-error min-h-5 text-sm" role="alert"></p>
+        </div>
+      </div>
     </div>
 
     <dialog id="event-modal" class="modal">
@@ -392,8 +402,7 @@
           <span class="min-w-0 truncate text-xl" id="user-email">
             <span class="loading loading-dots"></span>
           </span>
-          <span class="mx-3">|</span>
-          <progress class="progress progress-accent w-12" max="100" id="storage-progress"></progress>
+          <button type="button" class="btn btn-ghost btn-xs hidden" data-action="sign-out" id="sign-out-btn">Sign out</button>
         </div>
       </div>
     </div>

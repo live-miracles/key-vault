@@ -1,19 +1,25 @@
 // @ts-nocheck
 
+// The real backend (supabase.ts, loaded as auth.js) or, on the demo site, the mock.
+function backendCall(functionName, params) {
+    if (window.kvAuth) return window.kvAuth.call(functionName, params);
+    return new Promise((resolve, reject) =>
+        window.google.script.run
+            .withFailureHandler(reject)
+            .withSuccessHandler(resolve)
+            [functionName](...params),
+    );
+}
+
 async function api(functionName, ...params) {
     try {
-        const res = await new Promise((resolve, reject) =>
-            window.google.script.run
-                .withFailureHandler(reject)
-                .withSuccessHandler(resolve)
-                [functionName](...params),
-        );
+        const res = await backendCall(functionName, params);
         if (res.success === false) {
             return { success: false, error: functionName + ': ' + res.error };
         }
         return { success: true, data: res.data };
     } catch (error) {
-        return { success: false, error: functionName + ': ' + error };
+        return { success: false, error: functionName + ': ' + (error?.message || error) };
     }
 }
 
@@ -89,11 +95,26 @@ async function fetchDataAndRerender() {
     }
 
     document.querySelector('#user-email').innerText = config.userEmail;
+}
 
-    // ===== Storage status =====
-    const storageStatus = Math.round(config.size / 1000);
-    document.querySelector('#storage-progress').value = String(storageStatus);
-    document.querySelector('#storage-progress').title = 'Used storage: ' + storageStatus + '%';
+// What bunryu reports about each key (see keys.ts, getKeyDisplay). A failed refresh keeps
+// the last report: a short network problem must not blank the colors.
+async function fetchStatusAndRerender() {
+    const response = await api('getStatus');
+    if (response.success === false) {
+        console.error(response.error);
+        return;
+    }
+    keyStatus = response.data;
+    renderStatusBanner();
+    const eventId = getUrlParam('event');
+    if (eventId) renderKeyTable(eventId);
+}
+
+function renderStatusBanner() {
+    const banner = document.getElementById('status-banner');
+    if (!banner) return;
+    banner.classList.toggle('hidden', keyStatus.online || !statusExpected);
 }
 
 async function refreshDataBtn() {
@@ -112,6 +133,11 @@ async function refreshDataBtn() {
 }
 
 const REFRESH_TIME = 5 * 60 * 1000;
+const STATUS_REFRESH_TIME = 30 * 1000;
+// The latest answer of getStatus, and whether this deployment is meant to have one (the
+// demo site shows sample statuses and no banner).
+let keyStatus = { online: false, instances: [], keys: {} };
+let statusExpected = false;
 let userEmail = null;
 let config = {
     size: 0,
@@ -126,12 +152,17 @@ let config = {
 let eventRoles = {};
 
 (async () => {
-    if (typeof google === 'undefined') {
+    if (window.kvAuth) {
+        statusExpected = true;
+        if (!(await window.kvAuth.start())) return;
+    } else if (typeof google === 'undefined') {
         window.google = googleMock;
     }
 
     fetchDataAndRerender();
     setInterval(fetchDataAndRerender, REFRESH_TIME);
+    fetchStatusAndRerender();
+    setInterval(fetchStatusAndRerender, STATUS_REFRESH_TIME);
 
     // ===== Roles =====
     document.addEventListener('click', () => {

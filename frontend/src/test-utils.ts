@@ -640,6 +640,43 @@ const testKeys = [
     },
 ];
 
+// Sample statuses so the demo shows every color the real site can.
+function getStatusMock() {
+    const status = (state, extra = {}) => ({
+        status: state,
+        message: '',
+        failures: 0,
+        stoppedAfterFailures: false,
+        sinceMs: Date.now() - 600000,
+        pipeline: 'Demo pipeline',
+        output: 'Demo output',
+        ...extra,
+    });
+    return {
+        success: true,
+        data: {
+            online: true,
+            instances: [{ instance: 'demo', lastSeenAt: new Date().toISOString(), online: true }],
+            keys: {
+                K1: { main: status('running'), backup: null },
+                K2: {
+                    main: status('error', {
+                        message: 'Connection refused by the destination.',
+                        failures: 5,
+                        stoppedAfterFailures: true,
+                    }),
+                    backup: null,
+                },
+                K3: {
+                    main: status('warning', { message: 'Timestamps are jumping.' }),
+                    backup: null,
+                },
+                K4: { main: status('stopped'), backup: null },
+            },
+        },
+    };
+}
+
 const googleMock = {};
 googleMock.script = {};
 googleMock.script.run = {};
@@ -650,6 +687,9 @@ googleMock.script.run.withFailureHandler = (_) => ({
         },
         getAllData: (etag) => {
             setTimeout(() => f(getAllDataMock(etag)), getRandomWaitTime());
+        },
+        getStatus: () => {
+            setTimeout(() => f(getStatusMock()), getRandomWaitTime());
         },
         addEvent: (data) => {
             setTimeout(() => f(addEventMock(data)), getRandomWaitTime());

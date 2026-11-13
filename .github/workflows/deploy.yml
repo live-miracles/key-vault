@@ -1,11 +1,12 @@
 name: Build and deploy
 
+# Checks every push and pull request, and publishes the mock-backed demo to GitHub Pages
+# from master. The real site is built and deployed by Vercel from the same repository;
+# Supabase is deployed by deploy-supabase.yml.
 on:
     push:
         branches:
             - master
-        tags:
-            - 'v*'
     pull_request:
         branches:
             - master
@@ -44,15 +45,17 @@ jobs:
             - name: Type check
               run: npm run typecheck
 
-            - name: Check release version
-              if: startsWith(github.ref, 'refs/tags/v')
-              run: npm run version:check -- "$GITHUB_REF_NAME"
-
             - name: Build CSS
               run: npm run css
 
             - name: Build demo site
               run: npm run pages
+
+            - name: Build the site for Vercel
+              env:
+                  KEY_VAULT_SUPABASE_URL: https://ci-placeholder.supabase.co
+                  KEY_VAULT_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
+              run: npm run build:vercel
 
             - name: Deploy to gh-pages
               if: github.event_name != 'pull_request'
@@ -61,36 +64,3 @@ jobs:
                   github_token: ${{ secrets.GITHUB_TOKEN }}
                   publish_branch: gh-pages
                   publish_dir: ./site
-
-            - name: Build Apps Script project
-              if: startsWith(github.ref, 'refs/tags/v')
-              run: npm run apps-script:build
-
-            - name: Configure clasp
-              if: startsWith(github.ref, 'refs/tags/v')
-              env:
-                  CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
-                  APPS_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_ID }}
-              run: |
-                  printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
-                  chmod 600 ~/.clasprc.json
-                  printf '{"scriptId":"%s","rootDir":".clasp-build"}\n' "$APPS_SCRIPT_ID" > .clasp.json
-
-            - name: Verify Apps Script files
-              if: startsWith(github.ref, 'refs/tags/v')
-              run: |
-                  FILE_STATUS=$(npx clasp --json show-file-status)
-                  echo "$FILE_STATUS"
-                  FILE_STATUS="$FILE_STATUS" node -e "const data = JSON.parse(process.env.FILE_STATUS); const files = data.filesToPush || []; for (const required of ['Code.js', 'access.js', 'appsscript.json', 'Index.html']) { if (!files.some(file => file.endsWith(required))) throw new Error('Missing required Apps Script file: ' + required); }"
-
-            - name: Deploy Apps Script
-              if: startsWith(github.ref, 'refs/tags/v')
-              env:
-                  APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-              run: |
-                  npx clasp push --force
-                  VERSION_OUTPUT=$(npx clasp --json version "$GITHUB_REF_NAME")
-                  echo "$VERSION_OUTPUT"
-                  VERSION_NUMBER=$(VERSION_OUTPUT="$VERSION_OUTPUT" node -e "const data = JSON.parse(process.env.VERSION_OUTPUT || '{}'); process.stdout.write(String(data.versionNumber || ''));")
-                  test -n "$VERSION_NUMBER"
-                  npx clasp deploy --deploymentId "$APPS_SCRIPT_DEPLOYMENT_ID" --versionNumber "$VERSION_NUMBER" --description "$GITHUB_REF_NAME"

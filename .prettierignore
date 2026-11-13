@@ -6,3 +6,4 @@ output.css
 frontend/output.css
 package-lock.json
 *.min.js
+web

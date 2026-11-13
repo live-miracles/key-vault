@@ -5,7 +5,9 @@
         "strict": false,
         "noEmit": true,
         "skipLibCheck": true,
-        "lib": ["ES2021", "DOM", "DOM.Iterable"]
+        "lib": ["ES2021", "DOM", "DOM.Iterable"],
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true
     },
     "include": ["src/**/*.ts"]
 }

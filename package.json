@@ -1,31 +1,24 @@
 {
     "name": "key-vault",
     "version": "4.0.4",
-    "description": "A Google Apps Script web app for managing event stream keys with role-based access.",
+    "description": "Key Vault: manage event stream keys with role-based access, on Supabase and Vercel.",
     "private": true,
     "type": "module",
     "scripts": {
         "dev": "node build-tools/dev.mjs",
         "css": "tailwindcss -i ./frontend/input.css -o ./frontend/output.css",
-        "build": "node build-tools/build.mjs",
-        "build:backend": "node build-tools/build-backend.mjs",
         "pages": "node build-tools/pages.mjs",
-        "apps-script:build": "npm run build && npm run build:backend",
-        "push": "npm run typecheck && npm run css && npm run build && npm run build:backend && clasp push --force",
-        "deploy": "npm run typecheck && npm run css && npm run build && npm run build:backend && clasp push --force && clasp deploy --deploymentId \"$APPS_SCRIPT_DEPLOYMENT_ID\" --description \"$(date +%Y-%m-%dT%H:%M:%S)\"",
-        "typecheck": "tsc --noEmit -p src/tsconfig.json && tsc --noEmit -p frontend/tsconfig.json && tsc --noEmit -p supabase/functions/_shared/tsconfig.json",
-        "version:check": "node build-tools/check-version.mjs",
+        "build:vercel": "npm run css && node build-tools/vercel.mjs",
+        "typecheck": "tsc --noEmit -p frontend/tsconfig.json && tsc --noEmit -p supabase/functions/_shared/tsconfig.json",
         "test": "node test/run-tests.mjs",
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
         "test:db": "node test/migrations-db-check.mjs",
-        "sheet:sql": "node build-tools/sheet-to-sql.mjs"
+        "sheet:sql": "node build-tools/sheet-to-sql.mjs",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
     },
     "devDependencies": {
-        "@google/clasp": "^3.3.0",
         "@tailwindcss/cli": "^4.2.1",
         "@tailwindcss/typography": "^0.5.19",
-        "@types/google-apps-script": "^2.0.13",
         "browser-sync": "^3.0.4",
         "concurrently": "^9.2.1",
         "daisyui": "^5.5.19",
@@ -36,5 +29,8 @@
         "supabase": "^2.122.1",
         "tailwindcss": "^4.2.1",
         "typescript": "^5.9.3"
+    },
+    "dependencies": {
+        "@supabase/supabase-js": "^2.119.0"
     }
 }

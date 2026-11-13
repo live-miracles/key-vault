@@ -1,5 +1,4 @@
 import './access.test.mjs';
-import './backend-cache.test.mjs';
 import './keys.test.mjs';
 import './languages.test.mjs';
 import './utils.test.mjs';
@@ -8,3 +7,6 @@ import './key-url.test.mjs';
 import './status.test.mjs';
 import './operations.test.mjs';
 import './sheet-to-sql.test.mjs';
+import './api-client.test.mjs';
+import './key-status-display.test.mjs';
+import './build-config.test.mjs';

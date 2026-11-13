@@ -12,16 +12,34 @@ Apps Script project, you will be able to:
 ## Project structure
 
 ```text
-├── src/
-│   ├── Code.ts          # Google Apps Script backend source
-│   ├── Index.html       # Generated Apps Script HTML shell
-│   └── appsscript.json  # Apps Script manifest
 ├── frontend/
-│   ├── src/*.ts         # Frontend TypeScript source
-│   ├── index.html       # HTML shell template and demo page template
+│   ├── src/*.ts         # Browser code (plain scripts sharing globals, as the tests load them)
+│   ├── src/supabase.ts  # Google sign-in and the call to the api function (own bundle)
+│   ├── index.html       # HTML shell
 │   └── input.css        # Tailwind CSS source
-└── build-tools/         # Build and release scripts
+├── supabase/
+│   ├── migrations/      # Database schema
+│   └── functions/       # api (the app's operations) and ingest (bunryu heartbeats)
+├── build-tools/         # Site builds and the Sheet-to-SQL export
+└── docs/refactor-plan.md
 ```
+
+## How it fits together
+
+```text
+Browser → Vercel static site → Supabase Auth (Google)
+                            └→ Edge Function `api` → Postgres
+bunryu ──every minute──► Edge Function `ingest` → Postgres
+```
+
+The browser never reads the database directly: every table has row-level security with no policy,
+and the `api` function checks the user's role (the rules in `frontend/src/access.ts` and
+`supabase/functions/_shared/access.ts`, which a test keeps identical) before using the service role.
+
+bunryu reports the status of each output once a minute. It sends a hash of each destination URL,
+never the URL. Key Vault hashes its own main and backup URLs and matches them, so a key shows
+as running, warning, error or configured-but-stopped without anyone setting a color. A color set
+by hand by an owner or admin still wins. See `docs/refactor-plan.md` for the heartbeat contract.
 
 ## Local development
 
@@ -30,82 +48,41 @@ npm install
 npm run dev
 ```
 
-This does an initial CSS compile, then serves the app locally at `http://localhost:3000` with live
-reload.
-
-To only compile CSS:
+This serves the demo (a built-in mock backend with sample data and statuses) at
+`http://localhost:3000` with live reload.
 
 ```bash
-npm run css
+npm test              # unit tests, no database needed
+npm run typecheck
+npm run test:db       # applies the migrations to a throwaway Postgres in Docker
 ```
 
-`frontend/output.css` is generated from `frontend/input.css` and is intentionally ignored by git.
-Local development and release builds create it as needed.
-
-## Releases
-
-This repo now follows the same release pattern as `multi-lang-qa`.
-
-Pushing to `master` publishes the mock-backed demo frontend to GitHub Pages. Pushing a git tag
-also publishes the latest demo and deploys the production Apps Script build. The Apps Script
-deployment is rebuilt as a self-contained HTML project; it does not load its JavaScript or CSS from
-GitHub Pages.
+To build the real site locally, set the project URL and the **publishable** key (never a secret key;
+the build refuses one) and run `npm run build:vercel`; the result is in `web/`.
 
 ```bash
-npm version 0.3.2
-git push origin master --tags
+KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBLISHABLE_KEY=<publishable key> npm run build:vercel
 ```
 
-`npm version` updates `package.json` and `package-lock.json`, creates the release commit, and creates
-the git tag. With the default `tag-version-prefix` of `v`, `npm version 0.3.2` creates the tag
-`v0.3.2`.
+## Setting up Supabase and Vercel
 
-The release tag must match `package.json`. GitHub Actions checks this before deploying. Run
-`npm version` from a clean git working tree.
+1. Create a Supabase project. Under Authentication → Providers enable Google (client id and secret
+   from a Google Cloud OAuth client whose redirect URI is
+   `https://<project-ref>.supabase.co/auth/v1/callback`), and add the site's URL to Authentication →
+   URL Configuration.
+2. Set the function secrets (see `docs/refactor-plan.md` for what each is):
+   `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_HASH_SECRET`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_INGEST_TOKEN`.
+3. Add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`;
+   `.github/workflows/deploy-supabase.yml` then applies the migrations and deploys both functions on every
+   change under `supabase/`.
+4. Import the repository in Vercel and set `KEY_VAULT_SUPABASE_URL` and
+   `KEY_VAULT_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` does the rest.
+5. To bring over the existing Google Sheet, download its four tabs as CSV
+   (`Event`, `Role`, `Language`, `Key`) into one folder and run
+   `npm run sheet:sql -- <folder> > .migration/data.sql`, then run that file against the database. It lists
+   anything that cannot be migrated instead of guessing. The file holds real keys: delete it afterwards.
 
-To build the generated Apps Script project locally:
-
-```bash
-npm run css
-npm run apps-script:build
-```
-
-The generated Apps Script files are written to `.clasp-build/`. `Index.html` contains the
-frontend CSS and JavaScript inline. The logo and Apps Script favicon use the unversioned GitHub
-Pages logo URL.
-
-### One-time Apps Script deployment setup
-
-Create these GitHub repository secrets before expecting tag releases to update the live Apps Script
-deployment:
-
-- `APPS_SCRIPT_ID`: the script ID from the Apps Script project settings.
-- `APPS_SCRIPT_DEPLOYMENT_ID`: the deployment ID of the existing web app deployment that should keep
-  the same public URL.
-- `CLASPRC_JSON`: the contents of the `.clasprc.json` file created by `npx clasp login`.
-
-Once these are set, a tag like `v0.3.2` will:
-
-- publish the mock-backed demo site and logo to GitHub Pages
-- generate a self-contained Apps Script project in `.clasp-build/`
-- push the generated project with `clasp`
-- create a new Apps Script version and update the existing deployment to point at it
-
-## Deploying to Google Apps Script manually
-
-If you want to collaborate with others in real time, you will need to create a Google Apps Script
-project.
-
-1. Create a spreadsheet with these tabs and columns:
-   `Role`: `id`, `event`, `email`, `type`, `language`, `remarks`
-   `Event`: `id`, `name` (`id` is generated as `E01`, `E02`, etc.)
-   `Language`: `id`, `name`, `order` (`id` should be a string from `L01` to `L99`)
-   `Key`: `id`, `event`, `name`, `language`, `server`, `key`, `server2`, `key2`, `link`, `color`,
-   `remarks`
-2. Create an Apps Script project and add a script property named `SPREADSHEET_ID`.
-3. Run `npm run css && npm run apps-script:build`.
-4. Add the generated files from `.clasp-build/` to the Apps Script project.
-5. Deploy the project as a web app.
+The GitHub Pages workflow still publishes the mock-backed demo from `master`.
 
 ## Roles
 

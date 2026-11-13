@@ -156,7 +156,6 @@ export async function getAllData(store: Store, ctx: Context, etag?: string) {
     const eventRoles = rolesOf(ctx, data);
     return ok({
         etag: currentEtag,
-        size: JSON.stringify(data).length,
         userEmail: ctx.email,
         isAppOwner: ctx.isAppOwner,
         languages: data.languages,

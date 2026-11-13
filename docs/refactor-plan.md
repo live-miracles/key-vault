@@ -105,25 +105,25 @@ Secrets to set (Supabase `secrets set`, never committed):
 
 Checks: `npm test` (56 tests, no database), `npm run typecheck`, and `npm run test:db`, which applies the migrations to a throwaway Postgres in Docker and exercises the SQL functions and constraints. The last one needs Docker Desktop running.
 
-### Phase 3 — Frontend on Vercel
+### Phase 3 — Frontend on Vercel (built)
 
-- Replace `google.script.run` and the mock (`frontend/src/test-utils.ts`) with a small `api()` over `fetch` and Supabase Auth.
-- Drop the concatenate-and-inline build (`build-tools/build.mjs`: ASCII escapes, `//` escaping, single HTML file). Those exist only for Apps Script. Move to ES modules and a plain esbuild bundle like setu's `build:vercel`; this also lets `// @ts-nocheck` be removed file by file.
-- Poll `getStatus` every 30 s (the 5-minute data refresh stays as it is); `online: false` means the colors are unknown.
-- Tests: existing `test/*.mjs` keep passing against the new transport.
+- `frontend/src/supabase.ts` (its own bundle, `auth.js`) signs in with Google and calls the `api` function through `api-client.ts`; the app's `api()` goes through it, or through the demo mock when the site has no backend config. The demo (GitHub Pages) keeps its sample data and now shows sample statuses.
+- `npm run build:vercel` writes `web/` and refuses to build without `KEY_VAULT_SUPABASE_URL` and the **publishable** key (a secret key is rejected). `vercel.json` sets the headers.
+- **Not done: ES modules.** The first draft planned them. The app is still plain scripts sharing globals because the existing tests load them that way; the inline Apps Script bundle and its escaping are gone, which was the part that mattered. Converting file by file (and dropping `// @ts-nocheck`) is a separate, optional piece of work.
+- `getStatus` is polled every 30 s; rows and cards are colored from it unless an owner or admin set a color by hand, and a banner appears when no bunryu has reported for 3 minutes.
+- Apps Script is removed from the repository (`Code.ts`, the inline build, clasp, their tests). The deployed script keeps running, untouched, until it is archived.
 
-### Phase 4 — Design system and wave background
+### Phase 4 — Design system and wave background (built)
 
-- Copy the chosen `DESIGN.md` into the repo and map it to Tailwind v4 `@theme` tokens in `frontend/input.css` (colors, radii, type scale). Status colors are added on top of the theme because Linear only defines one accent: `--status-running`, `--status-warning`, `--status-error`, `--status-idle`.
-- Replace DaisyUI. Current footprint: about 128 `input`, 47 `btn`, 16 `menu`, 15 `modal`, 13 `select`, plus tabs, alert, loading and badge, mostly generated inside `keys.ts`, `roles.ts`, `languages.ts` and `events.ts` templates. Approach: a small component layer in `input.css` (`.btn`, `.input`, `.select`, `.menu`, `.tab`, `.alert`, `.spinner`) built on the tokens, native `<dialog>` for modals, class names changed in one pass per file. No new dependency.
-- Wave background: an SVG seigaiha tile used as a fixed `body::before` layer, hairline strokes at 4–6% opacity, fading out toward the content area with a mask. Surfaces stay opaque so table rows and status colors keep their contrast. No animation by default; an optional very slow drift is disabled under `prefers-reduced-motion`. Mobile gets a larger tile to keep the layer cheap.
-- Keep mobile key cards (`.key-mobile-card`) and the context menu working; re-check contrast of every status color against the new surfaces.
-- Checks: typecheck, existing tests, screenshots at 375 px and 1280 px in the in-app browser, keyboard focus rings, contrast.
+- `DESIGN.md` (root) records the theme; tokens are in `frontend/input.css` (`@theme`). Theme: Linear, plus four status colors.
+- DaisyUI is gone. The component classes the templates use (`btn`, `input`, `modal`, …) are defined in `input.css` under the same names, so the markup did not change. Dialogs are still native `<dialog>`.
+- Waves: an inline SVG seigaiha pattern fixed behind the page, masked so it fades out toward the top, with no animation.
+- Status tints are opaque (`tint-*` classes mixed over the surface) so the waves never show through a row.
+- Checked in the browser at 1280 px and 375 px (table, cards, key dialog, sign-in panel). Not checked: contrast ratios with a tool, a real touch device, and the role/share, language and settings dialogs.
 
 ### Phase 5 — Cutover
 
-- Freeze edits in the Apps Script app, run the export, verify counts per tab, point Vercel at production Supabase, set the bunryu config, watch one real event rehearsal.
-- Keep the Sheet and Apps Script deployment for one release as a fallback, then archive.
+A runbook is in [docs/cutover.md](cutover.md). It needs the Supabase, Google and Vercel accounts, so it is done by a person.
 
 ## Risks
 

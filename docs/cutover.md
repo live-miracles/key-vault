@@ -7,36 +7,62 @@ You need: owner access to a Supabase project, a Google Cloud project for the OAu
 ## 1. Create the Supabase project
 
 1. Create a project. Note the project ref (the `abcdefgh` in `https://abcdefgh.supabase.co`).
-2. Generate two random secrets (for example `openssl rand -hex 32`): one for **hashing**, one for the **ingest token**. Keep them in a password manager; you will paste each in two places.
+2. When Supabase offers to connect the project to GitHub, **skip it**. The **Deploy Supabase** workflow already applies the migrations and deploys the functions; the integration would overlap with it and does not deploy functions with the flags `ingest` needs.
+3. Generate two random secrets, each different: `openssl rand -hex 32` once for **hashing** and once for the **ingest token**. Keep them in a password manager; you paste each in two places (Supabase here, bunryu in step 6). They do different jobs: the token proves a sender may post statuses, the hash secret lets Key Vault match a key to its status without bunryu ever sending the key. Keeping them separate means one leak does not expose the other.
 
-## 2. Google sign-in
+The order below avoids a loop: the database and functions need no site URL, the site needs only the Supabase URL and key, and the secrets and sign-in settings need the site URL, so they come last.
+
+## 2. Deploy the database and functions
+
+1. Create a Supabase access token (supabase.com/dashboard/account/tokens) and add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`. No database password is needed.
+2. Run `npm run test:db` once with Docker running; it proves the migrations and SQL functions on a real Postgres.
+3. Run the **Deploy Supabase** workflow (Actions → Run workflow), or locally `npx supabase db push` and `npx supabase functions deploy api` / `deploy ingest --no-verify-jwt`.
+
+Check: the Supabase dashboard shows the tables `events`, `languages`, `roles`, `keys`, `ingest_instances`, `stream_outputs`, and both functions.
+
+## 3. Deploy the site
+
+Import the repository in Vercel. Set these environment variables **before the first build** (a build without them fails with "Set KEY_VAULT_SUPABASE_URL and KEY_VAULT_SUPABASE_PUBLISHABLE_KEY"; after adding them, redeploy, since they only apply to new builds):
+
+- `KEY_VAULT_SUPABASE_URL`: `https://<project-ref>.supabase.co`
+- `KEY_VAULT_SUPABASE_PUBLISHABLE_KEY`: the **publishable** key (`sb_publishable_…`) from Project Settings → API Keys. The build refuses a secret key.
+
+Note the site's URL (for example `https://your-site.vercel.app`) for the next two steps.
+
+## 4. Google sign-in and function secrets
 
 1. In Google Cloud → APIs & Credentials create an OAuth client (Web application). Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`.
 2. In Supabase → Authentication → Providers → Google, paste the client id and secret and enable it.
-3. Authentication → URL Configuration: set the Site URL to the Vercel URL (you can add it after step 4).
+3. Authentication → URL Configuration: set the **Site URL** to the site's URL and add `https://<your-site>/**` under **Redirect URLs** (and `http://localhost:2837/**` if you want to sign in during local development). Until you do, Supabase's default Site URL sends you back to `http://localhost:3000` after signing in.
+4. Set the function secrets. Run this from this repository, with the project ref given explicitly (`supabase link` is remembered per directory):
 
-## 3. Deploy the database and functions
+    ```bash
+    read -rs HASH; echo     # paste the hash secret
+    read -rs TOKEN; echo    # paste the ingest token
+    npx supabase secrets set \
+      KEY_VAULT_APP_ORIGIN=https://<your-site> \
+      KEY_VAULT_HASH_SECRET="$HASH" \
+      KEY_VAULT_INGEST_TOKEN="$TOKEN" \
+      KEY_VAULT_OWNER_EMAILS="you@example.com,other@example.com" \
+      --project-ref <project-ref>
+    unset HASH TOKEN
+    npx supabase secrets list --project-ref <project-ref>
+    ```
 
-Set the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`, then set the function secrets:
+    - `KEY_VAULT_APP_ORIGIN` is exactly the site's origin: no trailing slash, no path.
+    - `KEY_VAULT_OWNER_EMAILS` is a comma-separated list of Google sign-in addresses. Owners can do everything in every event; for anyone who needs less, grant a role in the app. The first owner is how the first event and roles get created.
+    - The `list` should show all four `KEY_VAULT_*` names. Values are not shown afterwards, so keep your copies.
 
-```bash
-npx supabase login
-npx supabase link --project-ref <project-ref>
-npx supabase secrets set KEY_VAULT_APP_ORIGIN=https://<your-site> \
-  KEY_VAULT_HASH_SECRET=<hash secret> \
-  KEY_VAULT_INGEST_TOKEN=<ingest token> \
-  KEY_VAULT_OWNER_EMAILS=<your email>
-```
+Check: opening the site shows "Sign in with Google"; signing in with an owner email shows an empty app (no events yet) and no error.
 
-Then run the **Deploy Supabase** workflow (Actions → Run workflow), or locally `npx supabase db push` and `npx supabase functions deploy api` / `deploy ingest --no-verify-jwt`.
+If something is off:
 
-Check: the Supabase dashboard shows the tables `events`, `languages`, `roles`, `keys`, `ingest_instances`, `stream_outputs`, and both functions. Before this, run `npm run test:db` once with Docker running; it proves the migrations and SQL functions on a real Postgres.
-
-## 4. Deploy the site
-
-Import the repository in Vercel. Environment variables: `KEY_VAULT_SUPABASE_URL` and `KEY_VAULT_SUPABASE_PUBLISHABLE_KEY` (the **publishable** key from Project Settings → API Keys; the build fails on a secret key). Deploy, then put the Vercel URL in `KEY_VAULT_APP_ORIGIN` (step 3) and in the Supabase Site URL (step 2).
-
-Check: opening the site shows "Sign in with Google"; signing in with the owner email shows an empty app (no events yet).
+| What you see                                    | Cause                                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Sign-in returns to `http://localhost:3000`      | The Supabase Site URL is still the default (step 4.3).                                                                   |
+| `getAllData: Failed to fetch`                   | `KEY_VAULT_APP_ORIGIN` is not set, or does not match the site's origin exactly, so the browser blocks the call.          |
+| `getAllData: The server is not configured.`     | One of the `KEY_VAULT_*` secrets (usually the hash secret) is missing; compare `secrets list` with the four names above. |
+| Build fails with "Set KEY_VAULT_SUPABASE_URL …" | The Vercel environment variables are missing; add them and redeploy.                                                     |
 
 ## 5. Move the data
 
@@ -68,7 +94,7 @@ The reporter is on the bunryu branch `claude/key-vault-reporter-a77a29` (committ
 }
 ```
 
-and restart bunryu. Use the **same** hash secret and token as in step 3.
+and restart bunryu. Use the **same** hash secret and token as in step 4.
 
 Check, within two minutes:
 

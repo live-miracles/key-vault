@@ -66,10 +66,13 @@ KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBL
 
 ## Setting up Supabase and Vercel
 
+The step-by-step order, with checks and fixes for the usual errors, is in `docs/cutover.md`. In short:
+
 1. Create a Supabase project. Under Authentication → Providers enable Google (client id and secret
    from a Google Cloud OAuth client whose redirect URI is
-   `https://<project-ref>.supabase.co/auth/v1/callback`), and add the site's URL to Authentication →
-   URL Configuration.
+   `https://<project-ref>.supabase.co/auth/v1/callback`), and set the Site URL and a Redirect URL to the
+   site's address in Authentication → URL Configuration (the default sends sign-in back to
+   `http://localhost:3000`).
 2. Set the function secrets (see `docs/refactor-plan.md` for what each is):
    `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_HASH_SECRET`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_INGEST_TOKEN`.
 3. Add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`;

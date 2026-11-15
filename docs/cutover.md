@@ -17,7 +17,7 @@ You need: owner access to a Supabase project, a Google Cloud project for the OAu
 
 ## 3. Deploy the database and functions
 
-Set the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`, then set the function secrets:
+Set the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`, then set the function secrets:
 
 ```bash
 npx supabase login

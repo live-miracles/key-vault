@@ -72,7 +72,7 @@ KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBL
    URL Configuration.
 2. Set the function secrets (see `docs/refactor-plan.md` for what each is):
    `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_HASH_SECRET`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_INGEST_TOKEN`.
-3. Add the repository secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF`, `SUPABASE_DB_PASSWORD`;
+3. Add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`;
    `.github/workflows/deploy-supabase.yml` then applies the migrations and deploys both functions on every
    change under `supabase/`.
 4. Import the repository in Vercel and set `KEY_VAULT_SUPABASE_URL` and

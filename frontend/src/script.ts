@@ -89,7 +89,7 @@ async function fetchDataAndRerender() {
     if (config.events.find((e) => e.id === eventId)) {
         selectEvent(eventId);
     } else if (config.events.length > 0) {
-        selectEvent(config.events[0].id);
+        selectOverview();
     } else {
         selectEvent('');
     }
@@ -109,6 +109,7 @@ async function fetchStatusAndRerender() {
     renderBunryuStatus();
     const eventId = getUrlParam('event');
     if (eventId) renderKeyTable(eventId);
+    else if (isOverviewView()) renderOverview();
 }
 
 function renderBunryuStatus() {
@@ -255,10 +256,6 @@ let eventRoles = {};
         hideKeyColorMenu();
     });
     document.getElementById('share-modal').addEventListener('close', resetRoleInlineEdit);
-    document.querySelector('#key-color-input').innerHTML = Object.keys(COLORS)
-        .map((id) => `<option value="${id}" class="${COLORS[id].css}">${COLORS[id].name}</option>`)
-        .join('');
-
     document.querySelector('#key-server-input').innerHTML =
         '<option value="" disabled selected>Server URL</option>' +
         Object.keys(SERVERS)
@@ -333,12 +330,20 @@ document.addEventListener('click', (event) => {
         'delete-key-by-id': () => deleteKeyById(keyContainer?.dataset.keyId),
         'copy-text': () => copyTextValue(target.dataset.copyValue),
         'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
-        'change-key-color': () => changeSelectedKeyColor(target.dataset.colorId),
+        'select-language': () => selectLanguage(target.dataset.language),
+        'open-event': () => openEvent(target.dataset.event, target.dataset.language),
     };
 
     const handler = actions[action];
     if (!handler) return;
     void handler();
+});
+
+// Overview rows are keyboard-reachable too.
+document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    const row = event.target instanceof Element ? event.target.closest('.overview-row') : null;
+    row?.click();
 });
 
 document.addEventListener('change', (event) => {

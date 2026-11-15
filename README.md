@@ -38,8 +38,8 @@ and the `api` function checks the user's role (the rules in `frontend/src/access
 
 bunryu reports the status of each output once a minute. It sends a hash of each destination URL,
 never the URL. Key Vault hashes its own main and backup URLs and matches them, so a key shows
-as running, warning, error or configured-but-stopped without anyone setting a color. A color set
-by hand by an owner or admin still wins. See `docs/refactor-plan.md` for the heartbeat contract.
+as running, warning, error or configured-but-stopped without anyone setting a color. Colors are not
+editable by hand. See `docs/refactor-plan.md` for the heartbeat contract.
 
 ## Local development
 

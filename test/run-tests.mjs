@@ -9,4 +9,5 @@ import './operations.test.mjs';
 import './sheet-to-sql.test.mjs';
 import './api-client.test.mjs';
 import './key-status-display.test.mjs';
+import './overview.test.mjs';
 import './build-config.test.mjs';

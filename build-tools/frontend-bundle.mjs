@@ -7,7 +7,15 @@ const root = process.cwd();
 // The app is a set of plain scripts that share globals (the tests load them the same way),
 // concatenated in this order. test-utils.ts is the demo's mock backend and is left out of
 // the real site.
-const APP_FILES = ['utils.ts', 'access.ts', 'events.ts', 'languages.ts', 'roles.ts', 'keys.ts'];
+const APP_FILES = [
+    'utils.ts',
+    'access.ts',
+    'events.ts',
+    'languages.ts',
+    'roles.ts',
+    'keys.ts',
+    'overview.ts',
+];
 const DEMO_FILES = ['test-utils.ts'];
 const ENTRY_FILE = 'script.ts';
 

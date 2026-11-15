@@ -34,13 +34,19 @@ Status (the color of a key row and card, from bunryu's heartbeat):
 | Configured, not running          | `accent`            | `tint-configured` |
 | Not configured in bunryu         | none                | none              |
 
-Tints are **opaque** (mixed over `base-200`), so the waves can never show through a row. A color set by hand by an owner or admin wins over the reported status.
+Tints are **opaque** (mixed over `base-200`), so the waves can never show through a row. Only bunryu's report colors a row; there is no manual color.
 
 ## Shape and type
 
 - Radii: 6 px menu items and tabs, 8 px controls (`--radius-field`), 12 px cards and dialogs (`--radius-box`).
 - Type: 14 px body, 13 px small controls, 12 px labels and column headers. Weights 400, 500 and 600 only.
 - Focus: a 2 px `primary-hover` outline on `:focus-visible`; fields also get a 3 px translucent `primary` ring.
+
+## Layout
+
+- **Overview** is the first tab and the landing page: totals, one row per event, and the keys that need attention (`overview.ts`).
+- **Event view** is bunryu's list-and-detail layout: a language list on the left (`All` first, then the languages that have keys in the event, each with status counts) and the selected language's keys on the right. Below 768 px the list becomes a row of chips above the key cards. The choice is kept in the `language` URL parameter.
+- Status counts use the `status-pill` classes, which share the status colors above.
 
 ## Waves
 

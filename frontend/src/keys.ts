@@ -176,13 +176,22 @@ function getSrtSettings(suffix = '') {
 }
 
 function renderKeyTable(eventId = null) {
-    const keys = config.keys
+    if (!eventId && isOverviewView()) return renderOverview();
+
+    const eventKeys = config.keys
         .filter((k) => k.event === eventId)
         .sort((a, b) => {
             const orderDiff = getLanguageOrder(a.language) - getLanguageOrder(b.language);
             if (orderDiff !== 0) return orderDiff;
             return getLanguageName(a.language).localeCompare(getLanguageName(b.language));
         });
+    // The left panel picks a language; the table shows only that language's keys. Duplicate
+    // URLs are still checked against the whole event, so a clash is never hidden by a filter.
+    const language = renderLanguagePanel(eventKeys);
+    const keys = language ? eventKeys.filter((k) => k.language === language) : eventKeys;
+    const allUrls = eventKeys.flatMap((key) =>
+        [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
+    );
 
     const renderedKeys = keys.map((k, i) => {
         const idIssue = getIdIssue(config.keys, k);
@@ -208,9 +217,6 @@ function renderKeyTable(eventId = null) {
         const mainUrl = getKeyMainUrl(k);
         const backupEndpoint = getKeyBackupEndpoint(k);
         const backupUrl = getKeyBackupUrl(k);
-        const allUrls = keys.flatMap((key) =>
-            [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
-        );
         const cnt = allUrls.filter((url) => url === mainUrl).length;
         const cnt2 = backupUrl ? allUrls.filter((url) => url === backupUrl).length : 0;
         const mainUrlCell = renderCopyableTextCell({
@@ -354,16 +360,6 @@ function renderCopyableTextCell({
 
 let selectedKeyId = null;
 
-function canEditKeyColor(eventId) {
-    return hasKeyColorAccess(eventRoles, eventId);
-}
-
-function setKeyColorInput(value, eventId) {
-    const input = document.querySelector('#key-color-input');
-    input.value = value;
-    input.disabled = !canEditKeyColor(eventId);
-}
-
 function hideKeyColorMenu() {
     document.getElementById('key-color-menu')?.classList.add('hidden');
 }
@@ -382,7 +378,6 @@ function showKeyColorMenu(event, keyId) {
 
     const menu = document.getElementById('key-color-menu');
     const options = document.getElementById('key-color-menu-options');
-    const currentColor = key.color || KEY_COLORS.NONE;
     const copyActions = [
         { type: 'main', label: 'Main', url: getKeyMainUrl(key) },
         { type: 'backup', label: 'Backup', url: getKeyBackupUrl(key) },
@@ -398,25 +393,11 @@ function showKeyColorMenu(event, keyId) {
                 </li>
             `,
         );
-    const colorActions = hasKeyColorAccess(eventRoles, key.event)
-        ? Object.keys(COLORS)
-              .filter((colorId) => colorId !== currentColor)
-              .map(
-                  (colorId) => `
-                <li>
-                    <button type="button" class="${COLORS[colorId].css}" data-action="change-key-color" data-color-id="${escapeHtml(colorId)}">
-                        ${escapeHtml(COLORS[colorId].name)}
-                    </button>
-                </li>
-            `,
-              )
-        : [];
-    const divider = copyActions.length && colorActions.length ? ['<li></li>'] : [];
-    if (!copyActions.length && !colorActions.length) {
+    if (!copyActions.length) {
         hideKeyColorMenu();
         return;
     }
-    options.innerHTML = [...colorActions, ...divider, ...copyActions].join('');
+    options.innerHTML = copyActions.join('');
 
     menu.classList.remove('hidden');
 
@@ -478,10 +459,14 @@ async function addKeyBtn() {
 
     document.querySelector('#key-id-input').value = '';
     document.querySelector('#key-event-input').value = eventId;
-    setKeyColorInput('', eventId);
     document.querySelector('#key-name-input').value = '';
     renderKeyLanguages(eventId, ACTIONS.CREATE);
-    document.querySelector('#key-language-input').value = '';
+    // Adding while a language is selected starts on that language.
+    const languageInput = document.querySelector('#key-language-input');
+    const selectedLanguage = getUrlParam('language');
+    languageInput.value = [...languageInput.options].some((o) => o.value === selectedLanguage)
+        ? selectedLanguage
+        : '';
     renderServerInput('');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
@@ -505,7 +490,6 @@ function editKeyRow() {
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
-    setKeyColorInput(key.color, key.event);
     renderKeyLanguages(key.event, ACTIONS.UPDATE);
     document.querySelector('#key-language-input').value = key.language;
     document.querySelector('#key-link-input').value = key.link;
@@ -717,7 +701,6 @@ async function saveKeyFormBtn(event) {
     const key = {
         id: document.getElementById('key-id-input').value.trim(),
         event: document.getElementById('key-event-input').value.trim(),
-        color: document.getElementById('key-color-input').value.trim(),
         name: document.getElementById('key-name-input').value.trim(),
         language: document.getElementById('key-language-input').value.trim(),
         server: mainEndpoint.server,
@@ -729,12 +712,10 @@ async function saveKeyFormBtn(event) {
     };
     enforceLockedBackup(key);
 
+    // The form has no color: bunryu colors the row. A color set by hand from the row's menu
+    // is kept, unless the destination changed (then it was set for a different stream).
     const oldKey = key.id ? config.keys.find((k) => k.id === key.id) : null;
-    if (oldKey && hasStreamingConfigChanged(oldKey, key)) {
-        key.color = KEY_COLORS.NONE;
-    } else if (!hasKeyColorAccess(eventRoles, key.event)) {
-        key.color = oldKey ? oldKey.color : KEY_COLORS.NONE;
-    }
+    key.color = oldKey && !hasStreamingConfigChanged(oldKey, key) ? oldKey.color : KEY_COLORS.NONE;
 
     // Validation
     clearKeyErrors();
@@ -850,41 +831,6 @@ async function saveKeyFormBtn(event) {
         } finally {
             hideLoading();
         }
-    }
-}
-
-async function changeSelectedKeyColor(color) {
-    if (!selectedKeyId) return;
-    hideKeyColorMenu();
-
-    const key = config.keys.find((k) => k.id === selectedKeyId);
-    if (!key) {
-        console.error('Key not found:', selectedKeyId);
-        return;
-    }
-
-    if (!hasKeyColorAccess(eventRoles, key.event)) {
-        showErrorAlert('Only owners or admins can edit key colors.');
-        return;
-    }
-    const currentColor = key.color || KEY_COLORS.NONE;
-    if (!Object.prototype.hasOwnProperty.call(COLORS, color) || color === currentColor) return;
-
-    const snapshot = cloneConfig();
-    replaceConfigItem('keys', { ...key, color });
-    renderKeyTable(key.event);
-
-    showLoading();
-    try {
-        const newKey = processResponse(await api('editKey', { ...key, color }));
-        if (newKey === null) {
-            restoreConfig(snapshot, key.event);
-            return;
-        }
-        replaceConfigItem('keys', newKey);
-        renderKeyTable(newKey.event);
-    } finally {
-        hideLoading();
     }
 }
 
@@ -1100,12 +1046,9 @@ function describeKeyStatus(status) {
     return parts.join(' • ');
 }
 
-// The color of a key's row and the hover text that explains it.
+// The color of a key's row and the hover text that explains it. Only bunryu's report colors a
+// row: a color stored on the key (set by hand in an earlier version) is ignored.
 function getKeyDisplay(key, report) {
-    const manual = COLORS[key.color];
-    if (key.color && manual) {
-        return { color: manual, title: 'Color set by hand: ' + manual.name };
-    }
     const status = getKeyStatus(key, report);
     if (status) {
         return {

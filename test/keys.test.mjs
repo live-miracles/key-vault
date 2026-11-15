@@ -153,21 +153,3 @@ test('keeps changed streaming configurations uncolored until configured', () => 
 
     assert.equal(changedKey.color, KEY_COLORS.NONE);
 });
-
-test('allows only owners and admins to edit key colors in the UI', () => {
-    const runtime = loadKeyAccess();
-    const { ROLES } = runtime.get('({ ROLES })');
-    const canEditKeyColor = runtime.get('canEditKeyColor');
-
-    runtime.set('eventRoles', {
-        EVT_OWNER: [{ type: ROLES.OWNER }],
-        EVT_ADMIN: [{ type: ROLES.ADMIN }],
-        EVT_EDITOR: [{ type: ROLES.EDITOR }],
-        EVT_VIEWER: [{ type: ROLES.VIEWER }],
-    });
-
-    assert.equal(canEditKeyColor('EVT_OWNER'), true);
-    assert.equal(canEditKeyColor('EVT_ADMIN'), true);
-    assert.equal(canEditKeyColor('EVT_EDITOR'), false);
-    assert.equal(canEditKeyColor('EVT_VIEWER'), false);
-});

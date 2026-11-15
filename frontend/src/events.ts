@@ -3,7 +3,8 @@
 function renderEventTabBar(eventId = null) {
     const events = config.events.filter((e) => e.id || e.name);
     const event = events.find((e) => e.id === eventId);
-    const name = event?.name || '';
+    const onOverview = !event && isOverviewView();
+    const name = onOverview ? 'Overview' : event?.name || '';
     const headerIssue = event ? getIdIssue(config.events, event) : '';
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
@@ -30,7 +31,14 @@ function renderEventTabBar(eventId = null) {
     document.querySelector('#delete-event-btn').disabled = isPending;
 
     const tabsElem = document.querySelector('.tabs');
+    const overviewTab = document.createElement('a');
+    overviewTab.role = 'tab';
+    overviewTab.className = `tab ${onOverview ? 'tab-active' : ''}`;
+    overviewTab.title = 'Overview of every event';
+    overviewTab.innerHTML = `${iconSvg('home')}<span class="ml-1">Overview</span>`;
+    overviewTab.addEventListener('click', () => selectOverview());
     tabsElem.replaceChildren(
+        ...(events.length > 0 ? [overviewTab] : []),
         ...events.map((e) => {
             const idIssue = getIdIssue(config.events, e);
             const tab = document.createElement('a');
@@ -38,7 +46,7 @@ function renderEventTabBar(eventId = null) {
             tab.className = `tab ${eventId === e.id ? 'tab-active' : ''} ${idIssue ? 'text-error bg-error/10' : ''}`;
             tab.textContent = idIssue ? `${e.name || '(unnamed)'} (ID issue)` : e.name;
             tab.title = idIssue;
-            tab.addEventListener('click', () => selectEvent(e.id));
+            tab.addEventListener('click', () => selectEvent(e.id, null));
             return tab;
         }),
     );
@@ -156,7 +164,7 @@ async function deleteEventBtn() {
     const snapshot = cloneConfig();
     config.events = config.events.filter((e) => e.id !== event.id);
     updateEventRoles(config);
-    selectEvent(config.events[0]?.id || '');
+    selectOverview();
 
     showLoading();
     document.querySelector('#delete-event-btn').disabled = true;
@@ -171,8 +179,33 @@ async function deleteEventBtn() {
     }
 }
 
-function selectEvent(id) {
-    setUrlParam('event', id);
+// The home page: totals and problems across every event.
+function selectOverview() {
+    if (config.events.length === 0) return selectEvent('');
+    setUrlParams({ event: null, language: null, view: OVERVIEW_VIEW });
+    showEventView(false);
+    renderEventTabBar(null);
+    for (const button of [
+        'show-roles-btn',
+        'add-role-btn',
+        'edit-role-btn',
+        'delete-role-btn',
+        'add-key-btn',
+    ]) {
+        document.querySelector('#' + button).classList.add('hidden');
+    }
+    renderOverview();
+}
+
+function showEventView(show) {
+    document.querySelector('#key-table').classList.toggle('hidden', !show);
+    document.querySelector('#overview-view').classList.toggle('hidden', show);
+}
+
+// `language` picks the language filter; leave it out to keep the one already chosen.
+function selectEvent(id, language = undefined) {
+    setUrlParams({ event: id, view: null, ...(language === undefined ? {} : { language }) });
+    document.querySelector('#overview-view').classList.add('hidden');
 
     const hasEvents = config.events.length > 0;
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);

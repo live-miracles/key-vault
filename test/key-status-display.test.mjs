@@ -73,11 +73,10 @@ test('an error that stopped the output says how many attempts failed', () => {
     assert.match(title, /Connection refused/);
 });
 
-test('a color set by hand wins over the reported status', () => {
-    const { color, title } = getKeyDisplay(
-        key({ color: KEY_COLORS.WARNING }),
-        report({ K1: { main: status('running'), backup: null } }),
-    );
-    assert.equal(color.bgCss, 'tint-warning');
-    assert.match(title, /set by hand/i);
+test('a color stored on the key is ignored: only the reported status colors a row', () => {
+    const running = report({ K1: { main: status('running'), backup: null } });
+    const { color, title } = getKeyDisplay(key({ color: KEY_COLORS.WARNING }), running);
+    assert.equal(color.bgCss, 'tint-running');
+    assert.doesNotMatch(title, /by hand/i);
+    assert.equal(getKeyDisplay(key({ color: KEY_COLORS.ERROR }), report({})).color.bgCss, '');
 });

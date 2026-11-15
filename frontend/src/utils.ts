@@ -122,6 +122,7 @@ const ICON_PATHS = {
         '<path d="M3 12a9 9 0 0 1 15.5-6.3L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.5 6.3L3 16" /><path d="M3 21v-5h5" />',
     plus: '<path d="M12 5v14" /><path d="M5 12h14" />',
     grip: '<circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" />',
+    home: '<path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /><path d="M10 21v-6h4v6" />',
     x: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
 };
 
@@ -215,6 +216,19 @@ function setUrlParam(param, value) {
         url.searchParams.delete(param);
     } else {
         url.searchParams.set(param, value);
+    }
+    window.history.pushState({}, '', url);
+}
+
+// Several parameters in one history entry; null removes one.
+function setUrlParams(params) {
+    const url = new URL(window.location);
+    for (const [param, value] of Object.entries(params)) {
+        if (value === null) {
+            url.searchParams.delete(param);
+        } else {
+            url.searchParams.set(param, value);
+        }
     }
     window.history.pushState({}, '', url);
 }

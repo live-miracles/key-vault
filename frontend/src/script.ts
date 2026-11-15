@@ -116,11 +116,93 @@ function renderBunryuStatus() {
     if (!el) return;
     const { state, text, title } = describeBunryu(keyStatus);
     el.hidden = state === 'unknown';
-    el.title = title;
+    // Owners can click through to the settings bunryu needs.
+    el.disabled = !config.isAppOwner;
+    el.title = title + (config.isAppOwner ? ' (click for bunryu settings)' : '');
     document.getElementById('bunryu-status-text').textContent = text;
     document.getElementById('bunryu-dot').className =
         'h-2 w-2 rounded-full ' + (state === 'online' ? 'bg-success' : 'bg-base-content/30');
 }
+
+// The settings are fetched when the dialog opens and dropped when it closes, so the secrets
+// are not kept in the page while nobody is looking at them.
+let bunryuSettings = null;
+let bunryuRevealed = false;
+const BUNRYU_MASK = '\u2022'.repeat(12);
+
+function renderBunryuSettings() {
+    const body = document.getElementById('bunryu-body');
+    const rows = bunryuSettings
+        ? [
+              ['url', 'Link (url)', bunryuSettings.url, false],
+              ['token', 'Ingest token (token)', bunryuSettings.token, true],
+              ['hashSecret', 'Hash secret (hash_secret)', bunryuSettings.hashSecret, true],
+              ['instance', 'Instance name (instance)', bunryuSettings.instance, false],
+          ]
+        : [];
+    body.innerHTML = rows.length
+        ? `<table class="table"><tbody>${rows
+              .map(([field, label, value, secret]) => {
+                  const shown = secret && !bunryuRevealed ? BUNRYU_MASK : value;
+                  return `<tr>
+                      <th class="text-base-content/70 w-1/3 text-sm font-normal">${escapeHtml(label)}</th>
+                      <td class="font-mono text-sm break-all">${escapeHtml(shown)}</td>
+                      <td class="w-10"><button type="button" class="btn btn-ghost btn-square btn-xs" title="Copy" aria-label="Copy ${escapeHtml(label)}" data-action="copy-bunryu-value" data-field="${field}">${iconSvg('copy')}</button></td>
+                  </tr>`;
+              })
+              .join('')}</tbody></table>`
+        : '<span class="loading loading-dots"></span>';
+    document.getElementById('bunryu-reveal-btn').textContent = bunryuRevealed
+        ? 'Hide secrets'
+        : 'Show secrets';
+}
+
+async function showBunryuModal() {
+    if (!config.isAppOwner) return;
+    const modal = document.getElementById('bunryu-modal');
+    bunryuSettings = null;
+    bunryuRevealed = false;
+    renderBunryuSettings();
+    modal.showModal();
+
+    const response = await api('getBunryuSettings');
+    if (response.success === false) {
+        modal.close();
+        showErrorAlert(response.error);
+        return;
+    }
+    bunryuSettings = response.data;
+    renderBunryuSettings();
+}
+
+function buildBunryuJson(settings) {
+    return JSON.stringify(
+        {
+            key_vault: {
+                url: settings.url,
+                token: settings.token,
+                hash_secret: settings.hashSecret,
+                instance: settings.instance,
+            },
+        },
+        null,
+        4,
+    );
+}
+
+function copyBunryuValue(field) {
+    if (bunryuSettings && field in bunryuSettings) return copyTextValue(bunryuSettings[field]);
+}
+
+function copyBunryuJson() {
+    if (bunryuSettings) return copyTextValue(buildBunryuJson(bunryuSettings));
+}
+
+document.getElementById('bunryu-modal')?.addEventListener('close', () => {
+    bunryuSettings = null;
+    bunryuRevealed = false;
+    renderBunryuSettings();
+});
 
 async function refreshDataBtn() {
     const button = document.querySelector('#refresh-data-btn');
@@ -228,6 +310,13 @@ document.addEventListener('click', (event) => {
         'edit-event': () => editEventBtn(),
         'delete-event': () => deleteEventBtn(),
         'show-settings': () => showSettingsModal(),
+        'show-bunryu': () => showBunryuModal(),
+        'toggle-bunryu-secrets': () => {
+            bunryuRevealed = !bunryuRevealed;
+            renderBunryuSettings();
+        },
+        'copy-bunryu-value': () => copyBunryuValue(target.dataset.field),
+        'copy-bunryu-json': () => copyBunryuJson(),
         'refresh-data': () => refreshDataBtn(),
         'add-key': () => addKeyBtn(),
         'show-share': () => showShareModal(),

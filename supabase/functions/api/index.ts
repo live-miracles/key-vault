@@ -8,6 +8,7 @@ import { createSupabaseStore } from '../_shared/supabase-store.ts';
 
 const appOrigin = Deno.env.get('KEY_VAULT_APP_ORIGIN') || '';
 const hashSecret = Deno.env.get('KEY_VAULT_HASH_SECRET') || '';
+const ingestToken = Deno.env.get('KEY_VAULT_INGEST_TOKEN') || '';
 const ownerEmails = new Set(
     (Deno.env.get('KEY_VAULT_OWNER_EMAILS') || '')
         .split(',')
@@ -63,7 +64,14 @@ Deno.serve(async (request) => {
     try {
         const result = await OPERATIONS[operation](
             createSupabaseStore(admin),
-            { email, isAppOwner: ownerEmails.has(email), hashSecret, nowMs: Date.now() },
+            {
+                email,
+                isAppOwner: ownerEmails.has(email),
+                hashSecret,
+                ingestToken,
+                ingestUrl: `${url}/functions/v1/ingest`,
+                nowMs: Date.now(),
+            },
             ...args,
         );
         return respond(result);

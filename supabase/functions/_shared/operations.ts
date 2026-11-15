@@ -78,6 +78,8 @@ export interface Context {
     email: string;
     isAppOwner: boolean;
     hashSecret: string;
+    ingestToken?: string;
+    ingestUrl?: string;
     nowMs: number;
 }
 
@@ -174,6 +176,20 @@ export async function getStatus(store: Store, ctx: Context) {
     );
     const { rows, instances } = await store.loadStatus();
     return ok(await buildStatusReport(visible, rows, instances, ctx.hashSecret, ctx.nowMs));
+}
+
+// What bunryu's `key_vault` setting needs. Owners only: it contains the two shared secrets.
+export async function getBunryuSettings(_store: Store, ctx: Context) {
+    if (!ctx.isAppOwner) return denied(ctx);
+    if (!ctx.ingestToken || !ctx.ingestUrl) {
+        return fail('KEY_VAULT_INGEST_TOKEN is not set on the server.');
+    }
+    return ok({
+        url: ctx.ingestUrl,
+        token: ctx.ingestToken,
+        hashSecret: ctx.hashSecret,
+        instance: 'prod',
+    });
 }
 
 // ===== Events =====
@@ -517,6 +533,7 @@ export const OPERATIONS: Record<
 > = {
     getAllData,
     getStatus,
+    getBunryuSettings,
     addEvent,
     editEvent,
     deleteEvent,

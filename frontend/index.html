@@ -414,10 +414,17 @@
 
         <!-- RIGHT -->
         <div class="header-status ml-auto flex min-w-0 items-center gap-3">
-          <span id="bunryu-status" class="text-base-content/60 inline-flex shrink-0 items-center gap-1.5 text-xs" hidden>
+          <button
+            type="button"
+            id="bunryu-status"
+            class="text-base-content/60 enabled:hover:text-base-content inline-flex shrink-0 items-center gap-1.5 text-xs enabled:cursor-pointer"
+            data-action="show-bunryu"
+            aria-label="bunryu status"
+            hidden
+            disabled>
             <span id="bunryu-dot" class="h-2 w-2 rounded-full"></span>
             <span id="bunryu-status-text" class="max-sm:hidden"></span>
-          </span>
+          </button>
           <button
             title="Share Event"
             aria-label="Share event"
@@ -472,6 +479,31 @@
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      <dialog id="bunryu-modal" class="modal">
+        <div class="modal-box max-w-175">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-lg font-semibold">bunryu settings</h3>
+            <form method="dialog">
+              <button class="btn btn-ghost btn-square btn-sm" title="Close" aria-label="Close bunryu settings">
+                <span data-icon="x" class="h-5 w-5"></span>
+              </button>
+            </form>
+          </div>
+          <p class="text-base-content/70 mb-3 text-sm">
+            Put these under <code>key_vault</code> in <code>bunryu.json</code> and restart bunryu. Only app owners can see this; the token and hash
+            secret are shared secrets, so keep them out of chats and the repository.
+          </p>
+          <div id="bunryu-body"><span class="loading loading-dots"></span></div>
+          <div class="mt-4 flex items-center justify-between gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" id="bunryu-reveal-btn" data-action="toggle-bunryu-secrets">Show secrets</button>
+            <button type="button" class="btn btn-primary btn-sm" data-action="copy-bunryu-json">Copy bunryu.json block</button>
           </div>
         </div>
         <form method="dialog" class="modal-backdrop">

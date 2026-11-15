@@ -57,7 +57,7 @@ Check: sign in as the owner; each event shows the same keys as the sheet. Sign i
 
 ## 6. Turn on bunryu
 
-The reporter is on the bunryu branch `claude/key-vault-reporter-a77a29` (committed locally, not pushed or merged). After it is merged and deployed, add to `bunryu.json`:
+The reporter is on the bunryu branch `claude/key-vault-reporter-a77a29` (committed locally, not pushed or merged). After it is merged and deployed, add to `bunryu.json` (signed in as an owner, click the bunryu indicator in the Key Vault header: it lists every value below, with copy buttons and a ready-to-paste block):
 
 ```json
 "key_vault": {

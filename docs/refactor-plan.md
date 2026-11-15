@@ -67,7 +67,7 @@ Key Vault's view of a key:
 | Match, `warning`                    | Degraded             | amber                                     |
 | Match, `error`                      | Failing or gave up   | red (stop icon if `stoppedAfterFailures`) |
 | Match, `stopped`                    | Configured, not sent | indigo                                    |
-| Last heartbeat older than 3 minutes | bunryu offline       | all colors muted, banner                  |
+| Last heartbeat older than 3 minutes | bunryu offline       | all colors muted (no warning)             |
 
 ## Phases
 
@@ -110,7 +110,7 @@ Checks: `npm test` (56 tests, no database), `npm run typecheck`, and `npm run te
 - `frontend/src/supabase.ts` (its own bundle, `auth.js`) signs in with Google and calls the `api` function through `api-client.ts`; the app's `api()` goes through it, or through the demo mock when the site has no backend config. The demo (GitHub Pages) keeps its sample data and now shows sample statuses.
 - `npm run build:vercel` writes `web/` and refuses to build without `KEY_VAULT_SUPABASE_URL` and the **publishable** key (a secret key is rejected). `vercel.json` sets the headers.
 - **Not done: ES modules.** The first draft planned them. The app is still plain scripts sharing globals because the existing tests load them that way; the inline Apps Script bundle and its escaping are gone, which was the part that mattered. Converting file by file (and dropping `// @ts-nocheck`) is a separate, optional piece of work.
-- `getStatus` is polled every 30 s; rows and cards are colored from it unless an owner or admin set a color by hand, and a banner appears when no bunryu has reported for 3 minutes.
+- `getStatus` is polled every 30 s; rows and cards are colored from it unless an owner or admin set a color by hand, and the colors clear when no bunryu has reported for 3 minutes (no warning, since bunryu only runs during events).
 - Apps Script is removed from the repository (`Code.ts`, the inline build, clasp, their tests). The deployed script keeps running, untouched, until it is archived.
 
 ### Phase 4 — Design system and wave background (built)

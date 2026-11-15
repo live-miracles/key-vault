@@ -106,15 +106,20 @@ async function fetchStatusAndRerender() {
         return;
     }
     keyStatus = response.data;
-    renderStatusBanner();
+    renderBunryuStatus();
     const eventId = getUrlParam('event');
     if (eventId) renderKeyTable(eventId);
 }
 
-function renderStatusBanner() {
-    const banner = document.getElementById('status-banner');
-    if (!banner) return;
-    banner.classList.toggle('hidden', keyStatus.online || !statusExpected);
+function renderBunryuStatus() {
+    const el = document.getElementById('bunryu-status');
+    if (!el) return;
+    const { state, text, title } = describeBunryu(keyStatus);
+    el.hidden = state === 'unknown';
+    el.title = title;
+    document.getElementById('bunryu-status-text').textContent = text;
+    document.getElementById('bunryu-dot').className =
+        'h-2 w-2 rounded-full ' + (state === 'online' ? 'bg-success' : 'bg-base-content/30');
 }
 
 async function refreshDataBtn() {
@@ -134,10 +139,9 @@ async function refreshDataBtn() {
 
 const REFRESH_TIME = 5 * 60 * 1000;
 const STATUS_REFRESH_TIME = 30 * 1000;
-// The latest answer of getStatus, and whether this deployment is meant to have one (the
-// demo site shows sample statuses and no banner).
+// The latest answer of getStatus. bunryu only runs during events, so no report is normal
+// and gets no warning: the colors just clear.
 let keyStatus = { online: false, instances: [], keys: {} };
-let statusExpected = false;
 let userEmail = null;
 let config = {
     size: 0,
@@ -153,7 +157,6 @@ let eventRoles = {};
 
 (async () => {
     if (window.kvAuth) {
-        statusExpected = true;
         if (!(await window.kvAuth.start())) return;
     } else if (typeof google === 'undefined') {
         window.google = googleMock;

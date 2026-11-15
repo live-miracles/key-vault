@@ -57,11 +57,6 @@
       <span>Copied</span>
     </div>
 
-    <div id="status-banner" role="status" class="alert alert-warning mx-3 mt-3 hidden text-sm">
-      <span data-icon="error" class="h-5 w-5 shrink-0"></span>
-      <span>bunryu has not reported for a few minutes, so stream status is unknown. Colors you set by hand still show.</span>
-    </div>
-
     <div id="login-panel" class="bg-base-100 fixed inset-0 z-70 hidden place-items-center p-4">
       <div class="card bg-base-200 w-full max-w-sm shadow-sm">
         <div class="card-body items-center text-center">
@@ -419,6 +414,10 @@
 
         <!-- RIGHT -->
         <div class="header-status ml-auto flex min-w-0 items-center gap-3">
+          <span id="bunryu-status" class="text-base-content/60 inline-flex shrink-0 items-center gap-1.5 text-xs" hidden>
+            <span id="bunryu-dot" class="h-2 w-2 rounded-full"></span>
+            <span id="bunryu-status-text" class="max-sm:hidden"></span>
+          </span>
           <button
             title="Share Event"
             aria-label="Share event"

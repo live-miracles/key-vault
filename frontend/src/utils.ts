@@ -1,5 +1,44 @@
 // @ts-nocheck
 
+// "3 min ago", "2 h ago", "5 d ago".
+function formatAgo(ms) {
+    const minutes = Math.floor(Math.max(0, ms) / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h ago`;
+    return `${Math.floor(hours / 24)} d ago`;
+}
+
+// What the header says about bunryu. bunryu only runs during events, so being offline is
+// normal: the text is informational, never a warning.
+function describeBunryu(report, nowMs = Date.now()) {
+    if (!report) return { state: 'unknown', text: '', title: '' };
+    if (report.online) {
+        return {
+            state: 'online',
+            text: 'bunryu connected',
+            title: 'bunryu is reporting stream status',
+        };
+    }
+    const lastSeen = (report.instances || [])
+        .map((i) => new Date(i.lastSeenAt).getTime())
+        .filter((t) => !Number.isNaN(t))
+        .sort((a, b) => b - a)[0];
+    if (lastSeen === undefined) {
+        return {
+            state: 'never',
+            text: 'bunryu not connected',
+            title: 'bunryu has not reported yet',
+        };
+    }
+    return {
+        state: 'offline',
+        text: `bunryu last seen ${formatAgo(nowMs - lastSeen)}`,
+        title: `Last report: ${new Date(lastSeen).toLocaleString()}`,
+    };
+}
+
 function capitalize(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }

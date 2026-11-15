@@ -75,7 +75,8 @@ Check, within two minutes:
 - `ingest_instances` has a row `prod` and `stream_outputs` has one row per configured output.
 - In Key Vault a key whose main or backup URL is configured in bunryu is colored by its status; hovering shows the pipeline, output and message. A key not configured in bunryu has no color.
 - Stop an output in bunryu: its key turns indigo ("configured, not running"). Make one fail until bunryu gives up: red, with "stopped after N failed attempts".
-- Stop bunryu: after about three minutes the banner appears and the colors clear.
+- The header shows "bunryu connected" with a green dot.
+- Stop bunryu: after about three minutes the colors clear and the header says "bunryu last seen N min ago" (there is no warning: bunryu is only on during events).
 
 If a key you know is configured shows no color, the URL differs between the two systems (a trailing path, a different server, a changed key). Compare them; the hash is of the whole URL.
 

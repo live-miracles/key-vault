@@ -45,3 +45,31 @@ test('updates and reads query parameters', () => {
     runtime.get('setUrlParam')('event', null);
     assert.equal(runtime.get('getUrlParam')('event'), null);
 });
+
+test('describes whether bunryu is connected or when it was last seen', () => {
+    const runtime = loadUtils();
+    const describeBunryu = runtime.get('describeBunryu');
+    const now = Date.parse('2026-11-15T12:00:00Z');
+    const ago = (ms) => new Date(now - ms).toISOString();
+
+    assert.equal(describeBunryu(undefined, now).state, 'unknown');
+    assert.deepEqual(describeBunryu({ online: true, instances: [] }, now).text, 'bunryu connected');
+    assert.equal(
+        describeBunryu({ online: false, instances: [] }, now).text,
+        'bunryu not connected',
+    );
+
+    const offline = (...ms) => ({
+        online: false,
+        instances: ms.map((m, i) => ({ instance: `i${i}`, lastSeenAt: ago(m), online: false })),
+    });
+    assert.equal(describeBunryu(offline(30000), now).text, 'bunryu last seen just now');
+    assert.equal(describeBunryu(offline(5 * 60000), now).text, 'bunryu last seen 5 min ago');
+    assert.equal(describeBunryu(offline(3 * 3600000), now).text, 'bunryu last seen 3 h ago');
+    assert.equal(describeBunryu(offline(2 * 86400000), now).text, 'bunryu last seen 2 d ago');
+    // With several instances, the most recent report counts.
+    assert.equal(
+        describeBunryu(offline(2 * 86400000, 10 * 60000), now).text,
+        'bunryu last seen 10 min ago',
+    );
+});

@@ -10,12 +10,12 @@
                 "--server",
                 "./site",
                 "--port",
-                "3000",
+                "2837",
                 "--no-open",
                 "--no-notify",
                 "--no-ui"
             ],
-            "port": 3000
+            "port": 2837
         },
         {
             "name": "web",

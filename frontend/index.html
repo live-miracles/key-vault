@@ -491,13 +491,12 @@
             </form>
           </div>
           <p class="text-base-content/70 mb-3 text-sm">
-            Put these under <code>key_vault</code> in <code>bunryu.json</code> and restart bunryu. Only app owners can see this; the token and hash
-            secret are shared secrets, so keep them out of chats and the repository.
+            In bunryu, open <strong>Settings &gt; Key Vault</strong> and enter these two values. Only app owners can see this; the secret is shared,
+            so keep it out of chats and the repository.
           </p>
           <div id="bunryu-body"><span class="loading loading-dots"></span></div>
           <div class="mt-4 flex items-center justify-between gap-2">
-            <button type="button" class="btn btn-ghost btn-sm" id="bunryu-reveal-btn" data-action="toggle-bunryu-secrets">Show secrets</button>
-            <button type="button" class="btn btn-primary btn-sm" data-action="copy-bunryu-json">Copy bunryu.json block</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="bunryu-reveal-btn" data-action="toggle-bunryu-secrets">Show secret</button>
           </div>
         </div>
         <form method="dialog" class="modal-backdrop">

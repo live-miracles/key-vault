@@ -8,7 +8,7 @@ You need: owner access to a Supabase project, a Google Cloud project for the OAu
 
 1. Create a project. Note the project ref (the `abcdefgh` in `https://abcdefgh.supabase.co`).
 2. When Supabase offers to connect the project to GitHub, **skip it**. The **Deploy Supabase** workflow already applies the migrations and deploys the functions; the integration would overlap with it and does not deploy functions with the flags `ingest` needs.
-3. Generate one random secret: `openssl rand -hex 32`. Keep it in a password manager; you paste it into Supabase in step 4. Key Vault derives two different values from it: the **ingest token** (proves a sender may post statuses) and the **hash secret** (lets Key Vault match a key to its status without bunryu ever sending the key). Knowing one does not reveal the other. You never type either by hand: step 6 copies them from the app.
+3. Generate one random secret: `openssl rand -hex 32`. Keep it in a password manager; you paste it into Supabase in step 4. Key Vault derives two different values from it: the **ingest token** (proves a sender may post statuses) and the **hash secret** (lets Key Vault match a key to its status without bunryu ever sending the key). Knowing one does not reveal the other. bunryu takes the same secret and derives both itself, so nobody types either by hand; step 6 copies the secret from the app.
 
 The order below avoids a loop: the database and functions need no site URL, the site needs only the Supabase URL and key, and the secrets and sign-in settings need the site URL, so they come last.
 
@@ -81,22 +81,11 @@ Check: sign in as the owner; each event shows the same keys as the sheet. Sign i
 
 ## 6. Turn on bunryu
 
-The reporter is on the bunryu branch `claude/key-vault-reporter-a77a29` (committed locally, not pushed or merged). After it is merged and deployed, add to `bunryu.json` (signed in as an owner, click the bunryu indicator in the Key Vault header: it lists every value below, with copy buttons and a ready-to-paste block):
-
-```json
-"key_vault": {
-    "url": "https://<project-ref>.supabase.co/functions/v1/ingest",
-    "token": "<ingest token>",
-    "hash_secret": "<hash secret>",
-    "instance": "prod"
-}
-```
-
-and restart bunryu. Take the token and hash secret from that dialog (they are derived from `KEY_VAULT_SECRET`, so they are not the value you pasted in step 4). If you ever change `KEY_VAULT_SECRET`, copy both again and restart bunryu.
+In bunryu open **Settings > Key Vault** and enter the **Link** and the **Secret**, then **Save** and **Send test report**. Signed in as a Key Vault owner, click the bunryu indicator in the Key Vault header: it shows both values with copy buttons. The secret is the `KEY_VAULT_SECRET` from step 4; bunryu derives the token and the hash secret from it, as Key Vault does. If you ever change `KEY_VAULT_SECRET`, enter the new one in bunryu too. bunryu reports under its **Server Name** (Settings > General); give each server its own.
 
 Check, within two minutes:
 
-- `ingest_instances` has a row `prod` and `stream_outputs` has one row per configured output.
+- `ingest_instances` has a row named after bunryu's Server Name and `stream_outputs` has one row per configured output.
 - In Key Vault a key whose main or backup URL is configured in bunryu is colored by its status; hovering shows the pipeline, output and message. A key not configured in bunryu has no color.
 - Stop an output in bunryu: its key turns indigo ("configured, not running"). Make one fail until bunryu gives up: red, with "stopped after N failed attempts".
 - The header shows "bunryu connected" with a green dot.

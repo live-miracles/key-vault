@@ -305,7 +305,7 @@ test('getStatus covers only the keys the user may see', async () => {
 test('only owners can read the settings bunryu needs', async () => {
     const store = seed();
     const configured = {
-        ingestToken: 'token-123',
+        secret: 'secret-123',
         ingestUrl: 'https://x.supabase.co/functions/v1/ingest',
     };
 
@@ -314,16 +314,14 @@ test('only owners can read the settings bunryu needs', async () => {
         success: true,
         data: {
             url: 'https://x.supabase.co/functions/v1/ingest',
-            token: 'token-123',
-            hashSecret: 'secret',
-            instance: 'prod',
+            secret: 'secret-123',
         },
     });
 
     for (const user of [admin, editor, viewer, stranger]) {
         const answer = await ops.getBunryuSettings(store, { ...user, ...configured });
         assert.equal(answer.success, false);
-        assert.ok(!JSON.stringify(answer).includes('token-123'));
+        assert.ok(!JSON.stringify(answer).includes('secret-123'));
     }
 
     const unconfigured = await ops.getBunryuSettings(store, owner);

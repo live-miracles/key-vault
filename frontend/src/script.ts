@@ -135,10 +135,8 @@ function renderBunryuSettings() {
     const body = document.getElementById('bunryu-body');
     const rows = bunryuSettings
         ? [
-              ['url', 'Link (url)', bunryuSettings.url, false],
-              ['token', 'Ingest token (token)', bunryuSettings.token, true],
-              ['hashSecret', 'Hash secret (hash_secret)', bunryuSettings.hashSecret, true],
-              ['instance', 'Instance name (instance)', bunryuSettings.instance, false],
+              ['url', 'Link', bunryuSettings.url, false],
+              ['secret', 'Secret', bunryuSettings.secret, true],
           ]
         : [];
     body.innerHTML = rows.length
@@ -154,8 +152,8 @@ function renderBunryuSettings() {
               .join('')}</tbody></table>`
         : '<span class="loading loading-dots"></span>';
     document.getElementById('bunryu-reveal-btn').textContent = bunryuRevealed
-        ? 'Hide secrets'
-        : 'Show secrets';
+        ? 'Hide secret'
+        : 'Show secret';
 }
 
 async function showBunryuModal() {
@@ -176,27 +174,8 @@ async function showBunryuModal() {
     renderBunryuSettings();
 }
 
-function buildBunryuJson(settings) {
-    return JSON.stringify(
-        {
-            key_vault: {
-                url: settings.url,
-                token: settings.token,
-                hash_secret: settings.hashSecret,
-                instance: settings.instance,
-            },
-        },
-        null,
-        4,
-    );
-}
-
 function copyBunryuValue(field) {
     if (bunryuSettings && field in bunryuSettings) return copyTextValue(bunryuSettings[field]);
-}
-
-function copyBunryuJson() {
-    if (bunryuSettings) return copyTextValue(buildBunryuJson(bunryuSettings));
 }
 
 document.getElementById('bunryu-modal')?.addEventListener('close', () => {
@@ -313,7 +292,6 @@ document.addEventListener('click', (event) => {
             renderBunryuSettings();
         },
         'copy-bunryu-value': () => copyBunryuValue(target.dataset.field),
-        'copy-bunryu-json': () => copyBunryuJson(),
         'refresh-data': () => refreshDataBtn(),
         'add-key': () => addKeyBtn(),
         'show-share': () => showShareModal(),

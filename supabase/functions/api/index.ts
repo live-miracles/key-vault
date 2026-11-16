@@ -8,7 +8,8 @@ import { createSupabaseStore } from '../_shared/supabase-store.ts';
 // always { success, data } or { success, error }, as the Apps Script RPCs returned.
 
 const appOrigin = Deno.env.get('KEY_VAULT_APP_ORIGIN') || '';
-const secrets = await deriveSecrets(Deno.env.get('KEY_VAULT_SECRET') || '');
+const secret = Deno.env.get('KEY_VAULT_SECRET') || '';
+const secrets = await deriveSecrets(secret);
 const ownerEmails = new Set(
     (Deno.env.get('KEY_VAULT_OWNER_EMAILS') || '')
         .split(',')
@@ -68,7 +69,7 @@ Deno.serve(async (request) => {
                 email,
                 isAppOwner: ownerEmails.has(email),
                 hashSecret: secrets.hashSecret,
-                ingestToken: secrets.ingestToken,
+                secret,
                 ingestUrl: `${url}/functions/v1/ingest`,
                 nowMs: Date.now(),
             },

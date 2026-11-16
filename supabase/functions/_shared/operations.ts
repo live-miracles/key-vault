@@ -78,7 +78,8 @@ export interface Context {
     email: string;
     isAppOwner: boolean;
     hashSecret: string;
-    ingestToken?: string;
+    // KEY_VAULT_SECRET itself, which bunryu is given; hashSecret is derived from it.
+    secret?: string;
     ingestUrl?: string;
     nowMs: number;
 }
@@ -178,18 +179,14 @@ export async function getStatus(store: Store, ctx: Context) {
     return ok(await buildStatusReport(visible, rows, instances, ctx.hashSecret, ctx.nowMs));
 }
 
-// What bunryu's `key_vault` setting needs. Owners only: it contains the two values derived from KEY_VAULT_SECRET.
+// What bunryu's `key_vault` setting needs. Owners only: it contains KEY_VAULT_SECRET.
+// bunryu derives the token and the hash secret from it, as secrets.ts does here.
 export async function getBunryuSettings(_store: Store, ctx: Context) {
     if (!ctx.isAppOwner) return denied(ctx);
-    if (!ctx.ingestToken || !ctx.ingestUrl) {
+    if (!ctx.secret || !ctx.ingestUrl) {
         return fail('KEY_VAULT_SECRET is not set on the server.');
     }
-    return ok({
-        url: ctx.ingestUrl,
-        token: ctx.ingestToken,
-        hashSecret: ctx.hashSecret,
-        instance: 'prod',
-    });
+    return ok({ url: ctx.ingestUrl, secret: ctx.secret });
 }
 
 // ===== Events =====

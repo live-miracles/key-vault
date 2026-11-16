@@ -77,7 +77,7 @@ Each phase ends in something working and is a separate commit series. Phase 1 ca
 
 - Shared server-side output status module; dashboard switches to it, so behavior stays identical.
 - `src/services/keyVaultReporter.ts`: 60 s timer, redaction, hashing, bounded timeout and retry with backoff, never throws into the control plane, logs each failure once per episode.
-- Config in `bunryu.json`: `key_vault: { url, token, hash_secret, instance }`. Absent means disabled.
+- Config is the **Settings > Key Vault** page (not `bunryu.json`): `{ url, secret }`, checked when it is typed. An empty link means disabled. The instance is bunryu's Server Name.
 - Tests: status mapping, redaction (URLs, keys, passphrases), hash vectors, failure isolation.
 - Docs per its AGENTS.md: configuration page, reliability page, API reference if routes change, design-decisions entry (why a push model, why HMAC). Run lint, format check and the full test suite. Nothing real is committed (public repo).
 
@@ -102,7 +102,7 @@ Secrets to set (Supabase `secrets set`, never committed):
 | `KEY_VAULT_OWNER_EMAILS` | api         | App owners                                                                                                                   |
 | `KEY_VAULT_SECRET`       | api, ingest | One random secret (at least 32 characters). The bearer token and the HMAC secret are derived from it (`_shared/secrets.ts`). |
 
-The derived values are what bunryu's `key_vault.token` and `key_vault.hash_secret` hold; owners copy them from the bunryu dialog in the app, so nobody computes them by hand. Each is HMAC-SHA256 of the secret under its own label, so the token (sent in a header every minute) reveals nothing about the hash secret.
+bunryu takes the same `KEY_VAULT_SECRET` (owners copy it, with the link, from the bunryu dialog in the app) and derives the same two values itself; both repositories pin them in tests. Each is HMAC-SHA256 of the secret under its own label, so the token (sent in a header every minute) reveals nothing about the hash secret.
 
 Checks: `npm test` (56 tests, no database), `npm run typecheck`, and `npm run test:db`, which applies the migrations to a throwaway Postgres in Docker and exercises the SQL functions and constraints. The last one needs Docker Desktop running.
 

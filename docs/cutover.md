@@ -8,7 +8,7 @@ You need: owner access to a Supabase project, a Google Cloud project for the OAu
 
 1. Create a project. Note the project ref (the `abcdefgh` in `https://abcdefgh.supabase.co`).
 2. When Supabase offers to connect the project to GitHub, **skip it**. The **Deploy Supabase** workflow already applies the migrations and deploys the functions; the integration would overlap with it and does not deploy functions with the flags `ingest` needs.
-3. Generate two random secrets, each different: `openssl rand -hex 32` once for **hashing** and once for the **ingest token**. Keep them in a password manager; you paste each in two places (Supabase here, bunryu in step 6). They do different jobs: the token proves a sender may post statuses, the hash secret lets Key Vault match a key to its status without bunryu ever sending the key. Keeping them separate means one leak does not expose the other.
+3. Generate one random secret: `openssl rand -hex 32`. Keep it in a password manager; you paste it into Supabase in step 4. Key Vault derives two different values from it: the **ingest token** (proves a sender may post statuses) and the **hash secret** (lets Key Vault match a key to its status without bunryu ever sending the key). Knowing one does not reveal the other. You never type either by hand: step 6 copies them from the app.
 
 The order below avoids a loop: the database and functions need no site URL, the site needs only the Supabase URL and key, and the secrets and sign-in settings need the site URL, so they come last.
 
@@ -37,32 +37,30 @@ Note the site's URL (for example `https://your-site.vercel.app`) for the next tw
 4. Set the function secrets. Run this from this repository, with the project ref given explicitly (`supabase link` is remembered per directory):
 
     ```bash
-    read -rs HASH; echo     # paste the hash secret
-    read -rs TOKEN; echo    # paste the ingest token
+    read -rs SECRET; echo   # paste the secret
     npx supabase secrets set \
       KEY_VAULT_APP_ORIGIN=https://<your-site> \
-      KEY_VAULT_HASH_SECRET="$HASH" \
-      KEY_VAULT_INGEST_TOKEN="$TOKEN" \
+      KEY_VAULT_SECRET="$SECRET" \
       KEY_VAULT_OWNER_EMAILS="you@example.com,other@example.com" \
       --project-ref <project-ref>
-    unset HASH TOKEN
+    unset SECRET
     npx supabase secrets list --project-ref <project-ref>
     ```
 
     - `KEY_VAULT_APP_ORIGIN` is exactly the site's origin: no trailing slash, no path.
     - `KEY_VAULT_OWNER_EMAILS` is a comma-separated list of Google sign-in addresses. Owners can do everything in every event; for anyone who needs less, grant a role in the app. The first owner is how the first event and roles get created.
-    - The `list` should show all four `KEY_VAULT_*` names. Values are not shown afterwards, so keep your copies.
+    - The `list` should show all three `KEY_VAULT_*` names. Values are not shown afterwards, so keep your copies.
 
 Check: opening the site shows "Sign in with Google"; signing in with an owner email shows an empty app (no events yet) and no error.
 
 If something is off:
 
-| What you see                                    | Cause                                                                                                                    |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Sign-in returns to `http://localhost:3000`      | The Supabase Site URL is still the default (step 4.3).                                                                   |
-| `getAllData: Failed to fetch`                   | `KEY_VAULT_APP_ORIGIN` is not set, or does not match the site's origin exactly, so the browser blocks the call.          |
-| `getAllData: The server is not configured.`     | One of the `KEY_VAULT_*` secrets (usually the hash secret) is missing; compare `secrets list` with the four names above. |
-| Build fails with "Set KEY_VAULT_SUPABASE_URL …" | The Vercel environment variables are missing; add them and redeploy.                                                     |
+| What you see                                    | Cause                                                                                                                                                                    |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sign-in returns to `http://localhost:3000`      | The Supabase Site URL is still the default (step 4.3).                                                                                                                   |
+| `getAllData: Failed to fetch`                   | `KEY_VAULT_APP_ORIGIN` is not set, or does not match the site's origin exactly, so the browser blocks the call.                                                          |
+| `getAllData: The server is not configured.`     | `KEY_VAULT_SECRET` (or another `KEY_VAULT_*` secret) is missing, or `KEY_VAULT_SECRET` is shorter than 32 characters; compare `secrets list` with the three names above. |
+| Build fails with "Set KEY_VAULT_SUPABASE_URL …" | The Vercel environment variables are missing; add them and redeploy.                                                                                                     |
 
 ## 5. Move the data
 
@@ -94,7 +92,7 @@ The reporter is on the bunryu branch `claude/key-vault-reporter-a77a29` (committ
 }
 ```
 
-and restart bunryu. Use the **same** hash secret and token as in step 4.
+and restart bunryu. Take the token and hash secret from that dialog (they are derived from `KEY_VAULT_SECRET`, so they are not the value you pasted in step 4). If you ever change `KEY_VAULT_SECRET`, copy both again and restart bunryu.
 
 Check, within two minutes:
 

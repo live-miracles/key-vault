@@ -1,11 +1,12 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { deriveSecrets } from '../_shared/secrets.ts';
 import { parseHeartbeat } from '../_shared/status.ts';
 
 // Where bunryu reports. It is called with a shared bearer token, not a Supabase user
 // token, so this function is deployed without JWT verification (supabase/config.toml)
 // and checks the token itself. It stores hashes and statuses, never destinations.
 
-const ingestToken = Deno.env.get('KEY_VAULT_INGEST_TOKEN') || '';
+const ingestToken = (await deriveSecrets(Deno.env.get('KEY_VAULT_SECRET') || ''))?.ingestToken;
 const MAX_BODY_BYTES = 1024 * 1024;
 
 function respond(body: unknown, status = 200): Response {

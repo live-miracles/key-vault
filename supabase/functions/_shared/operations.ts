@@ -178,11 +178,11 @@ export async function getStatus(store: Store, ctx: Context) {
     return ok(await buildStatusReport(visible, rows, instances, ctx.hashSecret, ctx.nowMs));
 }
 
-// What bunryu's `key_vault` setting needs. Owners only: it contains the two shared secrets.
+// What bunryu's `key_vault` setting needs. Owners only: it contains the two values derived from KEY_VAULT_SECRET.
 export async function getBunryuSettings(_store: Store, ctx: Context) {
     if (!ctx.isAppOwner) return denied(ctx);
     if (!ctx.ingestToken || !ctx.ingestUrl) {
-        return fail('KEY_VAULT_INGEST_TOKEN is not set on the server.');
+        return fail('KEY_VAULT_SECRET is not set on the server.');
     }
     return ok({
         url: ctx.ingestUrl,

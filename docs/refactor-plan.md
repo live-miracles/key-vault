@@ -96,12 +96,13 @@ Code is in `supabase/`. Decisions made while building it, which differ from the 
 
 Secrets to set (Supabase `secrets set`, never committed):
 
-| Secret                   | Used by | Meaning                                                              |
-| ------------------------ | ------- | -------------------------------------------------------------------- |
-| `KEY_VAULT_APP_ORIGIN`   | api     | The frontend origin, for CORS                                        |
-| `KEY_VAULT_HASH_SECRET`  | api     | The HMAC secret; the same value as `key_vault.hash_secret` in bunryu |
-| `KEY_VAULT_OWNER_EMAILS` | api     | App owners                                                           |
-| `KEY_VAULT_INGEST_TOKEN` | ingest  | The bearer token; the same value as `key_vault.token` in bunryu      |
+| Secret                   | Used by     | Meaning                                                                                                                      |
+| ------------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `KEY_VAULT_APP_ORIGIN`   | api         | The frontend origin, for CORS                                                                                                |
+| `KEY_VAULT_OWNER_EMAILS` | api         | App owners                                                                                                                   |
+| `KEY_VAULT_SECRET`       | api, ingest | One random secret (at least 32 characters). The bearer token and the HMAC secret are derived from it (`_shared/secrets.ts`). |
+
+The derived values are what bunryu's `key_vault.token` and `key_vault.hash_secret` hold; owners copy them from the bunryu dialog in the app, so nobody computes them by hand. Each is HMAC-SHA256 of the secret under its own label, so the token (sent in a header every minute) reveals nothing about the hash secret.
 
 Checks: `npm test` (56 tests, no database), `npm run typecheck`, and `npm run test:db`, which applies the migrations to a throwaway Postgres in Docker and exercises the SQL functions and constraints. The last one needs Docker Desktop running.
 
@@ -130,5 +131,5 @@ A runbook is in [docs/cutover.md](cutover.md). It needs the Supabase, Google and
 - **Auth change**: users must sign in with Google through Supabase, and the owner's email must be seeded as owner before anyone else can administer.
 - **Hash mismatches** from URL spelling differences: mitigated by normalisation plus shared vectors, and by showing "not matched" distinctly from "not running" in the UI.
 - **Stale status**: a dead bunryu must not leave keys looking green; the 3-minute rule handles it.
-- **Secrets**: the ingest token and HMAC secret live only in Supabase secrets and bunryu's local config.
+- **Secrets**: `KEY_VAULT_SECRET` lives only in Supabase secrets; the two values derived from it live there and in bunryu's local config.
 - **Scope**: phase 3 and 4 both rewrite the same templates; doing them in order avoids reworking markup twice.

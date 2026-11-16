@@ -74,7 +74,7 @@ The step-by-step order, with checks and fixes for the usual errors, is in `docs/
    site's address in Authentication → URL Configuration (the default sends sign-in back to
    `http://localhost:3000`).
 2. Set the function secrets (see `docs/refactor-plan.md` for what each is):
-   `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_HASH_SECRET`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_INGEST_TOKEN`.
+   `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_SECRET`.
 3. Add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`;
    `.github/workflows/deploy-supabase.yml` then applies the migrations and deploys both functions on every
    change under `supabase/`.

@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { OPERATIONS } from '../_shared/operations.ts';
+import { deriveSecrets } from '../_shared/secrets.ts';
 import { createSupabaseStore } from '../_shared/supabase-store.ts';
 
 // The browser's only way to Key Vault's data. Every call is
@@ -7,8 +8,7 @@ import { createSupabaseStore } from '../_shared/supabase-store.ts';
 // always { success, data } or { success, error }, as the Apps Script RPCs returned.
 
 const appOrigin = Deno.env.get('KEY_VAULT_APP_ORIGIN') || '';
-const hashSecret = Deno.env.get('KEY_VAULT_HASH_SECRET') || '';
-const ingestToken = Deno.env.get('KEY_VAULT_INGEST_TOKEN') || '';
+const secrets = await deriveSecrets(Deno.env.get('KEY_VAULT_SECRET') || '');
 const ownerEmails = new Set(
     (Deno.env.get('KEY_VAULT_OWNER_EMAILS') || '')
         .split(',')
@@ -36,7 +36,7 @@ Deno.serve(async (request) => {
 
     const url = Deno.env.get('SUPABASE_URL') || '';
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    if (!appOrigin || !hashSecret || !url || !serviceKey) {
+    if (!appOrigin || !secrets || !url || !serviceKey) {
         console.error('The api function is missing configuration.');
         return respond({ error: 'The server is not configured.' }, 500);
     }
@@ -67,8 +67,8 @@ Deno.serve(async (request) => {
             {
                 email,
                 isAppOwner: ownerEmails.has(email),
-                hashSecret,
-                ingestToken,
+                hashSecret: secrets.hashSecret,
+                ingestToken: secrets.ingestToken,
                 ingestUrl: `${url}/functions/v1/ingest`,
                 nowMs: Date.now(),
             },

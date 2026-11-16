@@ -49,7 +49,7 @@ npm run dev
 ```
 
 This serves the demo (a built-in mock backend with sample data and statuses) at
-`http://localhost:2837` with live reload.
+`http://localhost:2837`. There is no live reload; refresh the page after a change.
 
 ```bash
 npm test              # unit tests, no database needed

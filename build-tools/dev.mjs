@@ -15,8 +15,7 @@ const { result } = concurrently(
         },
         {
             name: 'server',
-            command:
-                'browser-sync start --server ./site --files "site/*" --port 2837 --no-open --no-notify',
+            command: 'node build-tools/serve.mjs site 2837',
         },
     ],
     {

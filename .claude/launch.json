@@ -3,34 +3,14 @@
     "configurations": [
         {
             "name": "demo",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "browser-sync",
-                "start",
-                "--server",
-                "./site",
-                "--port",
-                "2837",
-                "--no-open",
-                "--no-notify",
-                "--no-ui"
-            ],
+            "runtimeExecutable": "node",
+            "runtimeArgs": ["build-tools/serve.mjs", "./site", "2837"],
             "port": 2837
         },
         {
             "name": "web",
-            "runtimeExecutable": "npx",
-            "runtimeArgs": [
-                "browser-sync",
-                "start",
-                "--server",
-                "./web",
-                "--port",
-                "3001",
-                "--no-open",
-                "--no-notify",
-                "--no-ui"
-            ],
+            "runtimeExecutable": "node",
+            "runtimeArgs": ["build-tools/serve.mjs", "./web", "3001"],
             "port": 3001
         }
     ]

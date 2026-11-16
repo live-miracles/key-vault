@@ -85,8 +85,6 @@ The step-by-step order, with checks and fixes for the usual errors, is in `docs/
    `npm run sheet:sql -- <folder> > .migration/data.sql`, then run that file against the database. It lists
    anything that cannot be migrated instead of guessing. The file holds real keys: delete it afterwards.
 
-The GitHub Pages workflow still publishes the mock-backed demo from `master`.
-
 ## Roles
 
 - Owner: can edit or delete events and assign event admins.

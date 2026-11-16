@@ -1,8 +1,7 @@
 name: Build and deploy
 
-# Checks every push and pull request, and publishes the mock-backed demo to GitHub Pages
-# from master. The real site is built and deployed by Vercel from the same repository;
-# Supabase is deployed by deploy-supabase.yml.
+# Checks every push and pull request. The real site is built and deployed by Vercel from
+# the same repository; Supabase is deployed by deploy-supabase.yml.
 on:
     push:
         branches:
@@ -13,10 +12,10 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: write
+    contents: read
 
 concurrency:
-    group: pages-deploy-${{ github.ref }}
+    group: build-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
@@ -48,19 +47,8 @@ jobs:
             - name: Build CSS
               run: npm run css
 
-            - name: Build demo site
-              run: npm run pages
-
             - name: Build the site for Vercel
               env:
                   KEY_VAULT_SUPABASE_URL: https://ci-placeholder.supabase.co
                   KEY_VAULT_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
               run: npm run build:vercel
-
-            - name: Deploy to gh-pages
-              if: github.event_name != 'pull_request'
-              uses: peaceiris/actions-gh-pages@v4.1.0
-              with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
-                  publish_branch: gh-pages
-                  publish_dir: ./site

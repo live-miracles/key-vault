@@ -143,17 +143,17 @@ function renderBunryuSettings() {
         ? `<table class="table"><tbody>${rows
               .map(([field, label, value, secret]) => {
                   const shown = secret && !bunryuRevealed ? BUNRYU_MASK : value;
+                  const reveal = secret
+                      ? `<button type="button" class="btn btn-ghost btn-square btn-xs" title="${bunryuRevealed ? 'Hide' : 'Show'} ${escapeHtml(label.toLowerCase())}" aria-label="${bunryuRevealed ? 'Hide' : 'Show'} ${escapeHtml(label.toLowerCase())}" aria-pressed="${bunryuRevealed}" data-action="toggle-bunryu-secrets">${iconSvg(bunryuRevealed ? 'eye-off' : 'eye')}</button>`
+                      : '';
                   return `<tr>
                       <th class="text-base-content/70 w-1/3 text-sm font-normal">${escapeHtml(label)}</th>
                       <td class="font-mono text-sm break-all">${escapeHtml(shown)}</td>
-                      <td class="w-10"><button type="button" class="btn btn-ghost btn-square btn-xs" title="Copy" aria-label="Copy ${escapeHtml(label)}" data-action="copy-bunryu-value" data-field="${field}">${iconSvg('copy')}</button></td>
+                      <td class="w-20"><div class="flex justify-end gap-1">${reveal}<button type="button" class="btn btn-ghost btn-square btn-xs" title="Copy" aria-label="Copy ${escapeHtml(label)}" data-action="copy-bunryu-value" data-field="${field}">${iconSvg('copy')}</button></div></td>
                   </tr>`;
               })
               .join('')}</tbody></table>`
         : '<span class="loading loading-dots"></span>';
-    document.getElementById('bunryu-reveal-btn').textContent = bunryuRevealed
-        ? 'Hide secret'
-        : 'Show secret';
 }
 
 async function showBunryuModal() {

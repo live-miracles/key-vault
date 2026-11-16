@@ -70,9 +70,11 @@ export async function buildDemoSite(directory = path.join(root, 'site')) {
     await writeFile(path.join(directory, 'app.js'), await bundleApp({ demo: true }));
     await copyFile(path.join(root, 'frontend', 'output.css'), path.join(directory, 'app.css'));
     await copyFile(path.join(root, 'frontend', 'logo.png'), path.join(directory, 'logo.png'));
+    await copyFile(path.join(root, 'frontend', 'logo.svg'), path.join(directory, 'logo.svg'));
     await writeFile(
         path.join(directory, 'index.html'),
         await renderShell([
+            '<link rel="icon" type="image/svg+xml" href="logo.svg" />',
             '<link rel="icon" type="image/png" href="logo.png" />',
             '<link rel="stylesheet" href="app.css" />',
             '<script src="app.js" defer></script>',
@@ -114,9 +116,11 @@ export async function buildWebSite(env = process.env, directory = path.join(root
     );
     await copyFile(path.join(root, 'frontend', 'output.css'), path.join(directory, 'app.css'));
     await copyFile(path.join(root, 'frontend', 'logo.png'), path.join(directory, 'logo.png'));
+    await copyFile(path.join(root, 'frontend', 'logo.svg'), path.join(directory, 'logo.svg'));
     await writeFile(
         path.join(directory, 'index.html'),
         await renderShell([
+            '<link rel="icon" type="image/svg+xml" href="logo.svg" />',
             '<link rel="icon" type="image/png" href="logo.png" />',
             '<link rel="stylesheet" href="app.css" />',
             '<script src="config.js"></script>',

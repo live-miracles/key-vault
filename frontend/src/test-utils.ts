@@ -292,7 +292,7 @@ function deleteInputMock(id) {
     if (testKeys.some((key) => key.input === id) || testRoles.some((role) => role.input === id)) {
         return {
             success: false,
-            error: 'Input is in use: ' + id,
+            error: 'This input still has destinations or shared people. Remove them first, then delete the input.',
         };
     }
 
@@ -451,13 +451,6 @@ const testRoles = [
         type: ROLES.EDITOR,
         input: 'L5',
     },
-    {
-        id: 'R5',
-        event: 'E1',
-        email: testEmail3,
-        type: ROLES.VIEWER,
-        input: 'L9',
-    },
 ];
 
 // Each event has its own inputs, in its own order.
@@ -573,20 +566,6 @@ const testKeys = [
         input: 'L5',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
-        server2: '',
-        key2: '',
-        color: '',
-        link: '',
-        remarks: '',
-    },
-    {
-        row: 7,
-        id: 'K7',
-        event: 'E1',
-        name: 'Missing Input Demo',
-        input: 'L9',
-        server: 'yt',
-        key: 'abc-123-abc-123-missing',
         server2: '',
         key2: '',
         color: '',

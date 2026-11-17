@@ -771,8 +771,8 @@
 /* The destinations: a grid of cards, one column on a phone, more as the window widens. */
 #key-cards {
     display: grid;
-    gap: 0.75rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+    gap: 0.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
     align-items: start;
     padding-block: 0.75rem;
 }
@@ -782,7 +782,7 @@
    wins over the card's own background. */
 @layer components {
     .dest-card {
-        @apply border-base-300 bg-base-200 flex flex-col gap-2 rounded-lg border p-3 shadow-sm;
+        @apply border-base-300 bg-base-200 flex flex-col gap-1 rounded-lg border px-2.5 py-2 shadow-sm;
     }
     .tint-running {
         background-color: color-mix(in oklab, var(--color-success) 12%, var(--color-base-200));
@@ -860,8 +860,7 @@
 }
 
 .lang-row:hover > .lang-tools,
-.lang-row:focus-within > .lang-tools,
-.lang-row-active > .lang-tools {
+.lang-row:focus-within > .lang-tools {
     @apply flex;
 }
 
@@ -884,23 +883,6 @@
 
 .lang-item-count {
     @apply text-ink-subtle min-w-5 text-right text-xs tabular-nums;
-}
-
-/* The All view: one heading per input, spanning the table, with its streams beneath. */
-.input-group-heading {
-    @apply border-base-300 col-span-full flex items-center gap-2 border-b px-1 pt-2 pb-1.5 text-sm font-semibold;
-}
-
-#key-cards > .input-group-heading:first-child {
-    @apply pt-0;
-}
-
-.input-group-name {
-    @apply flex min-w-0 items-center gap-2 truncate;
-}
-
-.input-group-heading .lang-item-count {
-    @apply min-w-0 text-left;
 }
 
 /* A count in a status color: the number of keys in that state. */
@@ -948,6 +930,11 @@
     @apply bg-base-200 text-ink-muted mb-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm;
     border-color: var(--color-base-300);
 }
+/* Its flex display is unlayered, so it would beat the hidden utility: hide it explicitly. */
+.input-banner.hidden,
+.input-banner:empty {
+    display: none;
+}
 .input-banner .status-pill {
     @apply shrink-0 px-2 whitespace-nowrap;
 }
@@ -969,7 +956,27 @@
     @apply flex items-center gap-2;
 }
 .dest-card-name {
-    @apply min-w-0 flex-1 truncate text-base font-semibold;
+    @apply min-w-0 flex-1 truncate text-sm font-semibold;
+}
+/* Keep the small icon buttons from making the head row taller than its text. */
+.dest-card .btn-xs {
+    @apply size-6 min-h-0 p-0;
+}
+/* A small brand tile: the platform's own color behind a white mark. */
+.platform-logo {
+    @apply inline-flex size-6 shrink-0 items-center justify-center rounded-md text-white;
+}
+.platform-logo svg {
+    @apply size-5;
+}
+.platform-logo-yt {
+    background-color: #ff0000;
+}
+.platform-logo-fb {
+    background-color: #1877f2;
+}
+.platform-logo-ig {
+    background: linear-gradient(45deg, #f09433, #e6683c 30%, #dc2743 55%, #cc2366 75%, #bc1888);
 }
 .dest-card-actions {
     @apply shrink-0;
@@ -978,80 +985,43 @@
     @apply shrink-0 px-2 whitespace-nowrap;
 }
 .dest-card-note {
-    @apply text-ink-muted flex items-start gap-1 text-sm leading-snug;
+    @apply text-ink-muted flex items-start gap-1 text-xs leading-snug;
 }
 .dest-card-note-text {
     @apply min-w-0 flex-1;
 }
+/* Each field is one line, label then value, so a card stays a few lines tall. */
 .dest-card-fields {
-    @apply space-y-2;
+    @apply border-base-300/70 border-t pt-1;
 }
 .dest-card-field {
-    @apply border-base-300/70 border-t pt-2;
+    @apply flex items-center gap-2;
 }
 .dest-card-label {
-    @apply text-base-content/60 text-xs font-semibold uppercase;
+    @apply text-base-content/60 w-[4.5rem] shrink-0 text-[0.65rem] leading-6 font-semibold whitespace-nowrap uppercase;
 }
 .dest-card-value {
-    @apply mt-1 min-w-0 text-sm break-words;
+    @apply min-w-0 flex-1 truncate text-xs;
 }
 .dest-card-value > .flex {
-    @apply justify-start;
+    @apply min-w-0 justify-start;
+}
+.dest-card-value > .flex > :first-child {
+    @apply min-w-0 truncate;
 }
 
-/* Overview page */
-.overview-page {
-    @apply mx-auto flex w-full max-w-5xl flex-col gap-4;
+/* The strip above an event: its inputs and destinations, counted by state. */
+.event-summary {
+    @apply flex flex-wrap items-center gap-x-5 gap-y-1 pt-3 text-sm;
 }
-
-.stat-row {
-    @apply grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6;
+.summary-group {
+    @apply flex flex-wrap items-center gap-1.5;
 }
-
-.stat-card {
-    @apply bg-base-200 border-base-300 rounded-xl border px-4 py-3;
+.summary-title {
+    @apply text-ink-muted font-semibold;
 }
-
-.stat-card-value {
-    @apply text-2xl leading-8 font-semibold tabular-nums;
-}
-
-.stat-card-label {
-    @apply text-ink-subtle text-xs;
-}
-
-.stat-running .stat-card-value {
-    color: var(--color-success);
-}
-.stat-warning .stat-card-value {
-    color: var(--color-warning);
-}
-.stat-error .stat-card-value {
-    color: var(--color-error);
-}
-.stat-stopped .stat-card-value {
-    color: var(--color-accent);
-}
-
-.overview-section {
-    @apply flex flex-col gap-2;
-}
-
-.overview-heading {
-    @apply text-ink-muted text-sm font-semibold;
-}
-
-.overview-table-wrap {
-    @apply bg-base-200 border-base-300 overflow-x-auto rounded-xl border;
-}
-
-.overview-row {
-    @apply cursor-pointer text-center;
-}
-
-.overview-row:hover > td,
-.overview-row:focus-visible > td {
-    background-color: var(--color-surface-3);
+.summary-total {
+    @apply text-base-content mr-0.5 font-semibold tabular-nums;
 }
 
 @media (max-width: 640px) {

@@ -44,8 +44,7 @@ Tints are **opaque** (mixed over `base-200`), so the waves can never show throug
 
 ## Layout
 
-- **Overview** is the first tab and the landing page: totals, one row per event, and the keys that need attention (`overview.ts`).
-- **Event view** is bunryu's list-and-detail layout: on the left the event's own card (its name, rename and delete, Add destination, Share) above its input list (`All` first, then the event's inputs in its own order, each with status counts, and a `+` for its admins to add one; they also rename, delete and drag to reorder there). The selected input's destinations are on the right as a grid of cards (`.dest-card`; one column on a phone, more as the window widens), each starting with its status label, then the name and actions, what the status means, and its links. Under `All` each input is a heading across the grid with its cards beneath. There is no table. Below 768 px the list becomes a row of chips above the cards. The choice is kept in the `input` URL parameter.
+- **Event view** is the landing page (the first event; there is no separate overview page). A strip on top counts its inputs (receiving, unstable, not arriving, idle) and its destinations by state (`renderEventSummary` in `overview.ts`). Below it is bunryu's list-and-detail layout: on the left the event's own card (its name, rename and delete, Add destination, Share) above its input list (the event's inputs in its own order, each with status counts, and a `+` for its admins to add one; they also rename, delete and drag to reorder there; the pen and bin show only when the pointer is over an input, and the bin asks for confirmation; the server refuses an input still in use, in plain words). The selected input's destinations are on the right as a grid of cards (`.dest-card`; one column on a phone, more as the window widens), each starting with its status label, then the name and actions, what the status means, and its links. One input is always chosen: the one in the URL, else the first with an error or warning, else the first. There is no table. Below 768 px the list becomes a row of chips above the cards. The choice is kept in the `input` URL parameter.
 - Status counts use the `status-pill` classes, which share the status colors above.
 
 ## Waves
@@ -60,7 +59,7 @@ Tints are **opaque** (mixed over `base-200`), so the waves can never show throug
 Two audiences, two standards:
 
 - **People who add and edit destinations** (editors, and anyone adding a key) may never have seen a stream key. Their screens (the Add a destination form, the cards, the input picker) use plain words, say what to do next, and explain errors in terms of the fix. No jargon without a one-line explanation.
-- **Owners and admins** (sharing, event settings, bunryu settings, the overview) are technical and keep the compact, terse style.
+- **Owners and admins** (sharing, event settings, bunryu settings) are technical and keep the compact, terse style.
 
 Why the editors matter: the media team used to send links in a Google Sheet and often put a stream key where an address belonged, or the main link in the backup box. The form exists to make that mistake impossible, and the status colors exist so they can see for themselves whether an update reached bunryu and whether each output is live. See `CONTEXT.md`.
 

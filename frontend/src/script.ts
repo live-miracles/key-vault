@@ -89,7 +89,7 @@ async function fetchDataAndRerender() {
     if (config.events.find((e) => e.id === eventId)) {
         selectEvent(eventId);
     } else if (config.events.length > 0) {
-        selectOverview();
+        selectEvent(config.events[0].id);
     } else {
         selectEvent('');
     }
@@ -109,7 +109,6 @@ async function fetchStatusAndRerender() {
     renderBunryuStatus();
     const eventId = getUrlParam('event');
     if (eventId) renderKeyTable(eventId);
-    else if (isOverviewView()) renderOverview();
 }
 
 function renderBunryuStatus() {
@@ -330,19 +329,11 @@ document.addEventListener('click', (event) => {
         'copy-text': () => copyTextValue(target.dataset.copyValue),
         'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
         'select-input': () => selectInput(target.dataset.input),
-        'open-event': () => openEvent(target.dataset.event, target.dataset.input),
     };
 
     const handler = actions[action];
     if (!handler) return;
     void handler();
-});
-
-// Overview rows are keyboard-reachable too.
-document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Enter') return;
-    const row = event.target instanceof Element ? event.target.closest('.overview-row') : null;
-    row?.click();
 });
 
 document.addEventListener('change', (event) => {

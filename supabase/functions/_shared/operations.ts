@@ -446,7 +446,9 @@ export async function deleteInput(store: Store, ctx: Context, payload: unknown) 
     if (!old || !inputEvent(data, eventRoles, old.event)) return fail('Input not found: ' + id);
     if (!hasInputAccess(eventRoles, old.event)) return denied(ctx);
     if (data.keys.some((k) => k.input === id) || data.roles.some((r) => r.input === id)) {
-        return fail('Input is in use: ' + id);
+        return fail(
+            'This input still has destinations or shared people. Remove them first, then delete the input.',
+        );
     }
 
     await store.deleteInput(id);

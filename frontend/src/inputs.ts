@@ -178,7 +178,7 @@ async function deleteInputById(inputId) {
     }
     if (!hasInputAccess(eventRoles, input.event)) return;
 
-    if (!confirm(`Are you sure you want to delete input "${input.name}"?`)) {
+    if (!(await confirmAction(`Delete the input "${input.name}"? This cannot be undone.`))) {
         return;
     }
 

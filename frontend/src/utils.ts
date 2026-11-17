@@ -106,6 +106,22 @@ function hydrateIcons() {
 
 document.addEventListener('DOMContentLoaded', hydrateIcons);
 
+// Asks in the page, not with the browser's confirm(): some browsers, such as the one inside the
+// Claude app, never show that popup and answer "no" at once, so Delete would do nothing.
+// Resolves true only when the person picks the red button.
+function confirmAction(message, confirmLabel = 'Delete') {
+    const dialog = document.querySelector('#confirm-modal');
+    document.querySelector('#confirm-modal-text').textContent = message;
+    document.querySelector('#confirm-modal-ok').textContent = confirmLabel;
+    return new Promise((resolve) => {
+        dialog.returnValue = '';
+        dialog.addEventListener('close', () => resolve(dialog.returnValue === 'yes'), {
+            once: true,
+        });
+        dialog.showModal();
+    });
+}
+
 function safeUrl(value) {
     const text = String(value ?? '').trim();
     if (text === '') return '';

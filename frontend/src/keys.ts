@@ -176,8 +176,6 @@ function getSrtSettings(suffix = '') {
 }
 
 function renderKeyTable(eventId = null) {
-    if (!eventId && isOverviewView()) return renderOverview();
-
     const eventKeys = config.keys
         .filter((k) => k.event === eventId)
         .sort((a, b) => {
@@ -189,12 +187,13 @@ function renderKeyTable(eventId = null) {
     // URLs are still checked against the whole event, so a clash is never hidden by a filter.
     const input = renderInputPanel(eventId, eventKeys);
     renderInputBanner(input);
+    renderEventSummary(listEventInputs(eventId, eventKeys), eventKeys);
     const keys = input ? eventKeys.filter((k) => k.input === input) : eventKeys;
     const allUrls = eventKeys.flatMap((key) =>
         [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
     );
 
-    const renderedKeys = keys.map((k, i) => {
+    const renderedKeys = keys.map((k) => {
         const { color, title: detailTitle } = getKeyDisplay(k, keyStatus);
         const note = k.pending
             ? null
@@ -254,16 +253,6 @@ function renderKeyTable(eventId = null) {
               })
             : '';
 
-        // In the All view each input's destinations sit under one heading across the grid.
-        const startsGroup = !input && (i === 0 || keys[i - 1].input !== k.input);
-        const groupKeys = startsGroup ? keys.filter((key) => key.input === k.input) : [];
-        const groupHeading = startsGroup
-            ? `<div class="input-group-heading">
-                   <span class="input-group-name">${inputDotHtml(k.input)}${inputLabelHtml(k.input)}</span>
-                   <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(groupKeys, keyStatus))}</span>
-                   <span class="lang-item-count">${groupKeys.length}</span>
-               </div>`
-            : '';
         const nameCopyButton = isPending
             ? ''
             : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the name" aria-label="Copy the name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">${iconSvg('copy')}</button>`;
@@ -273,19 +262,20 @@ function renderKeyTable(eventId = null) {
                 <article class="dest-card ${color.bgCss}" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
                     <div class="dest-card-head">
                         ${pillHtml}
+                        ${platformLogoHtml(k.server)}
                         <h4 class="dest-card-name" title="${escapeHtml(k.name)}">${escapeHtml(k.name || '(unnamed)')}</h4>
                         ${nameCopyButton}
                         ${actions ? `<div class="dest-card-actions">${actions}</div>` : ''}
                     </div>
                     ${noteTextHtml}
                     <div class="dest-card-fields">
-                        ${renderKeyField('Main stream', mainUrlCell)}
-                        ${renderKeyField('Backup stream', backupUrlCell)}
+                        ${renderKeyField('Main', mainUrlCell)}
+                        ${renderKeyField('Backup', backupUrlCell)}
                         ${renderKeyField('Watch link', webLinkCell)}
                         ${renderKeyField('Notes', escapeHtml(k.remarks || ''))}
                     </div>
                 </article>`;
-        return groupHeading + card;
+        return card;
     });
 
     renderKeysEmptyState(
@@ -309,7 +299,7 @@ function renderInputBanner(inputId) {
     const banner = document.querySelector('#input-banner');
     const info = inputId ? describeInputBanner(inputId, getInputName(inputId), keyStatus) : null;
     banner.classList.toggle('hidden', !info);
-    banner.className = banner.className.replace(/input-banner-w+/g, '').trim();
+    banner.className = banner.className.replace(/input-banner-\w+/g, '').trim();
     if (!info) {
         banner.textContent = '';
         return;
@@ -342,6 +332,28 @@ function renderKeysEmptyState(isEmpty, canAdd, eventId) {
         : canAdd
           ? 'Add a destination for each place you will go live, such as YouTube or Facebook. We will show you where to find the stream key.'
           : 'Nothing has been added for you to see yet.';
+}
+
+// The platform's logo, so a card is recognised at a glance. Other kinds of destination get none.
+const PLATFORM_LOGOS = {
+    yt: {
+        name: 'YouTube',
+        svg: '<path fill="currentColor" d="M9.5 8v8l7-4z" />',
+    },
+    fb: {
+        name: 'Facebook',
+        svg: '<path fill="currentColor" d="M13.4 20v-7h2.3l.4-2.8h-2.7V8.5c0-.8.3-1.3 1.4-1.3h1.4V4.7c-.3 0-1.1-.1-2-.1-2.1 0-3.5 1.3-3.5 3.600v2.100H8.400V13h2.300v7z" />',
+    },
+    ig: {
+        name: 'Instagram',
+        svg: '<rect x="5" y="5" width="14" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="12" cy="12" r="3.200" fill="none" stroke="currentColor" stroke-width="1.8" /><circle cx="16.200" cy="7.800" r="1" fill="currentColor" />',
+    },
+};
+
+function platformLogoHtml(server) {
+    const logo = PLATFORM_LOGOS[server];
+    if (!logo) return '';
+    return `<span class="platform-logo platform-logo-${escapeHtml(server)}" title="${escapeHtml(logo.name)}" role="img" aria-label="${escapeHtml(logo.name)}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">${logo.svg}</svg></span>`;
 }
 
 function renderKeyField(label, content) {
@@ -471,7 +483,7 @@ function deleteKeyById(keyId) {
 }
 
 // `inputId` is the input to start on: the one whose list or heading the button is in.
-async function addKeyBtn(inputId = getUrlParam('input')) {
+async function addKeyBtn(inputId = getUrlParam('input') || shownInputId) {
     const eventId = getUrlParam('event');
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
@@ -898,7 +910,7 @@ async function deleteKeyRow() {
         return;
     }
 
-    if (!confirm(`Are you sure you want to delete key "${key.name}"?`)) {
+    if (!(await confirmAction(`Delete the destination "${key.name}"? This cannot be undone.`))) {
         return;
     }
 

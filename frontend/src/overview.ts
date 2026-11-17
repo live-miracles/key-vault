@@ -1,15 +1,12 @@
 // @ts-nocheck
 
-// The input list beside an event's keys and the overview page that sums up every event.
-// Both read the same thing: how many keys there are and what bunryu reports about them.
-
-const OVERVIEW_VIEW = 'overview';
+// The input list beside an event's destinations, and the strip above them that sums up its
+// inputs and destinations. Both read what bunryu reports.
 
 const STATUS_ORDER = ['error', 'warning', 'running', 'stopped'];
 
-function isOverviewView() {
-    return getUrlParam('view') === OVERVIEW_VIEW;
-}
+// The input the event view is showing, so adding a destination can start on it.
+let shownInputId = '';
 
 // How many of `keys` are in each state. A key bunryu does not report on is "unreported".
 function summarizeKeyStatuses(keys, report) {
@@ -23,22 +20,6 @@ function summarizeKeyStatuses(keys, report) {
     return summary;
 }
 
-// The inputs an event's keys use, in the order of the Inputs list, each with its keys.
-function groupKeysByInput(keys) {
-    const groups = new Map();
-    for (const key of keys) {
-        if (!groups.has(key.input)) groups.set(key.input, []);
-        groups.get(key.input).push(key);
-    }
-    return [...groups.entries()]
-        .map(([input, inputKeys]) => ({ input, keys: inputKeys }))
-        .sort((a, b) => {
-            const orderDiff = getInputOrder(a.input) - getInputOrder(b.input);
-            if (orderDiff !== 0) return orderDiff;
-            return getInputName(a.input).localeCompare(getInputName(b.input));
-        });
-}
-
 // The inputs listed for an event: its own, in the order its admins gave them, then any input
 // a stream still points at that the event does not have, so such a stream is never hidden.
 function listEventInputs(eventId, keys) {
@@ -47,9 +28,28 @@ function listEventInputs(eventId, keys) {
     return own.concat(strays);
 }
 
-// The input to filter by: the wanted one when it is in the list, otherwise all ('').
-function resolveInputFilter(inputIds, wanted) {
-    return wanted && inputIds.includes(wanted) ? wanted : '';
+// The input to show: the wanted one when it is in the list, otherwise the preferred one (for
+// example the first with a problem), otherwise the first. An event with no inputs has none ('').
+function resolveInputFilter(inputIds, wanted, preferred = '') {
+    if (wanted && inputIds.includes(wanted)) return wanted;
+    if (preferred && inputIds.includes(preferred)) return preferred;
+    return inputIds[0] || '';
+}
+
+// The first input with a stream in trouble: errors before warnings, else none.
+function firstInputWithProblem(inputIds, keys, report) {
+    const summaries = inputIds.map((id) => ({
+        id,
+        summary: summarizeKeyStatuses(
+            keys.filter((key) => key.input === id),
+            report,
+        ),
+    }));
+    for (const status of ['error', 'warning']) {
+        const found = summaries.find(({ summary }) => summary[status] > 0);
+        if (found) return found.id;
+    }
+    return '';
 }
 
 function statusPillsHtml(summary) {
@@ -69,11 +69,25 @@ function inputDotHtml(inputId) {
     return `<span class="input-dot input-dot-${input.status}" title="${escapeHtml(label)}" role="img" aria-label="${escapeHtml(label)}"></span>`;
 }
 
-// The list on the left: All, then this event's own inputs. Its admins add, rename, delete and
-// drag them into order right here, so the list is plainly this event's and nobody else's.
+// The list on the left: this event's own inputs, one of them always chosen. Its admins add,
+// rename, delete and drag them into order right here, so the list is plainly this event's and
+// nobody else's.
 function renderInputPanel(eventId, eventKeys) {
     const inputIds = listEventInputs(eventId, eventKeys);
-    const selected = resolveInputFilter(inputIds, getUrlParam('input'));
+    const selected = resolveInputFilter(
+        inputIds,
+        getUrlParam('input'),
+        firstInputWithProblem(inputIds, eventKeys, keyStatus),
+    );
+    shownInputId = selected;
+    // Keep the choice in the address, so a status change later cannot move the view. Not before
+    // bunryu has reported: the first with a problem is not known yet, and the report is coming.
+    // Replaces, so Back is unharmed.
+    if (selected && keyStatus.online && getUrlParam('input') !== selected) {
+        const url = new URL(window.location);
+        url.searchParams.set('input', selected);
+        window.history.replaceState({}, '', url);
+    }
     const canManage = hasInputAccess(eventRoles, eventId);
     document.querySelector('#add-input-btn').classList.toggle('hidden', !canManage);
 
@@ -82,12 +96,13 @@ function renderInputPanel(eventId, eventKeys) {
         const own = input ? config.inputs.find((i) => i.id === input && i.event === eventId) : null;
         const isPending = Boolean(own?.pending);
         const manage = canManage && own && !isPending;
-        const label = input ? inputLabelHtml(input) : 'All';
-        const inUse = keys.length > 0 || config.roles.some((role) => role.input === input);
+        const label = inputLabelHtml(input);
+        // Shown on hover only. Delete is never greyed out: if the input is still used, clicking
+        // it says what to remove first.
         const tools = manage
             ? `<span class="lang-tools">
                     <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Rename this input" aria-label="Rename input ${escapeHtml(own.name)}" data-action="edit-input-by-id">${iconSvg('pen')}</button>
-                    <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="${inUse ? 'Remove its streams first' : 'Delete this input'}" aria-label="Delete input ${escapeHtml(own.name)}" data-action="delete-input-by-id" ${inUse ? 'disabled' : ''}>${iconSvg('trash')}</button>
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete this input" aria-label="Delete input ${escapeHtml(own.name)}" data-action="delete-input-by-id">${iconSvg('trash')}</button>
                </span>`
             : '';
         const count = isPending
@@ -104,16 +119,14 @@ function renderInputPanel(eventId, eventKeys) {
                 ${tools}
             </div>`;
     };
-    document.querySelector('#input-list').innerHTML =
-        row('', eventKeys) +
-        inputIds
-            .map((input) =>
-                row(
-                    input,
-                    eventKeys.filter((key) => key.input === input),
-                ),
-            )
-            .join('');
+    document.querySelector('#input-list').innerHTML = inputIds
+        .map((input) =>
+            row(
+                input,
+                eventKeys.filter((key) => key.input === input),
+            ),
+        )
+        .join('');
 
     document.querySelectorAll('#input-list .lang-row[draggable="true"]').forEach((el) => {
         el.addEventListener('dragstart', dragInputStart);
@@ -129,95 +142,36 @@ function selectInput(input) {
     renderKeyTable(getUrlParam('event'));
 }
 
-function openEvent(eventId, input = '') {
-    selectEvent(eventId, input || null);
-}
-
-function statCardHtml(label, value, className = '') {
-    return `
-        <div class="stat-card ${className}">
-            <div class="stat-card-value">${value}</div>
-            <div class="stat-card-label">${escapeHtml(label)}</div>
-        </div>`;
-}
-
-function renderOverview() {
-    const events = config.events.filter((e) => e.id && e.name);
-    const keys = config.keys.filter((k) => events.some((e) => e.id === k.event));
-    const total = summarizeKeyStatuses(keys, keyStatus);
-
-    const stats = [
-        statCardHtml('Events', events.length),
-        statCardHtml('Keys', total.total),
-        statCardHtml('Running', total.running, 'stat-running'),
-        statCardHtml('Warning', total.warning, 'stat-warning'),
-        statCardHtml('Error', total.error, 'stat-error'),
-        statCardHtml('Configured', total.stopped, 'stat-stopped'),
-    ].join('');
-
-    const eventRows = events
-        .map((event) => {
-            const eventKeys = keys.filter((k) => k.event === event.id);
-            const summary = summarizeKeyStatuses(eventKeys, keyStatus);
-            const inputs = groupKeysByInput(eventKeys).length;
-            return `
-                <tr class="overview-row" data-action="open-event" data-event="${escapeHtml(event.id)}" tabindex="0">
-                    <td class="text-left font-medium">${escapeHtml(event.name)}${event.pending ? ' <span class="loading loading-dots loading-xs"></span>' : ''}</td>
-                    <td>${eventKeys.length}</td>
-                    <td>${inputs}</td>
-                    <td><span class="inline-flex gap-1">${statusPillsHtml(summary) || '<span class="text-base-content/40">—</span>'}</span></td>
-                </tr>`;
-        })
-        .join('');
-
-    const problems = keys
-        .map((key) => ({ key, status: getKeyStatus(key, keyStatus) }))
-        .filter(
-            ({ status }) => status && (status.status === 'error' || status.status === 'warning'),
-        )
-        .sort(
-            (a, b) =>
-                STATUS_RANK[b.status.status] - STATUS_RANK[a.status.status] ||
-                a.key.name.localeCompare(b.key.name),
-        );
-    const eventName = (id) => events.find((e) => e.id === id)?.name || '';
-    const problemRows = problems
+// The strip above an event: how many of its inputs are receiving, unstable, not arriving or
+// idle, then the same for its destinations. Only states that have something in them are shown.
+function summaryGroupHtml(title, total, counts, labels) {
+    const pills = STATUS_ORDER.filter((status) => counts[status] > 0)
         .map(
-            ({ key, status }) => `
-                <tr class="overview-row" data-action="open-event" data-event="${escapeHtml(key.event)}" data-input="${escapeHtml(key.input)}" tabindex="0" title="${escapeHtml(describeKeyStatus(status))}">
-                    <td><span class="status-pill status-${status.status}">${escapeHtml(STATUS_LABELS[status.status])}</span></td>
-                    <td class="text-left">${escapeHtml(eventName(key.event))}</td>
-                    <td class="text-left">${inputLabelHtml(key.input)}</td>
-                    <td class="text-left">${escapeHtml(getPlatformNamePreview(key.name))}</td>
-                    <td class="text-base-content/70 text-left">${escapeHtml(getMiddleEllipsisText(status.message || '', 70, 55, 10))}</td>
-                </tr>`,
+            (status) =>
+                `<span class="status-pill status-${status}">${counts[status]} ${escapeHtml(labels[status])}</span>`,
         )
         .join('');
+    return `<div class="summary-group"><span class="summary-title">${escapeHtml(title)}</span><span class="summary-total">${total}</span>${pills}</div>`;
+}
 
-    const bunryu = describeBunryu(keyStatus);
-    const note =
-        bunryu.state === 'online'
-            ? ''
-            : `<p class="text-base-content/60 text-sm">Live status appears here while bunryu is connected. ${escapeHtml(bunryu.text)}.</p>`;
-
-    document.querySelector('#overview-body').innerHTML = `
-        <div class="stat-row">${stats}</div>
-        ${note}
-        <section class="overview-section">
-            <h2 class="overview-heading">Events</h2>
-            <div class="overview-table-wrap">
-                <table class="table">
-                    <thead><tr class="text-center"><th class="text-left">Event</th><th>Keys</th><th>Inputs</th><th>Status</th></tr></thead>
-                    <tbody>${eventRows}</tbody>
-                </table>
-            </div>
-        </section>
-        <section class="overview-section">
-            <h2 class="overview-heading">Needs attention</h2>
-            ${
-                problems.length
-                    ? `<div class="overview-table-wrap"><table class="table"><tbody>${problemRows}</tbody></table></div>`
-                    : `<p class="text-base-content/60 text-sm">${total.running + total.warning + total.error + total.stopped ? 'No warnings or errors.' : 'Nothing reported yet.'}</p>`
-            }
-        </section>`;
+function renderEventSummary(inputIds, eventKeys) {
+    const el = document.querySelector('#event-summary');
+    el.classList.toggle('hidden', inputIds.length === 0);
+    if (inputIds.length === 0) {
+        el.innerHTML = '';
+        return;
+    }
+    const inputCounts = { running: 0, warning: 0, error: 0, stopped: 0 };
+    for (const id of inputIds) {
+        const status = getInputStatus(id, keyStatus)?.status;
+        if (status in inputCounts) inputCounts[status]++;
+    }
+    el.innerHTML =
+        summaryGroupHtml('Inputs', inputIds.length, inputCounts, INPUT_LABELS) +
+        summaryGroupHtml(
+            'Destinations',
+            eventKeys.length,
+            summarizeKeyStatuses(eventKeys, keyStatus),
+            NOTE_LABELS,
+        );
 }

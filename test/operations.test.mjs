@@ -289,7 +289,10 @@ test("inputs: an event's admins and owners manage its list, and one in use stays
     assert.equal((await ops.editInput(store, editor, { id: newId, name: 'Nope' })).success, false);
     assert.equal((await ops.editInput(store, admin, { id: 'L3', name: 'Nope' })).success, false);
 
-    assert.equal((await ops.deleteInput(store, admin, 'L1')).error, 'Input is in use: L1');
+    assert.equal(
+        (await ops.deleteInput(store, admin, 'L1')).error,
+        'This input still has destinations or shared people. Remove them first, then delete the input.',
+    );
     assert.equal((await ops.deleteInput(store, editor, newId)).success, false);
     assert.equal((await ops.deleteInput(store, admin, 'L3')).success, false);
     assert.equal((await ops.deleteInput(store, admin, newId)).success, true);

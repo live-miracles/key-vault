@@ -3,13 +3,10 @@
 function renderEventTabBar(eventId = null) {
     const events = config.events.filter((e) => e.id || e.name);
     const event = events.find((e) => e.id === eventId);
-    const onOverview = !event && isOverviewView();
-    const name = onOverview ? 'Overview' : event?.name || '';
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
-    // The overview is named in the header; an event is named in its own card, beside the
-    // controls that act on it alone.
-    document.getElementById('event-name').innerText = onOverview ? name : '';
+    // An event is named in its own card, beside the controls that act on it alone.
+    document.getElementById('event-name').innerText = '';
     document.getElementById('event-card-name').innerText = event?.name || '';
     document.getElementById('event-card-name').title = event?.name || '';
 
@@ -28,14 +25,7 @@ function renderEventTabBar(eventId = null) {
     document.querySelector('#delete-event-btn').disabled = isPending;
 
     const tabsElem = document.querySelector('.tabs');
-    const overviewTab = document.createElement('a');
-    overviewTab.role = 'tab';
-    overviewTab.className = `tab ${onOverview ? 'tab-active' : ''}`;
-    overviewTab.title = 'Overview of every event';
-    overviewTab.innerHTML = `${iconSvg('home')}<span class="ml-1">Overview</span>`;
-    overviewTab.addEventListener('click', () => selectOverview());
     tabsElem.replaceChildren(
-        ...(events.length > 0 ? [overviewTab] : []),
         ...events.map((e) => {
             const tab = document.createElement('a');
             tab.role = 'tab';
@@ -152,14 +142,14 @@ async function deleteEventBtn() {
         return;
     }
 
-    if (!confirm(`Are you sure you want to delete event "${event.name}"?`)) {
+    if (!(await confirmAction(`Delete the event "${event.name}"? This cannot be undone.`))) {
         return;
     }
 
     const snapshot = cloneConfig();
     config.events = config.events.filter((e) => e.id !== event.id);
     updateEventRoles(config);
-    selectOverview();
+    selectEvent(config.events[0]?.id ?? '');
 
     showLoading();
     document.querySelector('#delete-event-btn').disabled = true;
@@ -174,33 +164,9 @@ async function deleteEventBtn() {
     }
 }
 
-// The home page: totals and problems across every event.
-function selectOverview() {
-    if (config.events.length === 0) return selectEvent('');
-    setUrlParams({ event: null, input: null, view: OVERVIEW_VIEW });
-    showEventView(false);
-    renderEventTabBar(null);
-    for (const button of [
-        'show-roles-btn',
-        'add-role-btn',
-        'edit-role-btn',
-        'delete-role-btn',
-        'add-key-btn',
-    ]) {
-        document.querySelector('#' + button).classList.add('hidden');
-    }
-    renderOverview();
-}
-
-function showEventView(show) {
-    document.querySelector('#key-table').classList.toggle('hidden', !show);
-    document.querySelector('#overview-view').classList.toggle('hidden', show);
-}
-
 // `input` picks the input filter; leave it out to keep the one already chosen.
 function selectEvent(id, input = undefined) {
     setUrlParams({ event: id, view: null, ...(input === undefined ? {} : { input }) });
-    document.querySelector('#overview-view').classList.add('hidden');
 
     const hasEvents = config.events.length > 0;
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);

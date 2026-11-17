@@ -95,6 +95,18 @@
       </div>
     </dialog>
 
+    <dialog id="confirm-modal" class="modal">
+      <div class="modal-box max-w-sm">
+        <p id="confirm-modal-text" class="text-base"></p>
+        <div class="modal-action">
+          <form method="dialog">
+            <button class="btn mx-2" value="no">Cancel</button>
+            <button class="btn btn-error" value="yes" id="confirm-modal-ok">Delete</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
     <!-- Context Menu -->
     <div id="role-context-menu" class="bg-base-200 border-base-300 rounded-box fixed z-1000 hidden border shadow-lg">
       <ul class="menu w-fit p-2">
@@ -614,11 +626,8 @@
         </div>
       </div>
 
-      <div class="hidden min-h-0 flex-1 overflow-y-auto px-3 py-3" id="overview-view">
-        <div class="overview-page" id="overview-body"></div>
-      </div>
-
       <div class="min-h-0 flex-1 overflow-y-auto px-3" id="key-table">
+        <div id="event-summary" class="event-summary hidden" role="status" aria-label="Summary of this event"></div>
         <div class="event-layout">
           <aside class="event-side">
             <section class="event-card" aria-label="This event">

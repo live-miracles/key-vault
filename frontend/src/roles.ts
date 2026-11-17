@@ -281,7 +281,12 @@ async function deleteRoleRow() {
         return;
     }
 
-    if (!confirm(`Are you sure you want to delete role ${role.email} | ${ROLE_MAP[role.type]}?`)) {
+    if (
+        !(await confirmAction(
+            `Remove ${role.email} (${ROLE_MAP[role.type]}) from this event?`,
+            'Remove',
+        ))
+    ) {
         return;
     }
 

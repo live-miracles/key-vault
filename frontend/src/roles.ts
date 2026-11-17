@@ -338,7 +338,7 @@ function roleInputOptions(selectedInput = '*', roleType = ROLES.VIEWER) {
     const options =
         roleType === ROLES.ADMIN || roleType === ROLES.OWNER
             ? [{ id: '*', name: '* (All)' }]
-            : inputOptions({ includeAll: true });
+            : inputOptions({ includeAll: true, eventId: getUrlParam('event') });
 
     return options
         .map(

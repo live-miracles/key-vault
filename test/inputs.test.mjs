@@ -16,10 +16,11 @@ function loadInputs() {
     runtime.set('eventRoles', {});
     runtime.set('config', {
         inputs: [
-            { id: 'L2', name: 'German', order: '2' },
-            { id: 'L1', name: 'English', order: '1' },
-            { id: '', name: 'No id', order: '3' },
-            { id: 'L3', name: '', order: '4' },
+            { id: 'L2', event: 'E1', name: 'German', order: '2' },
+            { id: 'L1', event: 'E1', name: 'English', order: '1' },
+            { id: '', event: 'E1', name: 'No id', order: '3' },
+            { id: 'L3', event: 'E1', name: '', order: '4' },
+            { id: 'L4', event: 'E2', name: 'Tamil', order: '1' },
         ],
     });
     return runtime;
@@ -28,10 +29,16 @@ function loadInputs() {
 test('returns clean, ordered inputs and resolves labels', () => {
     const runtime = loadInputs();
 
-    assert.deepEqual(plain(runtime.get('getInputs')()), [
-        { id: 'L1', name: 'English', order: '1' },
-        { id: 'L2', name: 'German', order: '2' },
+    assert.deepEqual(plain(runtime.get('getInputs')('E1')), [
+        { id: 'L1', event: 'E1', name: 'English', order: '1' },
+        { id: 'L2', event: 'E1', name: 'German', order: '2' },
     ]);
+    // Another event has its own list.
+    assert.deepEqual(
+        plain(runtime.get('getInputs')('E2')).map((i) => i.id),
+        ['L4'],
+    );
+    assert.deepEqual(plain(runtime.get('getInputs')('E3')), []);
     assert.equal(runtime.get('getInputName')('L2'), 'German');
     assert.equal(runtime.get('getInputName')('*'), '* (All)');
     assert.equal(runtime.get('hasMissingInput')('L9'), true);

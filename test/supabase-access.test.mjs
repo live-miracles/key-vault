@@ -77,7 +77,7 @@ test('every access decision matches the frontend for all role combinations', () 
                 }
                 compared += 1;
             }
-            assert.equal(shared.hasInputAccess(a), fe.hasInputAccess(b));
+            assert.equal(shared.hasInputAccess(a, 'E1'), fe.hasInputAccess(b, 'E1'));
             assert.equal(shared.hasKeyColorAccess(a, 'E1'), fe.hasKeyColorAccess(b, 'E1'));
         }
     }

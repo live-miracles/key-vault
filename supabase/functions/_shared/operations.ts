@@ -34,6 +34,7 @@ export interface RoleItem {
 }
 export interface InputItem {
     id: string;
+    event: string;
     name: string;
     order: string;
 }
@@ -70,13 +71,13 @@ export interface Store {
         adminEmail: string | null,
     ): Promise<{ event: EventItem; adminRole: RoleItem | null }>;
     updateEvent(id: string, name: string): Promise<void>;
-    deleteEvent(id: string): Promise<void>; // also removes its roles and keys
+    deleteEvent(id: string): Promise<void>; // also removes its roles, keys and inputs
     createRole(role: Omit<RoleItem, 'id'>): Promise<RoleItem>;
     updateRole(id: string, role: Omit<RoleItem, 'id' | 'event'>): Promise<void>;
     deleteRole(id: string): Promise<void>;
-    createInput(name: string): Promise<InputItem>;
+    createInput(event: string, name: string): Promise<InputItem>;
     updateInput(id: string, name: string): Promise<void>;
-    reorderInputs(ids: string[]): Promise<void>;
+    reorderInputs(event: string, ids: string[]): Promise<void>;
     deleteInput(id: string): Promise<void>;
     createKey(key: Omit<KeyItem, 'id'>): Promise<KeyItem>;
     updateKey(id: string, key: Omit<KeyItem, 'id' | 'event'>): Promise<void>;
@@ -123,15 +124,25 @@ export function normalizeKeyColor(color: unknown): string {
     return (Object.values(KEY_COLORS) as string[]).includes(value) ? value : KEY_COLORS.NONE;
 }
 
-// A input id is an opaque string, or "*" where a role covers every input.
+// An input id is an opaque string, or "*" where a role covers every input.
 export function normalizeInputId(id: unknown, allowAll = false): string {
     const inputId = str(id).trim();
     return allowAll && inputId === '*' ? '*' : inputId;
 }
 
-function isValidInput(data: Data, input: unknown, allowAll = false): boolean {
+// An input is valid for an event only when it is one of that event's own inputs.
+function isValidInput(data: Data, event: unknown, input: unknown, allowAll = false): boolean {
     const id = normalizeInputId(input, allowAll);
-    return (allowAll && id === '*') || data.inputs.some((l) => l.id === id);
+    return (allowAll && id === '*') || data.inputs.some((i) => i.id === id && i.event === event);
+}
+
+function hasInputName(data: Data, event: string, name: string, exceptId = ''): boolean {
+    return data.inputs.some(
+        (i) =>
+            i.event === event &&
+            i.id !== exceptId &&
+            i.name.trim().toLowerCase() === name.toLowerCase(),
+    );
 }
 
 function hasStreamingConfigChanged(oldKey: KeyItem, key: Partial<KeyItem>): boolean {
@@ -161,7 +172,8 @@ export async function getAllData(store: Store, ctx: Context, etag?: string) {
         etag: currentEtag,
         userEmail: ctx.email,
         isAppOwner: ctx.isAppOwner,
-        inputs: data.inputs,
+        // Each event's inputs, limited to those whose streams this user may see.
+        inputs: data.inputs.filter((i) => hasKeyAccess(eventRoles, ACTIONS.VIEW, i.event, i.id)),
         events: data.events.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id)),
         roles: data.roles.filter((r) => hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type)),
         keys: data.keys.filter((k) => hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.input)),
@@ -282,7 +294,7 @@ export async function addRole(store: Store, ctx: Context, payload: any) {
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    if (!isValidInput(data, role.input, true)) {
+    if (!isValidInput(data, role.event, role.input, true)) {
         return fail('Input not found: ' + role.input);
     }
     if (!hasRoleAccess(eventRoles, ACTIONS.CREATE, role.event, role.type)) return denied(ctx);
@@ -316,7 +328,7 @@ export async function editRole(store: Store, ctx: Context, payload: any) {
     const eventRoles = rolesOf(ctx, data);
     const old = data.roles.find((r) => r.id === role.id);
     if (!old) return fail('Role not found: ' + role.id);
-    if (!isValidInput(data, role.input, true)) {
+    if (!isValidInput(data, old.event, role.input, true)) {
         return fail('Input not found: ' + role.input);
     }
     if (
@@ -349,18 +361,28 @@ export async function deleteRole(store: Store, ctx: Context, id: unknown) {
 }
 
 // ===== Inputs =====
+// An input belongs to one event. That event's admins (and owners) manage its list.
+
+function inputEvent(data: Data, eventRoles: EventRoles, eventId: unknown) {
+    const event = data.events.find((e) => e.id === eventId);
+    return event && hasEventAccess(eventRoles, ACTIONS.VIEW, event.id) ? event : null;
+}
 
 export async function addInput(store: Store, ctx: Context, payload: any) {
     const name = str(payload?.name).trim();
-    if (!name) return invalid(payload);
+    if (!payload?.event || !name) return invalid(payload);
     const long = tooLong([['Name', name, MAX_NAME]]);
     if (long) return long;
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    if (!hasInputAccess(eventRoles)) return denied(ctx);
+    const event = inputEvent(data, eventRoles, payload.event);
+    if (!event) return fail('Event not found: ' + payload.event);
+    if (!hasInputAccess(eventRoles, event.id)) return denied(ctx);
+    if (hasInputName(data, event.id, name))
+        return fail('This event already has an input called "' + name + '".');
 
-    return ok(await store.createInput(name));
+    return ok(await store.createInput(event.id, name));
 }
 
 export async function editInput(store: Store, ctx: Context, payload: any) {
@@ -372,38 +394,43 @@ export async function editInput(store: Store, ctx: Context, payload: any) {
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    const old = data.inputs.find((l) => l.id === id);
-    if (!old) return fail('Input not found: ' + id);
-    if (!hasInputAccess(eventRoles)) return denied(ctx);
+    const old = data.inputs.find((i) => i.id === id);
+    if (!old || !inputEvent(data, eventRoles, old.event)) return fail('Input not found: ' + id);
+    if (!hasInputAccess(eventRoles, old.event)) return denied(ctx);
+    if (hasInputName(data, old.event, name, id))
+        return fail('This event already has an input called "' + name + '".');
 
     await store.updateInput(id, name);
     return ok({ ...old, name });
 }
 
-export async function reorderInputs(store: Store, ctx: Context, payload: unknown) {
-    if (!Array.isArray(payload)) return invalid(payload);
-    const ids = payload.map((id) => normalizeInputId(id));
+// The ids of one event's inputs, in the order they should be shown.
+export async function reorderInputs(store: Store, ctx: Context, payload: any) {
+    if (!payload || !payload.event || !Array.isArray(payload.ids)) return invalid(payload);
+    const ids = payload.ids.map((id: unknown) => normalizeInputId(id));
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    if (!hasInputAccess(eventRoles)) return denied(ctx);
+    const event = inputEvent(data, eventRoles, payload.event);
+    if (!event) return fail('Event not found: ' + payload.event);
+    if (!hasInputAccess(eventRoles, event.id)) return denied(ctx);
 
-    const current = new Set(data.inputs.map((l) => l.id));
+    const own = data.inputs.filter((i) => i.event === event.id);
+    const current = new Set(own.map((i) => i.id));
     const requested = new Set(ids);
     if (
-        ids.length !== data.inputs.length ||
+        ids.length !== own.length ||
         requested.size !== ids.length ||
-        requested.size !== current.size ||
-        ids.some((id) => !current.has(id))
+        ids.some((id: string) => !current.has(id))
     ) {
         return fail('Input list mismatch');
     }
     if (ids.length === 0) return ok([]);
 
-    await store.reorderInputs(ids);
+    await store.reorderInputs(event.id, ids);
     return ok(
-        ids.map((id, index) => ({
-            ...data.inputs.find((l) => l.id === id)!,
+        ids.map((id: string, index: number) => ({
+            ...own.find((i) => i.id === id)!,
             order: String(index + 1),
         })),
     );
@@ -415,8 +442,9 @@ export async function deleteInput(store: Store, ctx: Context, payload: unknown) 
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    if (!data.inputs.some((l) => l.id === id)) return fail('Input not found: ' + id);
-    if (!hasInputAccess(eventRoles)) return denied(ctx);
+    const old = data.inputs.find((i) => i.id === id);
+    if (!old || !inputEvent(data, eventRoles, old.event)) return fail('Input not found: ' + id);
+    if (!hasInputAccess(eventRoles, old.event)) return denied(ctx);
     if (data.keys.some((k) => k.input === id) || data.roles.some((r) => r.input === id)) {
         return fail('Input is in use: ' + id);
     }
@@ -474,7 +502,7 @@ export async function addKey(store: Store, ctx: Context, payload: any) {
 
     const data = await store.load();
     const eventRoles = rolesOf(ctx, data);
-    if (!isValidInput(data, key.input)) return fail('Input not found: ' + key.input);
+    if (!isValidInput(data, key.event, key.input)) return fail('Input not found: ' + key.input);
     if (!hasKeyAccess(eventRoles, ACTIONS.CREATE, key.event, key.input)) return denied(ctx);
     if (!data.events.some((e) => e.id === key.event)) return fail('Event not found: ' + key.event);
     if (key.color !== KEY_COLORS.NONE && !hasKeyColorAccess(eventRoles, key.event)) {
@@ -506,7 +534,7 @@ export async function editKey(store: Store, ctx: Context, payload: any) {
     const old = data.keys.find((k) => k.id === key.id);
     if (!old) return fail('Key not found: ' + key.id);
     if (key.event !== old.event) return fail('Cannot move key between events: ' + key.id);
-    if (!isValidInput(data, key.input)) return fail('Input not found: ' + key.input);
+    if (!isValidInput(data, key.event, key.input)) return fail('Input not found: ' + key.input);
     if (
         !hasKeyAccess(eventRoles, ACTIONS.UPDATE, key.event, key.input) ||
         !hasKeyAccess(eventRoles, ACTIONS.UPDATE, old.event, old.input)

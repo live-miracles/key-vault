@@ -185,9 +185,9 @@ function renderKeyTable(eventId = null) {
             if (orderDiff !== 0) return orderDiff;
             return getInputName(a.input).localeCompare(getInputName(b.input));
         });
-    // The left panel picks a input; the table shows only that input's keys. Duplicate
+    // The left panel picks an input; the table shows only that input's keys. Duplicate
     // URLs are still checked against the whole event, so a clash is never hidden by a filter.
-    const input = renderInputPanel(eventKeys);
+    const input = renderInputPanel(eventId, eventKeys);
     renderInputBanner(input);
     const keys = input ? eventKeys.filter((k) => k.input === input) : eventKeys;
     const allUrls = eventKeys.flatMap((key) =>
@@ -199,7 +199,8 @@ function renderKeyTable(eventId = null) {
         const note = k.pending
             ? null
             : describeKeyNote(k, keyStatus, Date.now(), getInputName(k.input));
-        const noteHtml = keyNoteHtml(note);
+        const pillHtml = keyStatusPillHtml(note, k.pending);
+        const noteTextHtml = keyNoteTextHtml(note);
         // Hovering gives owners and admins bunryu's own report; everyone else the note.
         const statusTitle = hasRoleAccess(eventRoles, ACTIONS.UPDATE, k.event)
             ? detailTitle
@@ -253,77 +254,47 @@ function renderKeyTable(eventId = null) {
               })
             : '';
 
-        const inputIndex = keys.filter((key, index) => index <= i && key.input === k.input).length;
-        const platformNameCopyButton = isPending
+        // In the All view each input's destinations sit under one heading across the grid.
+        const startsGroup = !input && (i === 0 || keys[i - 1].input !== k.input);
+        const groupKeys = startsGroup ? keys.filter((key) => key.input === k.input) : [];
+        const groupHeading = startsGroup
+            ? `<div class="input-group-heading">
+                   <span class="input-group-name">${inputDotHtml(k.input)}${inputLabelHtml(k.input)}</span>
+                   <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(groupKeys, keyStatus))}</span>
+                   <span class="lang-item-count">${groupKeys.length}</span>
+               </div>`
+            : '';
+        const nameCopyButton = isPending
             ? ''
-            : `
-                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy platform name" aria-label="Copy platform name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">
-                        ${iconSvg('copy')}
-                    </button>
-                `;
-        const tableRow = `
-                <tr class="key-row-hover ${color.bgCss} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
-                    <td style="padding: 2px">${i + 1}</td>
-                    <td style="padding: 2px">
-                        <div class="inline-flex items-center justify-center gap-1">
-                            ${inputLabelHtml(k.input)}
-                            <span>(${inputIndex})</span>
-                        </div>
-                    </td>
-                    <td style="padding: 2px" title="${escapeHtml(k.name)}">
-                        <div class="flex items-center justify-center gap-2">
-                            <span>${escapeHtml(getPlatformNamePreview(k.name))}</span>
-                            ${platformNameCopyButton}
-                        </div>
-                        ${noteHtml}
-                    </td>
-                    <td style="padding: 2px">${mainUrlCell}</td>
-                    <td style="padding: 2px">${backupUrlCell}</td>
-                    <td style="padding: 2px">${webLinkCell}</td>
-                    <td style="padding: 2px" title="${escapeHtml(k.remarks)}">${escapeHtml(getMiddleEllipsisText(k.remarks, 40, 30, 5))}</td>
-                    <td style="padding: 2px">${actions}</td>
-                </tr>`;
-        const cardActions = actions ? `<div class="key-card-actions">${actions}</div>` : '';
-        const mobileCard = `
-                <article class="key-mobile-card ${color.bgCss}" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
-                    <div class="key-card-topline">
-                        <div class="min-w-0">
-                            <div class="key-card-title" title="${escapeHtml(k.name)}">
-                                <span>${i + 1}. ${escapeHtml(k.name || '(unnamed)')}</span>
-                            </div>
-                            <div class="key-card-meta">
-                                ${inputLabelHtml(k.input)}
-                                <span>(${inputIndex})</span>
-                            </div>
-                        </div>
-                        ${cardActions}
+            : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the name" aria-label="Copy the name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">${iconSvg('copy')}</button>`;
+        // A card: its status first, so what matters is read before anything else, then the
+        // name, what the status means, and the links.
+        const card = `
+                <article class="dest-card ${color.bgCss}" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
+                    <div class="dest-card-head">
+                        ${pillHtml}
+                        <h4 class="dest-card-name" title="${escapeHtml(k.name)}">${escapeHtml(k.name || '(unnamed)')}</h4>
+                        ${nameCopyButton}
+                        ${actions ? `<div class="dest-card-actions">${actions}</div>` : ''}
                     </div>
-                    ${noteHtml}
-                    <div class="key-card-fields">
-                        ${renderMobileKeyField('Main stream', mainUrlCell)}
-                        ${renderMobileKeyField('Backup stream', backupUrlCell)}
-                        ${renderMobileKeyField('Watch link', webLinkCell)}
-                        ${renderMobileKeyField('Notes', escapeHtml(k.remarks || ''))}
+                    ${noteTextHtml}
+                    <div class="dest-card-fields">
+                        ${renderKeyField('Main stream', mainUrlCell)}
+                        ${renderKeyField('Backup stream', backupUrlCell)}
+                        ${renderKeyField('Watch link', webLinkCell)}
+                        ${renderKeyField('Notes', escapeHtml(k.remarks || ''))}
                     </div>
                 </article>`;
-        return { tableRow, mobileCard };
+        return groupHeading + card;
     });
 
-    renderKeysEmptyState(keys.length === 0, hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId));
+    renderKeysEmptyState(
+        keys.length === 0,
+        hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId),
+        eventId,
+    );
 
-    document.querySelector('#key-rows').innerHTML = renderedKeys
-        .map((key) => key.tableRow)
-        .join('');
-    document.querySelector('#key-cards').innerHTML = renderedKeys
-        .map((key) => key.mobileCard)
-        .join('');
-
-    document.querySelectorAll('#key-rows tr[data-key-id]').forEach((row) => {
-        row.addEventListener('dblclick', (event) => {
-            if (event.target.closest('button, a, input, select, textarea')) return;
-            showKeyColorMenu(event, row.dataset.keyId);
-        });
-    });
+    document.querySelector('#key-cards').innerHTML = renderedKeys.join('');
 
     document.querySelectorAll('#key-cards [data-key-id]').forEach((card) => {
         card.addEventListener('dblclick', (event) => {
@@ -348,22 +319,38 @@ function renderInputBanner(inputId) {
 }
 
 // With nothing to show, say what to do next instead of leaving a blank table.
-function renderKeysEmptyState(isEmpty, canAdd) {
+function renderKeysEmptyState(isEmpty, canAdd, eventId) {
     document.querySelector('#keys-empty').classList.toggle('hidden', !isEmpty);
-    document.querySelector('.key-table-scroll').classList.toggle('hidden', isEmpty);
-    document.querySelector('#keys-empty-add').classList.toggle('hidden', !canAdd);
-    document.querySelector('#keys-empty-text').textContent = canAdd
-        ? 'Add a stream for each place you will go live, such as YouTube or Facebook. We will show you where to find the stream key.'
-        : 'Nothing has been added for you to see yet.';
+    document.querySelector('#key-cards').classList.toggle('hidden', isEmpty);
+    // A stream needs an input, so an event with none starts by adding one.
+    const noInputs = getInputs(eventId).length === 0;
+    const canAddInput = hasInputAccess(eventRoles, eventId);
+    const button = document.querySelector('#keys-empty-add');
+    const addsInput = noInputs && canAddInput;
+    button.classList.toggle('hidden', noInputs ? !canAddInput : !canAdd);
+    button.dataset.action = addsInput ? 'add-input' : 'add-key';
+    document.querySelector('#keys-empty-add-label').textContent = addsInput
+        ? 'Add your first input'
+        : 'Add your first destination';
+    document.querySelector('#keys-empty-title').textContent = noInputs
+        ? 'No inputs here yet'
+        : 'No destinations here yet';
+    document.querySelector('#keys-empty-text').textContent = noInputs
+        ? canAddInput
+            ? 'An input is one feed of this event, for example “Hindi”. Add one for each feed, then add its destinations.'
+            : 'An admin of this event needs to add its inputs before destinations can be added.'
+        : canAdd
+          ? 'Add a destination for each place you will go live, such as YouTube or Facebook. We will show you where to find the stream key.'
+          : 'Nothing has been added for you to see yet.';
 }
 
-function renderMobileKeyField(label, content) {
+function renderKeyField(label, content) {
     if (!content) return '';
 
     return `
-        <div class="key-card-field">
-            <div class="key-card-label">${escapeHtml(label)}</div>
-            <div class="key-card-value">${content}</div>
+        <div class="dest-card-field">
+            <div class="dest-card-label">${escapeHtml(label)}</div>
+            <div class="dest-card-value">${content}</div>
         </div>
     `;
 }
@@ -483,11 +470,20 @@ function deleteKeyById(keyId) {
     deleteKeyRow();
 }
 
-async function addKeyBtn() {
+// `inputId` is the input to start on: the one whose list or heading the button is in.
+async function addKeyBtn(inputId = getUrlParam('input')) {
     const eventId = getUrlParam('event');
     const event = config.events.find((e) => e.id === eventId);
     if (!event) {
         console.error('Event not found:', eventId);
+        return;
+    }
+    // A stream needs an input of this event, so with none the first thing to add is one.
+    if (getInputs(eventId).length === 0) {
+        if (hasInputAccess(eventRoles, eventId)) return addInputBtn();
+        showErrorAlert(
+            'An admin of this event needs to add its inputs before streams can be added.',
+        );
         return;
     }
 
@@ -496,12 +492,12 @@ async function addKeyBtn() {
     document.querySelector('#key-name-input').value = '';
     suggestedStreamName = '';
     keyGuideExpanded = true;
-    document.querySelector('#key-modal-title').innerText = 'Add a stream';
-    document.querySelector('#save-key-btn').innerText = 'Save stream';
+    document.querySelector('#key-modal-title').innerText = 'Add a destination';
+    document.querySelector('#save-key-btn').innerText = 'Save destination';
     renderKeyInputs(eventId, ACTIONS.CREATE);
     // Adding while a input is selected starts on that input.
     const inputSelect = document.querySelector('#key-input-select');
-    const selectedInput = getUrlParam('input');
+    const selectedInput = inputId;
     inputSelect.value = [...inputSelect.options].some((o) => o.value === selectedInput)
         ? selectedInput
         : '';
@@ -532,7 +528,7 @@ function editKeyRow() {
     suggestedStreamName = '';
     // Someone editing a key already knows where it came from: keep the guide folded away.
     keyGuideExpanded = false;
-    document.querySelector('#key-modal-title').innerText = 'Edit stream';
+    document.querySelector('#key-modal-title').innerText = 'Edit destination';
     document.querySelector('#save-key-btn').innerText = 'Save changes';
     renderKeyInputs(key.event, ACTIONS.UPDATE);
     document.querySelector('#key-input-select').value = key.input;
@@ -775,7 +771,7 @@ async function saveKeyFormBtn(event) {
     clearKeyErrors();
     if (key.name === '') {
         setKeyFormError(
-            'Give this stream a name your team will recognise, for example "YouTube English".',
+            'Give this destination a name your team will recognise, for example "YouTube English".',
             ['#key-name-input'],
         );
         event.preventDefault();
@@ -788,7 +784,7 @@ async function saveKeyFormBtn(event) {
         return;
     }
     if (key.input === '') {
-        setKeyFormError('Choose the input of this stream.', ['#key-input-select']);
+        setKeyFormError('Choose the input of this destination.', ['#key-input-select']);
         event.preventDefault();
         return;
     }
@@ -808,7 +804,7 @@ async function saveKeyFormBtn(event) {
             )
     ) {
         setKeyFormError(
-            'This stream is already added in this event (same address and key).',
+            'This destination is already added in this event (same address and key).',
             getEndpointErrorSelectors(mainEndpoint),
         );
         event.preventDefault();
@@ -831,7 +827,7 @@ async function saveKeyFormBtn(event) {
             )
     ) {
         setKeyFormError(
-            'This backup is already used by another stream in this event.',
+            'This backup is already used by another destination in this event.',
             getEndpointErrorSelectors(backupEndpoint, '2'),
         );
         event.preventDefault();
@@ -865,7 +861,6 @@ async function saveKeyFormBtn(event) {
     showLoading();
     if (key.id === '') {
         // Adding new row
-        document.querySelector('#add-key-btn').disabled = true;
         console.assert(key.event);
 
         try {
@@ -877,7 +872,6 @@ async function saveKeyFormBtn(event) {
             replaceConfigItem('keys', newKey, optimisticKey.id);
             renderKeyTable(newKey.event);
         } finally {
-            document.querySelector('#add-key-btn').disabled = false;
             hideLoading();
         }
     } else {
@@ -1216,7 +1210,7 @@ function describeKeyNote(key, report, nowMs = Date.now(), inputName = '') {
     // probably put in the wrong place. Said first: a healthy stream in the wrong place is
     // still wrong.
     const wrongInput = status.inputMismatch
-        ? `The streaming team has this link under “${status.pipeline}”, but this stream is for ${inputLabel}. One of them is wrong.`
+        ? `The streaming team has this link under “${status.pipeline}”, but this destination is for ${inputLabel}. One of them is wrong.`
         : '';
     if (status.status === 'running' || status.status === 'stopped') {
         if (wrongInput)
@@ -1241,7 +1235,7 @@ function describeKeyNote(key, report, nowMs = Date.now(), inputName = '') {
     );
     const copy = status.message
         ? [
-              `${key.name || 'Stream'} (${side} stream)`,
+              `${key.name || 'Destination'} (${side} stream)`,
               [status.pipeline, status.output].filter(Boolean).join(' → '),
               status.message,
           ]
@@ -1271,18 +1265,25 @@ function describeInputBanner(inputId, name, report) {
     if (!input || (input.status !== 'error' && input.status !== 'warning')) return null;
     const text =
         input.status === 'error'
-            ? `Nothing is arriving on input “${name}”. Its streams cannot be live until the signal is back, so there is no need to contact the platforms. Tell the streaming team.`
-            : `The signal on input “${name}” is unstable, so its streams may stutter. Tell the streaming team if it keeps happening.`;
+            ? `Nothing is arriving on input “${name}”. Its destinations cannot be live until the signal is back, so there is no need to contact the platforms. Tell the streaming team.`
+            : `The signal on input “${name}” is unstable, so its destinations may stutter. Tell the streaming team if it keeps happening.`;
     return { state: input.status, label: INPUT_LABELS[input.status], text };
 }
 
-function keyNoteHtml(note) {
+// The coloured label that starts a card: Live, Unstable, Problem, Not set up yet...
+function keyStatusPillHtml(note, isPending = false) {
+    if (isPending) return '<span class="status-pill status-none">Saving</span>';
     if (!note) return '';
-    const text = note.text ? `<span class="key-note-text">${escapeHtml(note.text)}</span>` : '';
+    return `<span class="status-pill status-${note.state}">${escapeHtml(note.label)}</span>`;
+}
+
+// What the status means and what to try, in a sentence under the name.
+function keyNoteTextHtml(note) {
+    if (!note || (!note.text && !note.copy)) return '';
     const copy = note.copy
         ? `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the error details to send to the streaming team" aria-label="Copy error details" data-action="copy-text" data-copy-value="${escapeHtml(note.copy)}">${iconSvg('copy')}</button>`
         : '';
-    return `<div class="key-note"><span class="status-pill status-${note.state}">${escapeHtml(note.label)}</span>${text}${copy}</div>`;
+    return `<p class="dest-card-note"><span class="dest-card-note-text">${escapeHtml(note.text)}</span>${copy}</p>`;
 }
 
 const LOCKED_BACKUP_BY_SERVER = {

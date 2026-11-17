@@ -39,9 +39,17 @@ function groupKeysByInput(keys) {
         });
 }
 
-// The input to filter by: the wanted one when the event has keys in it, otherwise all ('').
-function resolveInputFilter(keys, wanted) {
-    return wanted && keys.some((key) => key.input === wanted) ? wanted : '';
+// The inputs listed for an event: its own, in the order its admins gave them, then any input
+// a stream still points at that the event does not have, so such a stream is never hidden.
+function listEventInputs(eventId, keys) {
+    const own = getInputs(eventId).map((input) => input.id);
+    const strays = [...new Set(keys.map((key) => key.input))].filter((id) => !own.includes(id));
+    return own.concat(strays);
+}
+
+// The input to filter by: the wanted one when it is in the list, otherwise all ('').
+function resolveInputFilter(inputIds, wanted) {
+    return wanted && inputIds.includes(wanted) ? wanted : '';
 }
 
 function statusPillsHtml(summary) {
@@ -61,23 +69,58 @@ function inputDotHtml(inputId) {
     return `<span class="input-dot input-dot-${input.status}" title="${escapeHtml(label)}" role="img" aria-label="${escapeHtml(label)}"></span>`;
 }
 
-function renderInputPanel(eventKeys) {
-    const selected = resolveInputFilter(eventKeys, getUrlParam('input'));
-    const item = (input, label, keys) => {
+// The list on the left: All, then this event's own inputs. Its admins add, rename, delete and
+// drag them into order right here, so the list is plainly this event's and nobody else's.
+function renderInputPanel(eventId, eventKeys) {
+    const inputIds = listEventInputs(eventId, eventKeys);
+    const selected = resolveInputFilter(inputIds, getUrlParam('input'));
+    const canManage = hasInputAccess(eventRoles, eventId);
+    document.querySelector('#add-input-btn').classList.toggle('hidden', !canManage);
+
+    const row = (input, keys) => {
         const active = input === selected;
+        const own = input ? config.inputs.find((i) => i.id === input && i.event === eventId) : null;
+        const isPending = Boolean(own?.pending);
+        const manage = canManage && own && !isPending;
+        const label = input ? inputLabelHtml(input) : 'All';
+        const inUse = keys.length > 0 || config.roles.some((role) => role.input === input);
+        const tools = manage
+            ? `<span class="lang-tools">
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Rename this input" aria-label="Rename input ${escapeHtml(own.name)}" data-action="edit-input-by-id">${iconSvg('pen')}</button>
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="${inUse ? 'Remove its streams first' : 'Delete this input'}" aria-label="Delete input ${escapeHtml(own.name)}" data-action="delete-input-by-id" ${inUse ? 'disabled' : ''}>${iconSvg('trash')}</button>
+               </span>`
+            : '';
+        const count = isPending
+            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+            : `<span class="lang-item-count">${keys.length}</span>`;
         return `
-            <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${escapeHtml(input)}" aria-pressed="${active}">
-                ${input ? inputDotHtml(input) : ''}
-                <span class="lang-item-name">${label}</span>
-                <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(keys, keyStatus))}</span>
-                <span class="lang-item-count">${keys.length}</span>
-            </button>`;
+            <div class="lang-row ${active ? 'lang-row-active' : ''}" ${input ? `data-input-id="${escapeHtml(input)}"` : ''} ${manage ? 'draggable="true" title="Drag to change the order"' : ''}>
+                <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${escapeHtml(input)}" aria-pressed="${active}">
+                    ${input ? inputDotHtml(input) : ''}
+                    <span class="lang-item-name">${label}</span>
+                    <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(keys, keyStatus))}</span>
+                    ${count}
+                </button>
+                ${tools}
+            </div>`;
     };
     document.querySelector('#input-list').innerHTML =
-        item('', 'All', eventKeys) +
-        groupKeysByInput(eventKeys)
-            .map(({ input, keys }) => item(input, inputLabelHtml(input), keys))
+        row('', eventKeys) +
+        inputIds
+            .map((input) =>
+                row(
+                    input,
+                    eventKeys.filter((key) => key.input === input),
+                ),
+            )
             .join('');
+
+    document.querySelectorAll('#input-list .lang-row[draggable="true"]').forEach((el) => {
+        el.addEventListener('dragstart', dragInputStart);
+        el.addEventListener('dragover', dragInputOver);
+        el.addEventListener('drop', dropInput);
+        el.addEventListener('dragend', dragInputEnd);
+    });
     return selected;
 }
 

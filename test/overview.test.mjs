@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { loadFrontendScripts } from './frontend-harness.mjs';
 
+const plain = (value) => JSON.parse(JSON.stringify(value));
+
 const runtime = loadFrontendScripts([
     'frontend/src/utils.ts',
     'frontend/src/keys.ts',
@@ -12,12 +14,15 @@ const runtime = loadFrontendScripts([
 const summarizeKeyStatuses = runtime.get('summarizeKeyStatuses');
 const groupKeysByInput = runtime.get('groupKeysByInput');
 const resolveInputFilter = runtime.get('resolveInputFilter');
+const listEventInputs = runtime.get('listEventInputs');
 
 runtime.set('config', {
     inputs: [
-        { id: 'L1', name: 'English', order: 1 },
-        { id: 'L2', name: 'Hindi', order: 2 },
-        { id: 'L3', name: 'Tamil', order: 3 },
+        { id: 'L1', event: 'E1', name: 'English', order: 1 },
+        { id: 'L2', event: 'E1', name: 'Hindi', order: 2 },
+        { id: 'L3', event: 'E1', name: 'Tamil', order: 3 },
+        { id: 'L4', event: 'E2', name: 'Tamil', order: 1 },
+        { id: 'L5', event: 'E2', name: 'English', order: 2 },
     ],
 });
 
@@ -67,9 +72,23 @@ test("groups an event's keys by input in the order of the Inputs list", () => {
     );
 });
 
-test('a input filter only holds when the event has keys in that input', () => {
-    const keys = [{ id: 'K1', input: 'L1' }];
-    assert.equal(resolveInputFilter(keys, 'L1'), 'L1');
-    assert.equal(resolveInputFilter(keys, 'L2'), '');
-    assert.equal(resolveInputFilter(keys, null), '');
+test("the list holds the event's own inputs in its order, even those with no stream yet", () => {
+    assert.deepEqual(plain(listEventInputs('E1', [])), ['L1', 'L2', 'L3']);
+    // Each event has its own order: here Tamil comes first.
+    assert.deepEqual(plain(listEventInputs('E2', [])), ['L4', 'L5']);
+});
+
+test('a stream pointing at an input the event does not have is still listed, last', () => {
+    const keys = [
+        { id: 'K1', input: 'L9' },
+        { id: 'K2', input: 'L2' },
+    ];
+    assert.deepEqual(plain(listEventInputs('E1', keys)), ['L1', 'L2', 'L3', 'L9']);
+});
+
+test('an input filter only holds when the input is in the list', () => {
+    const ids = ['L1', 'L2'];
+    assert.equal(resolveInputFilter(ids, 'L1'), 'L1');
+    assert.equal(resolveInputFilter(ids, 'L3'), '');
+    assert.equal(resolveInputFilter(ids, null), '');
 });

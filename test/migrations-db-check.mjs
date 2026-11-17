@@ -74,19 +74,32 @@ try {
     assert.equal(bare.adminRole, null);
 
     // ---- inputs ----
-    const english = JSON.parse(psql(`select public.create_input('English')`));
+    // An input belongs to one event: its order and its names are that event's own.
+    const english = JSON.parse(psql(`select public.create_input('${eventId}', 'English')`));
     assert.match(english.id, uuid);
+    assert.equal(english.event, eventId);
     assert.equal(english.name, 'English');
     assert.equal(english.order, '1');
-    const hindi = JSON.parse(psql(`select public.create_input('Hindi')`));
+    const hindi = JSON.parse(psql(`select public.create_input('${eventId}', 'Hindi')`));
     assert.equal(hindi.order, '2');
-    psql(`select public.reorder_inputs(array['${hindi.id}', '${english.id}'])`);
+    const otherEnglish = JSON.parse(
+        psql(`select public.create_input('${bare.event.id}', 'English')`),
+    );
+    assert.equal(otherEnglish.order, '1');
+    psql(`select public.create_input('${eventId}', 'english')`, { fail: true });
+    psql(`select public.create_input('missing', 'Tamil')`, { fail: true });
+    psql(`select public.reorder_inputs('${eventId}', array['${hindi.id}', '${english.id}'])`);
     assert.equal(
-        psql(`select string_agg(name, ',' order by sort_order) from public.inputs`),
+        psql(
+            `select string_agg(name, ',' order by sort_order) from public.inputs where event_id = '${eventId}'`,
+        ),
         'Hindi,English',
     );
+    assert.equal(psql(`select sort_order from public.inputs where id = '${otherEnglish.id}'`), '1');
     // A row made before this change keeps its id, and the two kinds sit side by side.
-    psql(`insert into public.inputs (id, name, sort_order) values ('L1', 'Legacy', 3)`);
+    psql(
+        `insert into public.inputs (id, event_id, name, sort_order) values ('L1', '${eventId}', 'Legacy', 3)`,
+    );
 
     // ---- keys ----
     psql(`insert into public.keys (event_id, name, input, server, key)
@@ -110,10 +123,11 @@ try {
     );
     // Emails compare without case.
     assert.equal(psql(`select count(*) from public.roles where email = 'A@EXAMPLE.TEST'`), '1');
-    // Deleting an event takes its roles and keys with it.
+    // Deleting an event takes its roles, keys and inputs with it, and leaves the others alone.
     psql(`delete from public.events where id = '${eventId}'`);
     assert.equal(psql(`select count(*) from public.keys`), '0');
     assert.equal(psql(`select count(*) from public.roles`), '0');
+    assert.equal(psql(`select string_agg(id, ',') from public.inputs`), otherEnglish.id);
 
     // ---- heartbeat ----
     const hash = (c) => c.repeat(32);

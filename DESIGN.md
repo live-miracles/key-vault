@@ -45,21 +45,21 @@ Tints are **opaque** (mixed over `base-200`), so the waves can never show throug
 ## Layout
 
 - **Overview** is the first tab and the landing page: totals, one row per event, and the keys that need attention (`overview.ts`).
-- **Event view** is bunryu's list-and-detail layout: an input list on the left (`All` first, then the inputs that have keys in the event, each with status counts) and the selected input's keys on the right. Below 768 px the list becomes a row of chips above the key cards. The choice is kept in the `input` URL parameter.
+- **Event view** is bunryu's list-and-detail layout: on the left the event's own card (its name, rename and delete, Add destination, Share) above its input list (`All` first, then the event's inputs in its own order, each with status counts, and a `+` for its admins to add one; they also rename, delete and drag to reorder there). The selected input's destinations are on the right as a grid of cards (`.dest-card`; one column on a phone, more as the window widens), each starting with its status label, then the name and actions, what the status means, and its links. Under `All` each input is a heading across the grid with its cards beneath. There is no table. Below 768 px the list becomes a row of chips above the cards. The choice is kept in the `input` URL parameter.
 - Status counts use the `status-pill` classes, which share the status colors above.
 
 ## Waves
 
 - An inline SVG (`.wave-bg` in `frontend/index.html`) fixed behind the page, tiled from a 96 × 48 seigaiha pattern: scales of radius 48, rows half a scale apart, each row covering the one before.
 - Cells are filled with the canvas color and outlined in `--wave-line`; they must stay opaque, because that is what hides the lower half of each scale.
-- A mask fades the layer from the bottom (visible) to 62% of the height (gone), so tables and forms sit on calm canvas.
+- A mask fades the layer from the bottom (visible) to 62% of the height (gone), so cards and forms sit on calm canvas.
 - No animation. Keep contrast at the level of a watermark: `--wave-line` is only slightly lighter than the canvas.
 
 ## Who it is for
 
 Two audiences, two standards:
 
-- **People who add and edit streams** (editors, and anyone adding a key) may never have seen a stream key. Their screens (the Add a stream form, the key table, the input picker) use plain words, say what to do next, and explain errors in terms of the fix. No jargon without a one-line explanation.
+- **People who add and edit destinations** (editors, and anyone adding a key) may never have seen a stream key. Their screens (the Add a destination form, the cards, the input picker) use plain words, say what to do next, and explain errors in terms of the fix. No jargon without a one-line explanation.
 - **Owners and admins** (sharing, event settings, bunryu settings, the overview) are technical and keep the compact, terse style.
 
 Why the editors matter: the media team used to send links in a Google Sheet and often put a stream key where an address belonged, or the main link in the backup box. The form exists to make that mistake impossible, and the status colors exist so they can see for themselves whether an update reached bunryu and whether each output is live. See `CONTEXT.md`.
@@ -69,12 +69,12 @@ Why the editors matter: the media team used to send links in a Google Sheet and 
 A row's color is only half the message. For an editor, a red or amber row must also say **what is probably wrong and what to try**, in plain words:
 
 - The advice is Key Vault's own (`ADVICE_PATTERNS` in `keys.ts`), because bunryu's hints are for the streaming team. Say what to check in terms of the key and the platform, and who to tell. Never show FFmpeg or other encoder text: a Copy button on the note puts the technical details (stream name, pipeline, bunryu's redacted message) on the clipboard instead, to paste to the streaming team.
-- Show it on the row or card itself (`.key-note`: a status label, then the words). A hover title does not exist on a phone, so it can only be extra.
+- Show it on the card itself (`.dest-card`: the status label first, then the words under the name). A hover title does not exist on a phone, so it can only be extra.
 - Hovering a row gives owners and admins bunryu's own (redacted) report; everyone else gets the note.
 - **Inputs.** A dot before each input in the list says whether its signal is arriving (`INPUT_LABELS` in `keys.ts`). An input in trouble gets a banner above its streams, and a failing stream under it says the platform is probably not the cause. A link in the wrong input is "Check input" and is said first, even when the stream runs. This depends on the input and pipeline having the same name.
 - "Not set up yet" means bunryu does not have this link. Say so; it is how an editor learns an update has not landed. Say nothing at all while bunryu is offline: it only runs during events.
 
-## Add a stream
+## Add a destination
 
 A guided form in four steps, numbered by CSS counters so a hidden step never leaves a gap:
 

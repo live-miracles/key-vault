@@ -108,7 +108,7 @@ test('an error nobody has advice for gets a plain generic line and a copyable de
     );
     assert.match(note.text, /stream key/);
     assert.doesNotMatch(note.text, /ffmpeg/i);
-    assert.equal(note.copy, 'Stream (main stream) | Hindi → YouTube | ffmpeg exited 1');
+    assert.equal(note.copy, 'Destination (main stream) | Hindi → YouTube | ffmpeg exited 1');
     const warning = describeKeyNote(
         liveKey,
         report({ K1: { main: status('warning'), backup: null } }),
@@ -184,7 +184,7 @@ test('a stream whose link runs in another input is told to check the input', () 
     const note = describeKeyNote(liveKey, wrong, NOW, 'Hindi');
     assert.equal(note.label, 'Check input');
     assert.equal(note.state, 'warning');
-    assert.match(note.text, /under “Tamil”, but this stream is for “Hindi”/);
+    assert.match(note.text, /under “Tamil”, but this destination is for “Hindi”/);
     // A problem keeps its own label and gets the same sentence in front of the advice.
     const broken = describeKeyNote(
         liveKey,

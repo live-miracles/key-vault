@@ -72,8 +72,11 @@ export function hasEventAccess(
     return isOwner;
 }
 
-export function hasInputAccess(eventRoles: EventRoles): boolean {
-    return Boolean(eventRoles['*']?.some((r) => r.type === ROLES.OWNER));
+// The inputs of an event are managed by that event's admins, and by owners.
+export function hasInputAccess(eventRoles: EventRoles, eventId: string): boolean {
+    return Boolean(
+        eventRoles[eventId]?.some((r) => r.type === ROLES.OWNER || r.type === ROLES.ADMIN),
+    );
 }
 
 export function hasRoleAccess(

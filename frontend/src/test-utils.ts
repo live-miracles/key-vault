@@ -177,18 +177,25 @@ function deleteRoleMock(id) {
 }
 
 function addInputMock(input) {
-    if (!input || !String(input.name ?? '').trim()) {
+    if (!input || !input.event || !String(input.name ?? '').trim()) {
         return {
             success: false,
             error: 'Invalid parameters',
         };
     }
-    input = { id: newMockId(), name: String(input.name).trim() };
+    const name = String(input.name).trim();
+    const own = testInputs.filter((l) => l.event === input.event);
+    if (own.some((l) => l.name.trim().toLowerCase() === name.toLowerCase())) {
+        return {
+            success: false,
+            error: `This event already has an input called "${name}".`,
+        };
+    }
+    input = { id: newMockId(), event: input.event, name };
 
     etagMock += 1;
-    input.order = String(Math.max(...testInputs.map((l) => Number(l.order) || 0), 0) + 1);
+    input.order = String(Math.max(...own.map((l) => Number(l.order) || 0), 0) + 1);
     testInputs.push(input);
-    input.row = testInputs.length + 1;
 
     return { success: true, data: input };
 }
@@ -209,26 +216,41 @@ function editInputMock(input) {
             error: 'Input not found: ' + input.id,
         };
     }
+    const name = String(input.name ?? '').trim();
+    const taken = testInputs.some(
+        (l) =>
+            l.event === old.event &&
+            l.id !== old.id &&
+            l.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (taken) {
+        return {
+            success: false,
+            error: `This event already has an input called "${name}".`,
+        };
+    }
 
     etagMock += 1;
-    old.name = input.name;
+    old.name = name;
 
     return { success: true, data: old };
 }
 
-function reorderInputsMock(inputIds) {
-    if (!Array.isArray(inputIds)) {
+// `payload` is { event, ids }: the ids of that event's inputs, in their new order.
+function reorderInputsMock(payload) {
+    if (!payload || !payload.event || !Array.isArray(payload.ids)) {
         return {
             success: false,
             error: 'Invalid parameters',
         };
     }
 
-    inputIds = inputIds.map((id) => normalizeInputIdMock(id));
-    const currentIds = new Set(testInputs.map((input) => input.id));
+    const own = testInputs.filter((input) => input.event === payload.event);
+    const inputIds = payload.ids.map((id) => normalizeInputIdMock(id));
+    const currentIds = new Set(own.map((input) => input.id));
     const newIds = new Set(inputIds);
     if (
-        inputIds.length !== testInputs.length ||
+        inputIds.length !== own.length ||
         newIds.size !== currentIds.size ||
         inputIds.some((id) => !currentIds.has(id))
     ) {
@@ -244,7 +266,10 @@ function reorderInputsMock(inputIds) {
         input.order = String(index + 1);
     });
 
-    return { success: true, data: structuredClone(testInputs) };
+    return {
+        success: true,
+        data: structuredClone(inputIds.map((id) => testInputs.find((l) => l.id === id))),
+    };
 }
 
 function deleteInputMock(id) {
@@ -417,14 +442,14 @@ const testRoles = [
         event: 'E2',
         email: testEmail3,
         type: ROLES.VIEWER,
-        input: 'L1',
+        input: 'L4',
     },
     {
         id: 'R4',
         event: 'E2',
         email: testEmail1,
         type: ROLES.EDITOR,
-        input: 'L2',
+        input: 'L5',
     },
     {
         id: 'R5',
@@ -435,21 +460,37 @@ const testRoles = [
     },
 ];
 
+// Each event has its own inputs, in its own order.
 const testInputs = [
     {
         id: 'L1',
+        event: 'E1',
         name: 'English',
         order: '1',
     },
     {
         id: 'L2',
+        event: 'E1',
         name: 'German',
         order: '2',
     },
     {
         id: 'L3',
+        event: 'E1',
         name: 'Hindi',
         order: '3',
+    },
+    {
+        id: 'L4',
+        event: 'E2',
+        name: 'English',
+        order: '1',
+    },
+    {
+        id: 'L5',
+        event: 'E2',
+        name: 'German',
+        order: '2',
     },
 ];
 
@@ -501,7 +542,7 @@ const testKeys = [
         id: 'K4',
         event: 'E2',
         name: 'Channel 4',
-        input: 'L1',
+        input: 'L4',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -529,7 +570,7 @@ const testKeys = [
         id: 'K6',
         event: 'E2',
         name: 'Channel 6',
-        input: 'L2',
+        input: 'L5',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -641,6 +682,18 @@ function getStatusMock() {
                     sinceMs: Date.now() - 600000,
                     pipeline: 'Hindi',
                 },
+                L4: {
+                    status: 'running',
+                    message: '',
+                    sinceMs: Date.now() - 3600000,
+                    pipeline: 'English',
+                },
+                L5: {
+                    status: 'running',
+                    message: '',
+                    sinceMs: Date.now() - 3600000,
+                    pipeline: 'German',
+                },
             },
         },
     };
@@ -684,8 +737,8 @@ googleMock.script.run.withFailureHandler = (_) => ({
         editInput: (input) => {
             setTimeout(() => f(editInputMock(input)), getRandomWaitTime());
         },
-        reorderInputs: (inputIds) => {
-            setTimeout(() => f(reorderInputsMock(inputIds)), getRandomWaitTime());
+        reorderInputs: (payload) => {
+            setTimeout(() => f(reorderInputsMock(payload)), getRandomWaitTime());
         },
         deleteInput: (id) => {
             setTimeout(() => f(deleteInputMock(id)), getRandomWaitTime());

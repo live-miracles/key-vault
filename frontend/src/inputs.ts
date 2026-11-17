@@ -1,22 +1,13 @@
 // @ts-nocheck
 
-function getInputs() {
+// The inputs of one event, in the order its admins gave them; with no event, every input.
+function getInputs(eventId = null) {
     return [...(config.inputs || [])]
-        .filter((input) => input.id && input.name)
+        .filter((input) => input.id && input.name && (!eventId || input.event === eventId))
         .sort((a, b) => {
             const orderDiff = Number(a.order || 0) - Number(b.order || 0);
             if (orderDiff !== 0) return orderDiff;
             return a.name.localeCompare(b.name);
-        });
-}
-
-function getInputsForTable() {
-    return [...(config.inputs || [])]
-        .filter((input) => input.id || input.name)
-        .sort((a, b) => {
-            const orderDiff = Number(a.order || 0) - Number(b.order || 0);
-            if (orderDiff !== 0) return orderDiff;
-            return String(a.name || '').localeCompare(String(b.name || ''));
         });
 }
 
@@ -41,16 +32,16 @@ function inputLabelHtml(id) {
 }
 
 function getInputOrder(id) {
-    const index = getInputs().findIndex((input) => input.id === id);
-    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+    const input = getInputs().find((item) => item.id === id);
+    return input ? Number(input.order || 0) : Number.MAX_SAFE_INTEGER;
 }
 
 function inputOptions({ includeAll = false, eventId = null, action = null } = {}) {
     const options = includeAll ? [{ id: '*', name: '* (All)' }] : [];
-    const inputs = getInputs().filter(
+    const inputs = getInputs(eventId).filter(
         (input) => !action || hasKeyAccess(eventRoles, action, eventId, input.id),
     );
-    return options.concat(inputs.sort((a, b) => a.name.localeCompare(b.name)));
+    return options.concat(inputs);
 }
 
 function renderInputSelect(selector, options = {}) {
@@ -72,63 +63,12 @@ function renderInputSelect(selector, options = {}) {
         .join('');
 }
 
-function renderInputTable() {
-    document.querySelector('#add-input-btn').disabled = false;
-    const inputs = getInputsForTable();
-    document.querySelector('#input-rows').innerHTML = inputs
-        .map((input) => {
-            const isPending = Boolean(input.pending);
-            const usedByKeys = config.keys.some((key) => key.input === input.id);
-            const usedByRoles = config.roles.some((role) => role.input === input.id);
-            const deleteDisabled = isPending || usedByKeys || usedByRoles ? 'disabled' : '';
-            const deleteTitle = isPending
-                ? 'Saving'
-                : deleteDisabled
-                  ? 'Input is in use'
-                  : 'Delete';
-            const actions = isPending
-                ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
-                : `
-                        <div class="flex justify-center gap-1">
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit input" data-action="edit-input-by-id">
-                                ${iconSvg('pen')}
-                            </button>
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="${deleteTitle}" aria-label="Delete input" data-action="delete-input-by-id" ${deleteDisabled}>
-                                ${iconSvg('trash')}
-                            </button>
-                        </div>
-                    `;
-
-            return `
-                <tr class="hover:bg-base-300 text-center" data-input-id="${escapeHtml(input.id)}" draggable="${isPending ? 'false' : 'true'}">
-                    <td style="padding: 5px;" class="cursor-move text-base-content/60" title="Drag to reorder">
-                        ${iconSvg('grip', 'mx-auto h-4 w-4')}
-                    </td>
-                    <td style="padding: 5px;">
-                        <span>${escapeHtml(input.name || '(unnamed)')}</span>
-                    </td>
-                    <td style="padding: 5px;">${actions}</td>
-                </tr>
-            `;
-        })
-        .join('');
-
-    document.querySelectorAll('#input-rows tr').forEach((row) => {
-        if (inputs.find((input) => input.id === row.dataset.inputId)?.pending) {
-            return;
-        }
-        row.addEventListener('dragstart', dragInputStart);
-        row.addEventListener('dragover', dragInputOver);
-        row.addEventListener('drop', dropInput);
-        row.addEventListener('dragend', dragInputEnd);
-    });
-}
-
-function showSettingsModal() {
-    if (!hasInputAccess(eventRoles)) return;
-
-    renderInputTable();
-    document.querySelector('#settings-modal').showModal();
+// After the inputs of an event change, everything that lists them is drawn again.
+function renderInputViews() {
+    const eventId = getUrlParam('event');
+    renderRoleInputs();
+    renderKeyInputs(eventId);
+    renderKeyTable(eventId);
 }
 
 function openInputModal({ id, name }) {
@@ -146,6 +86,7 @@ function openInputModal({ id, name }) {
 }
 
 function addInputBtn() {
+    if (!hasInputAccess(eventRoles, getUrlParam('event'))) return;
     openInputModal({ id: '', name: '' });
 }
 
@@ -155,28 +96,38 @@ function editInputById(inputId) {
         console.error('Input not found:', inputId);
         return;
     }
+    if (!hasInputAccess(eventRoles, input.event)) return;
 
     openInputModal(input);
 }
 
 async function saveInputFormBtn(event) {
+    const eventId = getUrlParam('event');
     const id = document.getElementById('input-id-field').value.trim();
     const name = document.getElementById('input-name-field').value.trim();
     const isEdit = id !== '';
 
     const errorElem = document.querySelector('#input-name-field').nextElementSibling;
+    if (!hasInputAccess(eventRoles, eventId)) {
+        event.preventDefault();
+        return;
+    }
     if (name === '') {
         errorElem.innerText = 'Please type the name of the input, for example "Hindi".';
         document.querySelector('#input-name-field').classList.add('input-error');
         event.preventDefault();
         return;
     }
+    // A name only has to differ from the other inputs of this event.
     if (
         config.inputs.some(
-            (l) => l.id !== id && String(l.name).trim().toLowerCase() === name.toLowerCase(),
+            (l) =>
+                l.event === eventId &&
+                l.id !== id &&
+                String(l.name).trim().toLowerCase() === name.toLowerCase(),
         )
     ) {
-        errorElem.innerText = 'You already have an input with this name.';
+        errorElem.innerText = 'This event already has an input with this name.';
         document.querySelector('#input-name-field').classList.add('input-error');
         event.preventDefault();
         return;
@@ -184,38 +135,36 @@ async function saveInputFormBtn(event) {
 
     const snapshot = cloneConfig();
     const oldInput = config.inputs.find((l) => l.id === id);
+    const ownOrders = config.inputs.filter((l) => l.event === eventId).map((l) => Number(l.order));
     const optimisticInput = {
         ...oldInput,
         id: isEdit ? id : newTempId(),
+        event: eventId,
         name,
         pending: !isEdit,
-        order:
-            oldInput?.order ||
-            String(Math.max(...config.inputs.map((l) => Number(l.order) || 0), 0) + 1),
+        order: oldInput?.order || String(Math.max(...ownOrders, 0) + 1),
     };
 
     replaceConfigItem('inputs', optimisticInput);
-    renderInputTable();
-    renderRoleInputs();
-    renderKeyInputs(getUrlParam('event'));
-    renderKeyTable(getUrlParam('event'));
+    renderInputViews();
 
     showLoading();
     try {
         const newInput = processResponse(
-            await api(isEdit ? 'editInput' : 'addInput', isEdit ? { id, name } : { name }),
+            await api(
+                isEdit ? 'editInput' : 'addInput',
+                isEdit ? { id, name } : { event: eventId, name },
+            ),
         );
         if (newInput === null) {
             restoreConfig(snapshot);
-            renderInputTable();
-            renderRoleInputs();
+            renderInputViews();
             return;
         }
         replaceConfigItem('inputs', newInput, optimisticInput.id);
-        renderInputTable();
-        renderRoleInputs();
-        renderKeyInputs(getUrlParam('event'));
-        renderKeyTable(getUrlParam('event'));
+        // A new input is opened straight away, ready for its first stream.
+        if (!isEdit) setUrlParam('input', newInput.id);
+        renderInputViews();
     } finally {
         hideLoading();
     }
@@ -227,6 +176,7 @@ async function deleteInputById(inputId) {
         console.error('Input not found:', inputId);
         return;
     }
+    if (!hasInputAccess(eventRoles, input.event)) return;
 
     if (!confirm(`Are you sure you want to delete input "${input.name}"?`)) {
         return;
@@ -234,25 +184,28 @@ async function deleteInputById(inputId) {
 
     const snapshot = cloneConfig();
     config.inputs = config.inputs.filter((l) => l.id !== input.id);
-    renderInputTable();
-    renderRoleInputs();
-    renderKeyInputs(getUrlParam('event'));
-    renderKeyTable(getUrlParam('event'));
+    if (getUrlParam('input') === input.id) setUrlParam('input', null);
+    renderInputViews();
 
     showLoading();
     try {
         const res = processResponse(await api('deleteInput', input.id));
         if (res === null) {
             restoreConfig(snapshot);
-            renderInputTable();
-            renderRoleInputs();
+            renderInputViews();
         }
     } finally {
         hideLoading();
     }
 }
 
+// ----- Reordering: drag an input in the list on the left. The order is that event's own. -----
+
 let draggedInputId = null;
+
+const draggableInputRows = () => [
+    ...document.querySelectorAll('#input-list .lang-row[draggable="true"]'),
+];
 
 function dragInputStart(event) {
     draggedInputId = event.currentTarget.dataset.inputId;
@@ -266,51 +219,53 @@ function dragInputOver(event) {
     const targetRow = event.currentTarget;
     if (!draggedInputId || targetRow.dataset.inputId === draggedInputId) return;
 
-    const draggedRow = [...document.querySelectorAll('#input-rows tr')].find(
-        (row) => row.dataset.inputId === draggedInputId,
-    );
+    const draggedRow = draggableInputRows().find((row) => row.dataset.inputId === draggedInputId);
     if (!draggedRow) return;
 
+    // The list runs down on a wide screen and across on a narrow one.
     const rect = targetRow.getBoundingClientRect();
-    if (event.clientY > rect.top + rect.height / 2) {
-        targetRow.after(draggedRow);
-    } else {
-        targetRow.before(draggedRow);
-    }
+    const vertical = window.matchMedia?.('(min-width: 768px)').matches ?? true;
+    const after = vertical
+        ? event.clientY > rect.top + rect.height / 2
+        : event.clientX > rect.left + rect.width / 2;
+    if (after) targetRow.after(draggedRow);
+    else targetRow.before(draggedRow);
 }
 
 async function dropInput(event) {
     event.preventDefault();
-    const inputIds = [...document.querySelectorAll('#input-rows tr')].map(
-        (row) => row.dataset.inputId,
-    );
-    const currentIds = getInputs().map((input) => input.id);
-    if (inputIds.join('|') === currentIds.join('|')) return;
+    const eventId = getUrlParam('event');
+    const inputIds = draggableInputRows().map((row) => row.dataset.inputId);
+    const own = getInputs(eventId);
+    // While an input is still being saved the list is not complete, so it cannot be ordered.
+    if (
+        inputIds.join('|') === own.map((input) => input.id).join('|') ||
+        own.some((input) => input.pending)
+    ) {
+        renderKeyTable(eventId);
+        return;
+    }
 
     const snapshot = cloneConfig();
-    config.inputs = inputIds.map((id, index) => {
-        const input = config.inputs.find((l) => l.id === id);
-        return { ...input, order: String(index + 1) };
-    });
-    renderInputTable();
-    renderRoleInputs();
-    renderKeyInputs(getUrlParam('event'));
-    renderKeyTable(getUrlParam('event'));
+    const setOrder = (inputs) => {
+        config.inputs = config.inputs.filter((l) => l.event !== eventId).concat(inputs);
+    };
+    setOrder(
+        inputIds.map((id, index) => ({
+            ...config.inputs.find((l) => l.id === id),
+            order: String(index + 1),
+        })),
+    );
+    renderInputViews();
 
     showLoading();
     try {
-        const newInputs = processResponse(await api('reorderInputs', inputIds));
-        if (newInputs !== null) {
-            config.inputs = newInputs;
-            renderInputTable();
-            renderRoleInputs();
-            renderKeyInputs(getUrlParam('event'));
-            renderKeyTable(getUrlParam('event'));
-        } else {
-            restoreConfig(snapshot);
-            renderInputTable();
-            renderRoleInputs();
-        }
+        const newInputs = processResponse(
+            await api('reorderInputs', { event: eventId, ids: inputIds }),
+        );
+        if (newInputs !== null) setOrder(newInputs);
+        else restoreConfig(snapshot);
+        renderInputViews();
     } finally {
         hideLoading();
     }

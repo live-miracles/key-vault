@@ -57,7 +57,11 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         .range(from, to),
                 ),
                 fetchAll((from, to) =>
-                    db.from('inputs').select('id, name, sort_order').order('id').range(from, to),
+                    db
+                        .from('inputs')
+                        .select('id, event_id, name, sort_order')
+                        .order('id')
+                        .range(from, to),
                 ),
                 fetchAll((from, to) =>
                     db
@@ -77,6 +81,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                 inputs: inputs
                     .map((l): InputItem => ({
                         id: l.id,
+                        event: l.event_id,
                         name: l.name,
                         order: String(l.sort_order),
                     }))
@@ -191,14 +196,16 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             check(await db.from('roles').delete().eq('id', id).select('id').single());
         },
 
-        async createInput(name) {
-            return check(await db.rpc('create_input', { p_name: name })) as InputItem;
+        async createInput(event, name) {
+            return check(
+                await db.rpc('create_input', { p_event_id: event, p_name: name }),
+            ) as InputItem;
         },
         async updateInput(id, name) {
             check(await db.from('inputs').update({ name }).eq('id', id).select('id').single());
         },
-        async reorderInputs(ids) {
-            check(await db.rpc('reorder_inputs', { p_ids: ids }));
+        async reorderInputs(event, ids) {
+            check(await db.rpc('reorder_inputs', { p_event_id: event, p_ids: ids }));
         },
         async deleteInput(id) {
             check(await db.from('inputs').delete().eq('id', id).select('id').single());

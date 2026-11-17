@@ -1,6 +1,6 @@
 // An in-memory Store for testing the operations without a database. It keeps the
 // guarantees the real one gets from Postgres: generated (random) ids, cascading deletes, and a
-// input that is still used by a key cannot be deleted.
+// input that is still used by a key cannot be deleted. An input belongs to one event.
 
 export function createMemoryStore(initial = {}) {
     const state = {
@@ -50,6 +50,7 @@ export function createMemoryStore(initial = {}) {
             state.events = state.events.filter((e) => e.id !== id);
             state.roles = state.roles.filter((r) => r.event !== id);
             state.keys = state.keys.filter((k) => k.event !== id);
+            state.inputs = state.inputs.filter((i) => i.event !== id);
         },
         async createRole(role) {
             const created = { id: nextId(), ...role };
@@ -62,16 +63,17 @@ export function createMemoryStore(initial = {}) {
         async deleteRole(id) {
             state.roles = state.roles.filter((r) => r.id !== id);
         },
-        async createInput(name) {
-            const order = Math.max(0, ...state.inputs.map((l) => Number(l.order))) + 1;
-            const created = { id: nextId(), name, order: String(order) };
+        async createInput(event, name) {
+            const own = state.inputs.filter((i) => i.event === event);
+            const order = Math.max(0, ...own.map((i) => Number(i.order))) + 1;
+            const created = { id: nextId(), event, name, order: String(order) };
             state.inputs.push(created);
             return structuredClone(created);
         },
         async updateInput(id, name) {
             find(state.inputs, id).name = name;
         },
-        async reorderInputs(ids) {
+        async reorderInputs(event, ids) {
             ids.forEach((id, index) => {
                 find(state.inputs, id).order = String(index + 1);
             });

@@ -7,8 +7,11 @@ function renderEventTabBar(eventId = null) {
     const name = onOverview ? 'Overview' : event?.name || '';
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
-    const canManageInputs = hasInputAccess(eventRoles);
-    document.getElementById('event-name').innerText = name;
+    // The overview is named in the header; an event is named in its own card, beside the
+    // controls that act on it alone.
+    document.getElementById('event-name').innerText = onOverview ? name : '';
+    document.getElementById('event-card-name').innerText = event?.name || '';
+    document.getElementById('event-card-name').title = event?.name || '';
 
     document.querySelector('#add-event-btn').disabled = !canCreateEvents;
     document.querySelector('#add-event-btn').classList.toggle('hidden', !canCreateEvents);
@@ -20,9 +23,6 @@ function renderEventTabBar(eventId = null) {
         document.querySelector('#edit-event-btn').classList.add('hidden');
         document.querySelector('#delete-event-btn').classList.add('hidden');
     }
-
-    document.querySelector('#show-settings-btn').disabled = !canManageInputs;
-    document.querySelector('#show-settings-btn').classList.toggle('hidden', !canManageInputs);
 
     document.querySelector('#edit-event-btn').disabled = isPending;
     document.querySelector('#delete-event-btn').disabled = isPending;

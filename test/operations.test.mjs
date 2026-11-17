@@ -28,15 +28,16 @@ function seed() {
             { id: 'E2', name: 'Event two' },
         ],
         inputs: [
-            { id: 'L1', name: 'English', order: '1' },
-            { id: 'L2', name: 'Hindi', order: '2' },
+            { id: 'L1', event: 'E1', name: 'English', order: '1' },
+            { id: 'L2', event: 'E1', name: 'Hindi', order: '2' },
+            { id: 'L3', event: 'E2', name: 'English', order: '1' },
         ],
         roles: [
             { id: 'R1', event: 'E1', email: 'admin@example.test', type: '2', input: '*' },
             { id: 'R2', event: 'E1', email: 'editor@example.test', type: '1', input: 'L1' },
             { id: 'R3', event: 'E1', email: 'viewer@example.test', type: '0', input: 'L2' },
         ],
-        keys: [key('K1', 'E1', 'L1'), key('K2', 'E1', 'L2'), key('K3', 'E2', 'L1')],
+        keys: [key('K1', 'E1', 'L1'), key('K2', 'E1', 'L2'), key('K3', 'E2', 'L3')],
     });
 }
 
@@ -66,7 +67,11 @@ test('a user only receives the events, roles and keys they may view', async () =
     );
     assert.deepEqual(asViewer.roles, []);
     assert.equal(asViewer.userEmail, 'viewer@example.test');
-    assert.equal(asViewer.inputs.length, 2);
+    // Only the inputs whose streams the user may see.
+    assert.deepEqual(
+        asViewer.inputs.map((i) => i.id),
+        ['L2'],
+    );
 
     const asOwner = (await ops.getAllData(store, owner)).data;
     assert.equal(asOwner.keys.length, 3);
@@ -230,42 +235,101 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
     assert.equal((await ops.deleteRole(store, admin, 'R404')).success, false);
 });
 
-test('inputs: only owners manage them, and one in use stays', async () => {
+test("inputs: an event's admins and owners manage its list, and one in use stays", async () => {
     const store = seed();
 
-    assert.equal((await ops.addInput(store, admin, { name: 'Tamil' })).success, false);
-    const added = await ops.addInput(store, owner, { name: '  Tamil  ' });
+    // Editors and viewers cannot; neither can an admin of another event's list.
+    assert.equal(
+        (await ops.addInput(store, editor, { event: 'E1', name: 'Tamil' })).success,
+        false,
+    );
+    assert.equal(
+        (await ops.addInput(store, viewer, { event: 'E1', name: 'Tamil' })).success,
+        false,
+    );
+    assert.equal((await ops.addInput(store, admin, { event: 'E2', name: 'Tamil' })).success, false);
+    assert.equal(
+        (await ops.addInput(store, stranger, { event: 'E1', name: 'Tamil' })).success,
+        false,
+    );
+
+    const added = await ops.addInput(store, admin, { event: 'E1', name: '  Tamil  ' });
     assert.equal(added.success, true);
     assert.equal(added.data.name, 'Tamil');
+    assert.equal(added.data.event, 'E1');
     assert.equal(added.data.order, '3');
+    // The first input of another event starts its own order.
+    const other = await ops.addInput(store, owner, { event: 'E2', name: 'Tamil' });
+    assert.equal(other.data.order, '2');
     // The id is made by the store, never taken from the caller, and is never reused.
-    const again = await ops.addInput(store, owner, { id: added.data.id, name: 'Again' });
+    const again = await ops.addInput(store, admin, {
+        event: 'E1',
+        id: added.data.id,
+        name: 'Again',
+    });
     assert.notEqual(again.data.id, added.data.id);
-    assert.equal((await ops.deleteInput(store, owner, again.data.id)).success, true);
-    assert.equal((await ops.addInput(store, owner, { name: '   ' })).success, false);
-    assert.equal((await ops.addInput(store, owner, {})).success, false);
+    assert.equal((await ops.deleteInput(store, admin, again.data.id)).success, true);
+    assert.equal((await ops.addInput(store, admin, { event: 'E1', name: '   ' })).success, false);
+    assert.equal((await ops.addInput(store, admin, { name: 'No event' })).success, false);
+    assert.equal(
+        (await ops.addInput(store, admin, { event: 'E404', name: 'Lost' })).success,
+        false,
+    );
+
+    // A name is unique within the event, whatever its case, and may repeat in another one.
+    assert.equal(
+        (await ops.addInput(store, admin, { event: 'E1', name: 'english' })).success,
+        false,
+    );
 
     const newId = added.data.id;
-    assert.equal((await ops.editInput(store, owner, { id: newId, name: 'Tamizh' })).success, true);
-    assert.equal(store.state.inputs.find((l) => l.id === newId).name, 'Tamizh');
+    assert.equal((await ops.editInput(store, admin, { id: newId, name: 'Tamizh' })).success, true);
+    assert.equal(store.state.inputs.find((i) => i.id === newId).name, 'Tamizh');
+    assert.equal((await ops.editInput(store, admin, { id: newId, name: 'Hindi' })).success, false);
+    assert.equal((await ops.editInput(store, editor, { id: newId, name: 'Nope' })).success, false);
+    assert.equal((await ops.editInput(store, admin, { id: 'L3', name: 'Nope' })).success, false);
 
-    assert.equal((await ops.deleteInput(store, owner, 'L1')).error, 'Input is in use: L1');
-    assert.equal((await ops.deleteInput(store, owner, newId)).success, true);
+    assert.equal((await ops.deleteInput(store, admin, 'L1')).error, 'Input is in use: L1');
+    assert.equal((await ops.deleteInput(store, editor, newId)).success, false);
+    assert.equal((await ops.deleteInput(store, admin, 'L3')).success, false);
+    assert.equal((await ops.deleteInput(store, admin, newId)).success, true);
 
-    assert.equal((await ops.reorderInputs(store, owner, ['L2'])).error, 'Input list mismatch');
-    assert.equal(
-        (await ops.reorderInputs(store, owner, ['L2', 'L2'])).error,
-        'Input list mismatch',
-    );
-    const reordered = await ops.reorderInputs(store, owner, ['L2', 'L1']);
+    // Reordering covers exactly the inputs of that event.
+    const reorder = (who, event, ids) => ops.reorderInputs(store, who, { event, ids });
+    assert.equal((await reorder(admin, 'E1', ['L2'])).error, 'Input list mismatch');
+    assert.equal((await reorder(admin, 'E1', ['L2', 'L2'])).error, 'Input list mismatch');
+    assert.equal((await reorder(admin, 'E1', ['L2', 'L3'])).error, 'Input list mismatch');
+    const reordered = await reorder(admin, 'E1', ['L2', 'L1']);
     assert.deepEqual(
-        reordered.data.map((l) => [l.id, l.order]),
+        reordered.data.map((i) => [i.id, i.order]),
         [
             ['L2', '1'],
             ['L1', '2'],
         ],
     );
-    assert.equal((await ops.reorderInputs(store, admin, ['L2', 'L1'])).success, false);
+    assert.equal(store.state.inputs.find((i) => i.id === 'L3').order, '1');
+    assert.equal((await reorder(editor, 'E1', ['L2', 'L1'])).success, false);
+    assert.equal((await reorder(admin, 'E2', ['L3'])).success, false);
+    assert.equal((await reorder(owner, 'E2', ['L3', other.data.id])).success, true);
+});
+
+test("an input of one event cannot be used by another event's streams or roles", async () => {
+    const store = seed();
+    const asKey = (input) => ({ ...key('', 'E1', input), id: undefined });
+    assert.equal((await ops.addKey(store, admin, asKey('L3'))).success, false);
+    assert.equal((await ops.addKey(store, admin, asKey('L1'))).success, true);
+    const role = { event: 'E1', email: 'new@example.test', type: '1' };
+    assert.equal((await ops.addRole(store, admin, { ...role, input: 'L3' })).success, false);
+    assert.equal((await ops.addRole(store, admin, { ...role, input: 'L2' })).success, true);
+});
+
+test('deleting an event removes its inputs', async () => {
+    const store = seed();
+    assert.equal((await ops.deleteEvent(store, owner, 'E2')).success, true);
+    assert.deepEqual(
+        store.state.inputs.map((i) => i.id),
+        ['L1', 'L2'],
+    );
 });
 
 test('getStatus covers only the keys the user may see', async () => {

@@ -46,8 +46,11 @@ function hasEventAccess(eventRoles, action, eventId = null) {
     return isOwner;
 }
 
-function hasInputAccess(eventRoles) {
-    return Boolean(eventRoles['*']?.some((r) => r.type === ROLES.OWNER));
+// The inputs of an event are managed by that event's admins, and by owners.
+function hasInputAccess(eventRoles, eventId) {
+    return Boolean(
+        eventRoles[eventId]?.some((r) => r.type === ROLES.OWNER || r.type === ROLES.ADMIN),
+    );
 }
 
 function hasRoleAccess(eventRoles, action, eventId, type = null) {

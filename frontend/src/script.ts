@@ -186,7 +186,7 @@ document.getElementById('bunryu-modal')?.addEventListener('close', () => {
 
 async function refreshDataBtn() {
     const button = document.querySelector('#refresh-data-btn');
-    const keyRows = document.querySelector('#key-rows');
+    const keyRows = document.querySelector('#key-cards');
     button.disabled = true;
     keyRows.classList.add('key-rows-refreshing');
     keyRows.setAttribute('aria-busy', 'true');
@@ -295,6 +295,7 @@ document.addEventListener('click', (event) => {
 
     const row = target.closest('tr');
     const keyContainer = target.closest('[data-key-id]');
+    const inputContainer = target.closest('[data-input-id]');
     const action = target.dataset.action;
     const actions = {
         'save-event': () => saveEventFormBtn(event),
@@ -306,7 +307,6 @@ document.addEventListener('click', (event) => {
         'paste-stream-key': () => pasteStreamKey(target.dataset.suffix || ''),
         'edit-event': () => editEventBtn(),
         'delete-event': () => deleteEventBtn(),
-        'show-settings': () => showSettingsModal(),
         'show-bunryu': () => showBunryuModal(),
         'toggle-bunryu-secrets': () => {
             bunryuRevealed = !bunryuRevealed;
@@ -323,8 +323,8 @@ document.addEventListener('click', (event) => {
         'delete-role-by-id': () => deleteRoleById(row?.dataset.roleId),
         'save-role-inline': () => saveRoleInlineBtn(target),
         'cancel-role-inline': () => cancelRoleInlineEdit(),
-        'edit-input-by-id': () => editInputById(row?.dataset.inputId),
-        'delete-input-by-id': () => deleteInputById(row?.dataset.inputId),
+        'edit-input-by-id': () => editInputById(inputContainer?.dataset.inputId),
+        'delete-input-by-id': () => deleteInputById(inputContainer?.dataset.inputId),
         'edit-key-by-id': () => editKeyById(keyContainer?.dataset.keyId),
         'delete-key-by-id': () => deleteKeyById(keyContainer?.dataset.keyId),
         'copy-text': () => copyTextValue(target.dataset.copyValue),

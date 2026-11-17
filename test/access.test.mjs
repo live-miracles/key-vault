@@ -24,7 +24,7 @@ test('owners receive access to every event and global input settings', () => {
 
     assert.deepEqual(Object.keys(eventRoles).sort(), ['*', 'E1', 'E2']);
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.CREATE), true);
-    assert.equal(runtime.get('hasInputAccess')(eventRoles), true);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles, 'E1'), true);
 });
 
 test('app owner receives owner access without a role row', () => {
@@ -36,7 +36,7 @@ test('app owner receives owner access without a role row', () => {
 
     assert.deepEqual(Object.keys(eventRoles).sort(), ['*', 'E1', 'E2']);
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.DELETE, 'E1'), true);
-    assert.equal(runtime.get('hasInputAccess')(eventRoles), true);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles, 'E1'), true);
 });
 
 test('event admins can create new events', () => {
@@ -47,6 +47,19 @@ test('event admins can create new events', () => {
     };
 
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.CREATE), true);
+});
+
+test("an event's admins manage its inputs, and nobody else does", () => {
+    const runtime = loadAccess();
+    const { ROLES } = runtime.get('({ ROLES })');
+    const eventRoles = {
+        E1: [{ event: 'E1', type: ROLES.ADMIN, input: '*' }],
+        E2: [{ event: 'E2', type: ROLES.EDITOR, input: '*' }],
+    };
+
+    assert.equal(runtime.get('hasInputAccess')(eventRoles, 'E1'), true);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles, 'E2'), false);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles, 'E3'), false);
 });
 
 test('admins can add admins and manage non-owner roles, and owners can manage owner roles', () => {

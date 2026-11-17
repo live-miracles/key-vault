@@ -79,6 +79,10 @@
             <legend class="fieldset-legend">Event Name<span class="text-error">*</span></legend>
             <input type="text" id="event-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
             <p class="label text-error"></p>
+            <p class="field-help">
+              Use the same name as the pipeline in bunryu. Then each stream is checked to be in the right place, and the input’s signal shows next to
+              it.
+            </p>
           </fieldset>
         </div>
 
@@ -107,255 +111,397 @@
       <ul class="menu w-fit p-2" id="key-color-menu-options"></ul>
     </div>
 
-    <dialog id="language-modal" class="modal">
-      <div class="modal-box max-w-150">
-        <div class="focus mx-auto mt-2 w-full space-y-3 px-2">
-          <div class="flex items-center">
-            <fieldset class="fieldset inline-block w-32">
-              <legend class="fieldset-legend">ID<span class="text-error">*</span></legend>
-              <input type="text" id="language-id-input" class="input w-full" placeholder="L1" />
-              <p class="label text-error"></p>
-            </fieldset>
+    <dialog id="input-modal" class="modal">
+      <div class="modal-box max-w-110">
+        <input type="text" id="input-id-field" class="hidden" />
+        <h3 id="input-modal-title" class="text-xl font-semibold">Add an input</h3>
+        <p class="text-ink-muted mt-1 text-sm">An input is one feed of your event, for example “Hindi”. Your team picks it when adding a stream.</p>
 
-            <fieldset class="fieldset ml-2 inline-block grow">
-              <legend class="fieldset-legend">Name<span class="text-error">*</span></legend>
-              <input type="text" id="language-name-input" class="input w-full" placeholder="English" maxlength="50" />
-              <p class="label text-error"></p>
-            </fieldset>
-          </div>
+        <div class="focus mx-auto mt-4 w-full">
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Input name<span class="text-error">*</span></legend>
+            <input type="text" id="input-name-field" class="input w-full" placeholder="e.g. English" maxlength="50" autocomplete="off" />
+            <p class="label text-error"></p>
+            <p class="field-help">
+              Use the same name as the pipeline in bunryu. Then each stream is checked to be in the right place, and the input’s signal shows next to
+              it.
+            </p>
+          </fieldset>
         </div>
 
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" data-action="save-language">Save</button>
+            <button class="btn btn-accent" id="save-input-btn" data-action="save-input">Add input</button>
           </form>
         </div>
       </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
     </dialog>
 
     <dialog id="key-modal" class="modal">
-      <div class="modal-box w-[95vw] max-w-200">
+      <div class="modal-box w-[95vw] max-w-160">
         <input type="text" id="key-event-input" class="hidden" />
         <input type="text" id="key-id-input" class="hidden" />
 
-        <div class="focus mx-auto mt-2 w-full px-4">
-          <div class="flex items-center">
-            <fieldset class="fieldset inline-block w-32">
-              <legend class="fieldset-legend">Language<span class="text-error">*</span></legend>
-              <select class="select" id="key-language-input"></select>
-              <p class="label text-error"></p>
-            </fieldset>
+        <div class="focus mx-auto w-full">
+          <h3 id="key-modal-title" class="text-xl font-semibold">Add a stream</h3>
+          <p class="text-ink-muted mt-1 text-sm">Follow the steps below. It only takes a minute, and we'll show you where to find everything.</p>
 
-            <fieldset class="fieldset ml-2 inline-block grow">
-              <legend class="fieldset-legend">Platform / Channel Name<span class="text-error">*</span></legend>
-              <input type="text" id="key-name-input" class="input w-full" placeholder="Type here" maxlength="50" />
-              <p class="label text-error"></p>
-            </fieldset>
+          <!-- Step 1: the platform -->
+          <section class="key-step">
+            <h4 class="key-step-title"><span class="key-step-num" aria-hidden="true"></span>Where are you streaming to?</h4>
+            <div id="platform-picker" class="platform-picker" role="radiogroup" aria-label="Where are you streaming to?">
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="yt">
+                <span class="platform-badge platform-yt">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path fill="currentColor" d="M9.5 8.2v7.6a.5.5 0 0 0 .75.43l6.4-3.8a.5.5 0 0 0 0-.86l-6.4-3.8a.5.5 0 0 0-.75.43Z" />
+                  </svg>
+                </span>
+                <span class="platform-name">YouTube</span>
+              </button>
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="fb">
+                <span class="platform-badge platform-fb">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      fill="currentColor"
+                      d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3Z" />
+                  </svg>
+                </span>
+                <span class="platform-name">Facebook</span>
+              </button>
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="ig">
+                <span class="platform-badge platform-ig">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <rect x="4.5" y="4.5" width="15" height="15" rx="4.5" />
+                    <circle cx="12" cy="12" r="3.4" />
+                    <circle cx="16.6" cy="7.4" r=".6" fill="currentColor" />
+                  </svg>
+                </span>
+                <span class="platform-name">Instagram</span>
+              </button>
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="vc">
+                <span class="platform-badge platform-vc">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M5 8.5 12 18l7-9.5" />
+                  </svg>
+                </span>
+                <span class="platform-name">VdoCipher</span>
+              </button>
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="rtmp">
+                <span class="platform-badge platform-other">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M9 7V3m6 4V3M7 7h10v4a5 5 0 0 1-10 0V7Zm5 9v5" />
+                  </svg>
+                </span>
+                <span class="platform-name">Something else</span>
+                <span class="platform-sub">Uses an rtmp:// address</span>
+              </button>
+              <button type="button" class="platform-tile" role="radio" aria-checked="false" data-action="pick-platform" data-server="srt">
+                <span class="platform-badge platform-other">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true">
+                    <path d="M4 12h4l2-5 4 10 2-5h4" />
+                  </svg>
+                </span>
+                <span class="platform-name">SRT link</span>
+                <span class="platform-sub">For technical setups</span>
+              </button>
+            </div>
+            <select id="key-server-input" class="hidden" tabindex="-1" aria-hidden="true"></select>
+          </section>
 
-            <fieldset class="fieldset ml-2 inline-block grow">
-              <legend class="fieldset-legend">Web Link</legend>
-              <input type="text" id="key-link-input" class="input w-full" placeholder="https://..." maxlength="200" />
-              <p class="label text-error"></p>
-            </fieldset>
-          </div>
+          <!-- Step 2: the stream key, with a short guide for the chosen platform -->
+          <section id="key-step-key" class="key-step hidden">
+            <h4 class="key-step-title">
+              <span class="key-step-num" aria-hidden="true"></span><span id="key-step-key-title">Get your stream key</span>
+            </h4>
 
-          <div class="stream-url-config bg-base-300 mt-3 space-y-1 rounded-xl p-3">
-            <div class="flex flex-wrap items-start gap-x-2 gap-y-1">
-              <fieldset class="fieldset w-32 shrink-0">
-                <legend class="fieldset-legend">Server URL<span class="text-error">*</span></legend>
-                <select class="select select-sm" id="key-server-input"></select>
-                <p class="label text-error"></p>
-              </fieldset>
+            <div id="key-guide" class="key-guide"></div>
 
-              <fieldset class="fieldset w-56 shrink-0" id="custom-server">
-                <legend class="fieldset-legend">Custom URL<span class="text-error">*</span></legend>
-                <input type="text" id="key-custom-server-input" class="input input-sm w-full" placeholder="Type here" maxlength="200" />
-                <p class="label text-error"></p>
-              </fieldset>
-
-              <fieldset class="fieldset w-72 shrink-0" id="stream-key-field">
-                <legend class="fieldset-legend">Stream Key<span class="text-error">*</span></legend>
+            <div class="stream-url-config mt-3 space-y-3">
+              <fieldset class="fieldset hidden" id="custom-server">
+                <legend class="fieldset-legend">Server address<span class="text-error">*</span></legend>
                 <input
                   type="text"
-                  id="stream-key-input"
-                  class="input input-sm w-full"
-                  placeholder="Type here"
+                  id="key-custom-server-input"
+                  class="input w-full"
+                  placeholder="rtmp://example.com/live"
                   maxlength="200"
                   autocomplete="off"
                   autocapitalize="off"
                   autocorrect="off"
                   spellcheck="false" />
+                <p class="field-help">Your streaming provider gives you this. It starts with <code>rtmp://</code> or <code>rtmps://</code>.</p>
                 <p class="label text-error"></p>
               </fieldset>
 
-              <div class="hidden" id="srt-server">
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Hostname<span class="text-error">*</span></legend>
+              <fieldset class="fieldset" id="stream-key-field">
+                <legend class="fieldset-legend"><span id="stream-key-legend">Stream key</span><span class="text-error">*</span></legend>
+                <div class="flex gap-2">
+                  <input
+                    type="text"
+                    id="stream-key-input"
+                    class="input min-w-0 flex-1 font-mono"
+                    placeholder="Paste your stream key here"
+                    maxlength="200"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    spellcheck="false" />
+                  <button type="button" class="btn" data-action="paste-stream-key" data-suffix="" title="Paste what you copied">
+                    <svg
+                      class="h-4 w-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true">
+                      <rect width="8" height="4" x="8" y="2" rx="1" />
+                      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                    </svg>
+                    Paste
+                  </button>
+                </div>
+                <p class="field-help" id="stream-key-help"></p>
+                <p class="field-notice hidden" id="stream-key-notice"></p>
+                <p class="label text-error"></p>
+              </fieldset>
+
+              <div class="srt-grid hidden" id="srt-server">
+                <fieldset class="fieldset srt-wide">
+                  <legend class="fieldset-legend">Server address<span class="text-error">*</span></legend>
                   <input
                     type="text"
                     id="key-srt-host-input"
-                    class="input input-sm w-40 font-mono text-xs"
-                    placeholder="xxx.xxx.xxx.xxx"
-                    maxlength="200" />
+                    class="input w-full font-mono"
+                    placeholder="stream.example.com"
+                    maxlength="200"
+                    autocapitalize="off"
+                    spellcheck="false" />
                 </fieldset>
                 <fieldset class="fieldset">
                   <legend class="fieldset-legend">Port<span class="text-error">*</span></legend>
-                  <input
-                    type="number"
-                    min="1"
-                    max="65535"
-                    id="key-srt-port-input"
-                    class="input input-sm w-20 font-mono text-xs"
-                    placeholder="10000" />
+                  <input type="number" min="1" max="65535" id="key-srt-port-input" class="input w-full font-mono" placeholder="10000" />
                 </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Type</legend>
-                  <select id="key-srt-mode-input" class="select select-sm w-28">
-                    <option value="caller">Caller</option>
-                    <option value="listener">Listener</option>
+                <fieldset class="fieldset srt-wide">
+                  <legend class="fieldset-legend">Who connects to whom?</legend>
+                  <select id="key-srt-mode-input" class="select w-full">
+                    <option value="caller">We connect to them (Caller)</option>
+                    <option value="listener">They connect to us (Listener)</option>
                   </select>
                 </fieldset>
                 <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Latency (ms)<span class="text-error">*</span></legend>
-                  <input type="number" min="1" step="1" id="key-srt-latency-input" class="input input-sm w-28 font-mono text-xs" placeholder="240" />
+                  <legend class="fieldset-legend">Delay buffer (ms)<span class="text-error">*</span></legend>
+                  <input type="number" min="1" step="1" id="key-srt-latency-input" class="input w-full font-mono" placeholder="240" />
                 </fieldset>
-                <div class="h-0 basis-full"></div>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Passphrase</legend>
+                <fieldset class="fieldset srt-wide">
+                  <legend class="fieldset-legend">Password (optional)</legend>
                   <input
                     type="text"
                     id="key-srt-passphrase-input"
-                    class="input input-sm w-56 font-mono text-xs"
-                    placeholder="Passphrase"
-                    maxlength="79" />
+                    class="input w-full font-mono"
+                    placeholder="10 to 79 characters"
+                    maxlength="79"
+                    autocomplete="off" />
                 </fieldset>
                 <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Key Length</legend>
-                  <select id="key-srt-keylen-input" class="select select-sm w-24">
+                  <legend class="fieldset-legend">Encryption</legend>
+                  <select id="key-srt-keylen-input" class="select w-full">
                     <option value="" disabled selected>---</option>
-                    <option value="16">16</option>
-                    <option value="24">24</option>
-                    <option value="32">32</option>
+                    <option value="16">Standard (16)</option>
+                    <option value="24">Strong (24)</option>
+                    <option value="32">Strongest (32)</option>
                   </select>
                 </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Stream ID</legend>
+                <fieldset class="fieldset col-span-full">
+                  <legend class="fieldset-legend">Stream ID (optional)</legend>
                   <input
                     type="text"
                     id="key-srt-streamid-input"
-                    class="input input-sm w-80 font-mono text-xs"
-                    placeholder="Stream ID"
+                    class="input w-full font-mono"
+                    placeholder="Only if your provider gave you one"
                     maxlength="200" />
                 </fieldset>
-                <p class="label text-error self-end pb-2" id="key-srt-error"></p>
+                <p class="label text-error col-span-full" id="key-srt-error"></p>
               </div>
             </div>
+          </section>
 
-            <div class="flex flex-wrap items-start gap-x-2 gap-y-1" id="backup-server-row">
-              <fieldset class="fieldset w-32 shrink-0">
-                <legend class="fieldset-legend">Backup Server URL</legend>
-                <select class="select select-sm" id="key-server2-input"></select>
+          <!-- Step 3: names and notes -->
+          <section class="key-step">
+            <h4 class="key-step-title"><span class="key-step-num" aria-hidden="true"></span>Name this stream</h4>
+            <div class="grid gap-3 sm:grid-cols-[11rem_1fr]">
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Input<span class="text-error">*</span></legend>
+                <select class="select w-full" id="key-input-select"></select>
+                <p class="field-help">Which feed this stream carries.</p>
                 <p class="label text-error"></p>
               </fieldset>
 
-              <fieldset class="fieldset w-56 shrink-0" id="custom-server2">
-                <legend class="fieldset-legend">Backup Custom URL</legend>
-                <input type="text" id="key-custom-server2-input" class="input input-sm w-full" placeholder="Type here" maxlength="200" />
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Name<span class="text-error">*</span></legend>
+                <input type="text" id="key-name-input" class="input w-full" placeholder="e.g. YouTube English" maxlength="50" />
+                <p class="field-help">A name your team will recognise. Letters and numbers only.</p>
                 <p class="label text-error"></p>
               </fieldset>
-
-              <fieldset class="fieldset w-72 shrink-0" id="stream-key2-field">
-                <legend class="fieldset-legend">Backup Stream Key</legend>
-                <input
-                  type="text"
-                  id="stream-key2-input"
-                  class="input input-sm w-full"
-                  placeholder="Type here"
-                  maxlength="200"
-                  autocomplete="off"
-                  autocapitalize="off"
-                  autocorrect="off"
-                  spellcheck="false" />
-                <p class="label text-error"></p>
-              </fieldset>
-
-              <div class="hidden" id="srt-server2">
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Hostname<span class="text-error">*</span></legend>
-                  <input
-                    type="text"
-                    id="key-srt-host2-input"
-                    class="input input-sm w-40 font-mono text-xs"
-                    placeholder="xxx.xxx.xxx.xxx"
-                    maxlength="200" />
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Port<span class="text-error">*</span></legend>
-                  <input
-                    type="number"
-                    min="1"
-                    max="65535"
-                    id="key-srt-port2-input"
-                    class="input input-sm w-20 font-mono text-xs"
-                    placeholder="10000" />
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Type</legend>
-                  <select id="key-srt-mode2-input" class="select select-sm w-28">
-                    <option value="caller">Caller</option>
-                    <option value="listener">Listener</option>
-                  </select>
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Latency (ms)<span class="text-error">*</span></legend>
-                  <input type="number" min="1" step="1" id="key-srt-latency2-input" class="input input-sm w-28 font-mono text-xs" placeholder="240" />
-                </fieldset>
-                <div class="h-0 basis-full"></div>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Passphrase</legend>
-                  <input
-                    type="text"
-                    id="key-srt-passphrase2-input"
-                    class="input input-sm w-56 font-mono text-xs"
-                    placeholder="Passphrase"
-                    maxlength="79" />
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Key Length</legend>
-                  <select id="key-srt-keylen2-input" class="select select-sm w-24">
-                    <option value="" disabled selected>---</option>
-                    <option value="16">16</option>
-                    <option value="24">24</option>
-                    <option value="32">32</option>
-                  </select>
-                </fieldset>
-                <fieldset class="fieldset">
-                  <legend class="fieldset-legend">Stream ID</legend>
-                  <input
-                    type="text"
-                    id="key-srt-streamid2-input"
-                    class="input input-sm w-80 font-mono text-xs"
-                    placeholder="Stream ID"
-                    maxlength="200" />
-                </fieldset>
-                <p class="label text-error self-end pb-2" id="key-srt2-error"></p>
-              </div>
             </div>
-          </div>
 
-          <fieldset class="fieldset">
-            <legend class="fieldset-legend">Remarks (optional)</legend>
-            <input type="text" id="key-remarks-input" class="input w-full" placeholder="Type here" maxlength="150" />
-          </fieldset>
+            <div class="mt-3 grid gap-3">
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Watch link (optional)</legend>
+                <input type="text" id="key-link-input" class="input w-full" placeholder="https://..." maxlength="200" />
+                <p class="field-help">The public page where people watch this stream, so your team can open it quickly.</p>
+                <p class="label text-error"></p>
+              </fieldset>
 
-          <div class="text-error mt-2 hidden text-sm font-medium" id="key-form-error"></div>
+              <fieldset class="fieldset">
+                <legend class="fieldset-legend">Notes (optional)</legend>
+                <input type="text" id="key-remarks-input" class="input w-full" placeholder="Anything your team should know" maxlength="150" />
+              </fieldset>
+            </div>
+          </section>
+
+          <!-- Optional: a second connection that takes over if the first one drops -->
+          <section id="backup-section" class="key-step hidden">
+            <p id="backup-note" class="field-help hidden"></p>
+            <details id="backup-details" class="key-details">
+              <summary>Add a backup stream <span class="text-ink-subtle font-normal">(optional)</span></summary>
+              <p class="field-help mt-2">
+                A backup is a second connection that keeps your stream running if the first one drops. Skip this if you are not sure.
+              </p>
+              <div class="mt-3 space-y-3" id="backup-server-row">
+                <fieldset class="fieldset">
+                  <legend class="fieldset-legend">Backup platform</legend>
+                  <select class="select w-full" id="key-server2-input"></select>
+                  <p class="label text-error"></p>
+                </fieldset>
+
+                <fieldset class="fieldset hidden" id="custom-server2">
+                  <legend class="fieldset-legend">Backup server address</legend>
+                  <input
+                    type="text"
+                    id="key-custom-server2-input"
+                    class="input w-full"
+                    placeholder="rtmp://example.com/live"
+                    maxlength="200"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false" />
+                  <p class="label text-error"></p>
+                </fieldset>
+
+                <fieldset class="fieldset" id="stream-key2-field">
+                  <legend class="fieldset-legend">Backup stream key</legend>
+                  <div class="flex gap-2">
+                    <input
+                      type="text"
+                      id="stream-key2-input"
+                      class="input min-w-0 flex-1 font-mono"
+                      placeholder="Paste the backup stream key here"
+                      maxlength="200"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      autocorrect="off"
+                      spellcheck="false" />
+                    <button type="button" class="btn" data-action="paste-stream-key" data-suffix="2" title="Paste what you copied">Paste</button>
+                  </div>
+                  <p class="field-notice hidden" id="stream-key2-notice"></p>
+                  <p class="label text-error"></p>
+                </fieldset>
+
+                <div class="srt-grid hidden" id="srt-server2">
+                  <fieldset class="fieldset srt-wide">
+                    <legend class="fieldset-legend">Server address<span class="text-error">*</span></legend>
+                    <input
+                      type="text"
+                      id="key-srt-host2-input"
+                      class="input w-full font-mono"
+                      placeholder="stream.example.com"
+                      maxlength="200"
+                      autocapitalize="off"
+                      spellcheck="false" />
+                  </fieldset>
+                  <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Port<span class="text-error">*</span></legend>
+                    <input type="number" min="1" max="65535" id="key-srt-port2-input" class="input w-full font-mono" placeholder="10000" />
+                  </fieldset>
+                  <fieldset class="fieldset srt-wide">
+                    <legend class="fieldset-legend">Who connects to whom?</legend>
+                    <select id="key-srt-mode2-input" class="select w-full">
+                      <option value="caller">We connect to them (Caller)</option>
+                      <option value="listener">They connect to us (Listener)</option>
+                    </select>
+                  </fieldset>
+                  <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Delay buffer (ms)<span class="text-error">*</span></legend>
+                    <input type="number" min="1" step="1" id="key-srt-latency2-input" class="input w-full font-mono" placeholder="240" />
+                  </fieldset>
+                  <fieldset class="fieldset srt-wide">
+                    <legend class="fieldset-legend">Password (optional)</legend>
+                    <input
+                      type="text"
+                      id="key-srt-passphrase2-input"
+                      class="input w-full font-mono"
+                      placeholder="10 to 79 characters"
+                      maxlength="79"
+                      autocomplete="off" />
+                  </fieldset>
+                  <fieldset class="fieldset">
+                    <legend class="fieldset-legend">Encryption</legend>
+                    <select id="key-srt-keylen2-input" class="select w-full">
+                      <option value="" disabled selected>---</option>
+                      <option value="16">Standard (16)</option>
+                      <option value="24">Strong (24)</option>
+                      <option value="32">Strongest (32)</option>
+                    </select>
+                  </fieldset>
+                  <fieldset class="fieldset col-span-full">
+                    <legend class="fieldset-legend">Stream ID (optional)</legend>
+                    <input
+                      type="text"
+                      id="key-srt-streamid2-input"
+                      class="input w-full font-mono"
+                      placeholder="Only if your provider gave you one"
+                      maxlength="200" />
+                  </fieldset>
+                  <p class="label text-error col-span-full" id="key-srt2-error"></p>
+                </div>
+              </div>
+            </details>
+          </section>
+
+          <div class="key-form-error hidden" id="key-form-error" role="alert"></div>
         </div>
 
         <div class="modal-action">
           <form method="dialog">
             <button class="btn mx-2">Cancel</button>
-            <button class="btn btn-accent" data-action="save-key">Save</button>
+            <button class="btn btn-accent" id="save-key-btn" data-action="save-key">Save stream</button>
           </form>
         </div>
       </div>
@@ -400,15 +546,12 @@
           <span data-icon="refresh" class="h-4 w-4"></span>
         </button>
 
-        <!-- CENTER -->
-        <div class="absolute left-1/2 -translate-x-1/2">
-          <button class="btn btn-accent btn-square btn-xs hidden" id="add-key-btn" title="Add" aria-label="Add key" data-action="add-key">
-            <span data-icon="plus" class="h-4 w-4"></span>
-          </button>
-        </div>
-
         <!-- RIGHT -->
         <div class="header-status ml-auto flex min-w-0 items-center gap-3">
+          <button class="btn btn-primary hidden" id="add-key-btn" data-action="add-key">
+            <span data-icon="plus" class="h-4 w-4"></span>
+            Add stream
+          </button>
           <button
             type="button"
             id="bunryu-status"
@@ -460,7 +603,7 @@
                   <tr class="text-center">
                     <th class="w-100">Email</th>
                     <th class="w-30">Role</th>
-                    <th class="w-50">Language</th>
+                    <th class="w-50">Input</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -505,14 +648,14 @@
       <dialog id="settings-modal" class="modal">
         <div class="modal-box max-w-175">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-lg font-semibold">Languages</h3>
+            <h3 class="text-lg font-semibold">Inputs</h3>
             <form method="dialog">
               <button class="btn btn-ghost btn-square btn-sm" title="Close" aria-label="Close settings popup">
                 <span data-icon="x" class="h-5 w-5"></span>
               </button>
             </form>
           </div>
-          <div class="mx-auto max-h-[65vh] max-w-150 overflow-x-auto overflow-y-auto" id="language-table">
+          <div class="mx-auto max-h-[65vh] max-w-150 overflow-x-auto overflow-y-auto" id="input-table">
             <div class="overflow-x-auto">
               <table class="table">
                 <thead>
@@ -522,7 +665,7 @@
                     <th></th>
                   </tr>
                 </thead>
-                <tbody id="language-rows">
+                <tbody id="input-rows">
                   <tr>
                     <th><span class="loading loading-dots loading-xs"></span></th>
                     <td><span class="loading loading-dots loading-xs"></span></td>
@@ -532,7 +675,7 @@
               </table>
             </div>
             <div class="mt-3 text-center">
-              <button class="btn btn-accent btn-square btn-sm" id="add-language-btn" data-action="add-language" title="Add" aria-label="Add language">
+              <button class="btn btn-accent btn-square btn-sm" id="add-input-btn" data-action="add-input" title="Add" aria-label="Add input">
                 <span data-icon="plus" class="h-5 w-5"></span>
               </button>
             </div>
@@ -559,8 +702,17 @@
 
       <div class="min-h-0 flex-1 overflow-y-auto px-3" id="key-table">
         <div class="event-layout">
-          <nav id="language-list" class="language-list" aria-label="Languages"></nav>
+          <nav id="input-list" class="input-list" aria-label="Inputs"></nav>
           <div class="event-main">
+            <div id="input-banner" class="input-banner hidden" role="status"></div>
+            <div id="keys-empty" class="keys-empty hidden">
+              <h3 class="text-lg font-semibold">No streams here yet</h3>
+              <p id="keys-empty-text" class="text-ink-muted max-w-md text-sm"></p>
+              <button type="button" id="keys-empty-add" class="btn btn-primary mt-2" data-action="add-key">
+                <span data-icon="plus" class="h-4 w-4"></span>
+                Add your first stream
+              </button>
+            </div>
             <div id="key-cards" class="hidden"></div>
             <div class="key-table-scroll overflow-x-auto">
               <table class="table-pin-rows table">
@@ -568,12 +720,12 @@
                 <thead>
                   <tr class="text-center">
                     <th></th>
-                    <th>Language</th>
-                    <th>Platform Name</th>
-                    <th>Main Streaming URL</th>
-                    <th>Backup Streaming URL</th>
-                    <th>Web Link</th>
-                    <th>Remarks</th>
+                    <th>Input</th>
+                    <th>Name</th>
+                    <th title="The address and key to paste into your streaming software">Main stream</th>
+                    <th title="Used if the main stream drops">Backup stream</th>
+                    <th>Watch link</th>
+                    <th>Notes</th>
                     <th></th>
                   </tr>
                 </thead>

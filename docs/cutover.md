@@ -18,7 +18,7 @@ The order below avoids a loop: the database and functions need no site URL, the 
 2. Run `npm run test:db` once with Docker running; it proves the migrations and SQL functions on a real Postgres.
 3. Run the **Deploy Supabase** workflow (Actions → Run workflow), or locally `npx supabase db push` and `npx supabase functions deploy api` / `deploy ingest --no-verify-jwt`.
 
-Check: the Supabase dashboard shows the tables `events`, `languages`, `roles`, `keys`, `ingest_instances`, `stream_outputs`, and both functions.
+Check: the Supabase dashboard shows the tables `events`, `inputs`, `roles`, `keys`, `ingest_instances`, `stream_outputs`, and both functions.
 
 ## 3. Deploy the site
 
@@ -77,7 +77,7 @@ If something is off:
 4. Run `.migration/data.sql` against the database (Supabase SQL editor, or `psql` with the session pooler connection string).
 5. **Delete `.migration/data.sql` and the CSV files**: they contain every stream key.
 
-Check: sign in as the owner; each event shows the same keys as the sheet. Sign in as an editor and a viewer (ask them) and confirm they see only their languages.
+Check: sign in as the owner; each event shows the same keys as the sheet. Sign in as an editor and a viewer (ask them) and confirm they see only their inputs.
 
 ## 6. Turn on bunryu
 

@@ -1,18 +1,17 @@
 // An in-memory Store for testing the operations without a database. It keeps the
-// guarantees the real one gets from Postgres: generated ids, cascading deletes, and a
-// language that is still used by a key cannot be deleted.
+// guarantees the real one gets from Postgres: generated (random) ids, cascading deletes, and a
+// input that is still used by a key cannot be deleted.
 
 export function createMemoryStore(initial = {}) {
     const state = {
         events: [],
         roles: [],
-        languages: [],
+        inputs: [],
         keys: [],
-        status: { rows: [], instances: [] },
+        status: { rows: [], pipelines: [], instances: [] },
         ...structuredClone(initial),
     };
-    const counters = { E: 100, R: 100, K: 100 };
-    const nextId = (letter) => `${letter}${++counters[letter]}`;
+    const nextId = () => crypto.randomUUID();
     const find = (list, id) => list.find((item) => item.id === id);
 
     return {
@@ -21,7 +20,7 @@ export function createMemoryStore(initial = {}) {
             return structuredClone({
                 events: state.events,
                 roles: state.roles,
-                languages: state.languages,
+                inputs: state.inputs,
                 keys: state.keys,
             });
         },
@@ -29,16 +28,16 @@ export function createMemoryStore(initial = {}) {
             return structuredClone(state.status);
         },
         async createEvent(name, adminEmail) {
-            const event = { id: nextId('E'), name };
+            const event = { id: nextId(), name };
             state.events.push(event);
             let adminRole = null;
             if (adminEmail) {
                 adminRole = {
-                    id: nextId('R'),
+                    id: nextId(),
                     event: event.id,
                     email: adminEmail,
                     type: '2',
-                    language: '*',
+                    input: '*',
                 };
                 state.roles.push(adminRole);
             }
@@ -53,7 +52,7 @@ export function createMemoryStore(initial = {}) {
             state.keys = state.keys.filter((k) => k.event !== id);
         },
         async createRole(role) {
-            const created = { id: nextId('R'), ...role };
+            const created = { id: nextId(), ...role };
             state.roles.push(created);
             return structuredClone(created);
         },
@@ -63,26 +62,26 @@ export function createMemoryStore(initial = {}) {
         async deleteRole(id) {
             state.roles = state.roles.filter((r) => r.id !== id);
         },
-        async createLanguage(language) {
-            const order = Math.max(0, ...state.languages.map((l) => Number(l.order))) + 1;
-            const created = { ...language, order: String(order) };
-            state.languages.push(created);
+        async createInput(name) {
+            const order = Math.max(0, ...state.inputs.map((l) => Number(l.order))) + 1;
+            const created = { id: nextId(), name, order: String(order) };
+            state.inputs.push(created);
             return structuredClone(created);
         },
-        async updateLanguage(id, name) {
-            find(state.languages, id).name = name;
+        async updateInput(id, name) {
+            find(state.inputs, id).name = name;
         },
-        async reorderLanguages(ids) {
+        async reorderInputs(ids) {
             ids.forEach((id, index) => {
-                find(state.languages, id).order = String(index + 1);
+                find(state.inputs, id).order = String(index + 1);
             });
         },
-        async deleteLanguage(id) {
-            if (state.keys.some((k) => k.language === id)) throw new Error('foreign key');
-            state.languages = state.languages.filter((l) => l.id !== id);
+        async deleteInput(id) {
+            if (state.keys.some((k) => k.input === id)) throw new Error('foreign key');
+            state.inputs = state.inputs.filter((l) => l.id !== id);
         },
         async createKey(key) {
-            const created = { id: nextId('K'), ...key };
+            const created = { id: nextId(), ...key };
             state.keys.push(created);
             return structuredClone(created);
         },

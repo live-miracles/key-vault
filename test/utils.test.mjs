@@ -26,14 +26,16 @@ test('keeps only safe HTTP and HTTPS URLs', () => {
     assert.equal(safeUrl(''), '');
 });
 
-test('detects empty and duplicate ids', () => {
+test('makes a different stand-in id each time, never an empty one', () => {
     const runtime = loadUtils();
-    const getIdIssue = runtime.get('getIdIssue');
-    const items = [{ id: 'K1' }, { id: 'K1' }, { id: '   ' }, { id: 'K2' }];
+    runtime.context.crypto = { randomUUID: () => 'abc' };
+    assert.equal(runtime.get('newTempId')(), 'new-abc');
 
-    assert.equal(getIdIssue(items, items[0]), 'Duplicate ID: K1');
-    assert.equal(getIdIssue(items, items[2]), 'Empty ID');
-    assert.equal(getIdIssue(items, items[3]), '');
+    runtime.context.crypto = undefined;
+    const first = runtime.get('newTempId')();
+    const second = runtime.get('newTempId')();
+    assert.ok(first.length > 4);
+    assert.notEqual(first, second);
 });
 
 test('updates and reads query parameters', () => {

@@ -213,7 +213,7 @@ let config = {
     events: [],
     roles: [],
     keys: [],
-    languages: [],
+    inputs: [],
 };
 let eventRoles = {};
 
@@ -263,7 +263,26 @@ let eventRoles = {};
         .querySelector('#key-custom-server2-input')
         .addEventListener('input', () => convertKnownCustomServerUrl('2'));
 
-    document.querySelector('#stream-key-input').addEventListener('input', applyBackupServerLock);
+    document.querySelector('#stream-key-input').addEventListener('input', () => {
+        handleStreamKeyInput();
+        applyBackupServerLock();
+    });
+    document
+        .querySelector('#stream-key2-input')
+        .addEventListener('input', () => handleStreamKeyInput('2'));
+
+    // Fixing a field clears its red border, and the message once nothing is left to fix.
+    const onKeyFieldEdited = (event) => {
+        const field = event.target;
+        if (!(field instanceof Element)) return;
+        field.classList.remove('input-error', 'select-error');
+        const stillWrong = document.querySelector(
+            '#key-modal .input-error, #key-modal .select-error, #key-modal .picker-error',
+        );
+        if (!stillWrong) document.querySelector('#key-form-error').classList.add('hidden');
+    };
+    document.querySelector('#key-modal').addEventListener('input', onKeyFieldEdited);
+    document.querySelector('#key-modal').addEventListener('change', onKeyFieldEdited);
 })();
 
 // Keep the frontend bundle scoped: the HTML uses data-action attributes and
@@ -281,8 +300,10 @@ document.addEventListener('click', (event) => {
         'save-event': () => saveEventFormBtn(event),
         'edit-role': () => editRoleRow(),
         'delete-role': () => deleteRoleRow(),
-        'save-language': () => saveLanguageFormBtn(event),
+        'save-input': () => saveInputFormBtn(event),
         'save-key': () => saveKeyFormBtn(event),
+        'pick-platform': () => pickPlatform(target.dataset.server),
+        'paste-stream-key': () => pasteStreamKey(target.dataset.suffix || ''),
         'edit-event': () => editEventBtn(),
         'delete-event': () => deleteEventBtn(),
         'show-settings': () => showSettingsModal(),
@@ -296,20 +317,20 @@ document.addEventListener('click', (event) => {
         'add-key': () => addKeyBtn(),
         'show-share': () => showShareModal(),
         'add-role': () => addRoleBtn(),
-        'add-language': () => addLanguageBtn(),
+        'add-input': () => addInputBtn(),
         'add-event': () => addEventBtn(),
         'edit-role-by-id': () => editRoleById(row?.dataset.roleId),
         'delete-role-by-id': () => deleteRoleById(row?.dataset.roleId),
         'save-role-inline': () => saveRoleInlineBtn(target),
         'cancel-role-inline': () => cancelRoleInlineEdit(),
-        'edit-language-by-id': () => editLanguageById(row?.dataset.languageId),
-        'delete-language-by-id': () => deleteLanguageById(row?.dataset.languageId),
+        'edit-input-by-id': () => editInputById(row?.dataset.inputId),
+        'delete-input-by-id': () => deleteInputById(row?.dataset.inputId),
         'edit-key-by-id': () => editKeyById(keyContainer?.dataset.keyId),
         'delete-key-by-id': () => deleteKeyById(keyContainer?.dataset.keyId),
         'copy-text': () => copyTextValue(target.dataset.copyValue),
         'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
-        'select-language': () => selectLanguage(target.dataset.language),
-        'open-event': () => openEvent(target.dataset.event, target.dataset.language),
+        'select-input': () => selectInput(target.dataset.input),
+        'open-event': () => openEvent(target.dataset.event, target.dataset.input),
     };
 
     const handler = actions[action];
@@ -327,7 +348,7 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('change', (event) => {
     const target =
         event.target instanceof Element
-            ? event.target.closest('[data-action="render-role-language"]')
+            ? event.target.closest('[data-action="render-role-input"]')
             : null;
-    if (target) renderRoleLanguageForRow(target);
+    if (target) renderRoleInputForRow(target);
 });

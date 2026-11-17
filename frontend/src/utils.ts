@@ -62,49 +62,11 @@ function escapeHtml(value) {
         .replaceAll("'", '&#39;');
 }
 
-function escapeRegExp(value) {
-    return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-function getSequentialIdNumber(id, prefix) {
-    const match = String(id ?? '').match(new RegExp(`^${escapeRegExp(prefix)}([1-9][0-9]*)$`));
-    return match ? Number(match[1]) : null;
-}
-
-function getNextSequentialId(items, prefix) {
-    const maxNumber = Math.max(
-        ...items
-            .map((item) => getSequentialIdNumber(item.id, prefix))
-            .filter((number) => number !== null),
-        0,
-    );
-    return `${prefix}${maxNumber + 1}`;
-}
-
-function getItemId(item) {
-    return String(item?.id ?? '').trim();
-}
-
-function getIdIssue(items, item) {
-    const id = getItemId(item);
-    if (!id) return 'Empty ID';
-
-    const count = items.filter((entry) => getItemId(entry) === id).length;
-    return count > 1 ? `Duplicate ID: ${id}` : '';
-}
-
-function idIssueClass(issue) {
-    return issue ? 'bg-error/10 text-error' : '';
-}
-
-function idIssueBadgeHtml(issue) {
-    if (!issue) return '';
-
-    return `
-        <span class="text-error inline-flex items-center justify-center text-xs font-semibold" title="${escapeHtml(issue)}" aria-label="${escapeHtml(issue)}">
-            ${iconSvg('error', 'h-4 w-4')}
-        </span>
-    `;
+// A stand-in id for a row that is saved but not yet answered by the server, which makes the
+// real one. It only has to differ from every other id on the page.
+function newTempId() {
+    const random = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+    return 'new-' + random;
 }
 
 const ICON_PATHS = {

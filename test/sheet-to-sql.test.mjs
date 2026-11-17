@@ -27,13 +27,19 @@ test('parseCsv handles quotes, commas, newlines and a BOM', () => {
     ]);
 });
 
-test('convert normalises ids, languages and colors and keeps ids', () => {
+test('convert normalises ids, inputs and colors and keeps ids', () => {
     const { sql, counts, warnings } = convert(files());
 
-    assert.deepEqual(counts, { events: 2, languages: 2, roles: 2, keys: 2 });
+    assert.deepEqual(counts, { events: 2, inputs: 2, roles: 2, keys: 2 });
     assert.deepEqual(warnings, []);
     assert.match(sql, /insert into public\.events \(id, name\) values \('E3', 'Event, three'\)/);
-    assert.match(sql, /values \('L1', 'English', 1\)/);
+    // The sheet's Language tab becomes the inputs table.
+    assert.match(
+        sql,
+        /insert into public\.inputs \(id, name, sort_order\) values \('L1', 'English', 1\)/,
+    );
+    assert.match(sql, /insert into public\.roles \(id, event_id, email, type, input\)/);
+    assert.match(sql, /insert into public\.keys \(id, event_id, name, input, server,/);
     // Admin roles apply to every language and emails are lowercased.
     assert.match(sql, /values \('R1', 'E1', 'admin@example\.test', '2', '\*'\)/);
     // A bare language number becomes an id.
@@ -41,10 +47,8 @@ test('convert normalises ids, languages and colors and keeps ids', () => {
     // Quotes are escaped, and an unknown color is dropped.
     assert.match(sql, /'it''s fine'/);
     assert.match(sql, /'rtmp:\/\/x\.example\/live\/k', '', '', '', '', ''\)/);
-    // Sequences continue after the highest id.
-    assert.match(sql, /setval\('public\.event_id_seq', 3\)/);
-    assert.match(sql, /setval\('public\.key_id_seq', 7\)/);
-    assert.match(sql, /setval\('public\.role_id_seq', 2\)/);
+    // New rows get random ids from the database, so nothing sets a sequence.
+    assert.doesNotMatch(sql, /setval/);
     assert.ok(sql.startsWith('begin;') && sql.trimEnd().endsWith('commit;'));
 });
 
@@ -72,5 +76,5 @@ test('--skip-orphans drops rows of a missing event and says so', () => {
     );
     assert.equal(counts.roles, 0);
     assert.equal(warnings.length, 1);
-    assert.match(sql, /setval\('public\.role_id_seq', 1, false\)/);
+    assert.doesNotMatch(sql, /insert into public\.roles/);
 });

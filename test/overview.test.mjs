@@ -6,15 +6,15 @@ import { loadFrontendScripts } from './frontend-harness.mjs';
 const runtime = loadFrontendScripts([
     'frontend/src/utils.ts',
     'frontend/src/keys.ts',
-    'frontend/src/languages.ts',
+    'frontend/src/inputs.ts',
     'frontend/src/overview.ts',
 ]);
 const summarizeKeyStatuses = runtime.get('summarizeKeyStatuses');
-const groupKeysByLanguage = runtime.get('groupKeysByLanguage');
-const resolveLanguageFilter = runtime.get('resolveLanguageFilter');
+const groupKeysByInput = runtime.get('groupKeysByInput');
+const resolveInputFilter = runtime.get('resolveInputFilter');
 
 runtime.set('config', {
-    languages: [
+    inputs: [
         { id: 'L1', name: 'English', order: 1 },
         { id: 'L2', name: 'Hindi', order: 2 },
         { id: 'L3', name: 'Tamil', order: 3 },
@@ -51,15 +51,15 @@ test('without a status report every key is unreported', () => {
     assert.equal(summary.unreported, 2);
 });
 
-test("groups an event's keys by language in the order of the Languages list", () => {
+test("groups an event's keys by input in the order of the Inputs list", () => {
     const keys = [
-        { id: 'K1', language: 'L3' },
-        { id: 'K2', language: 'L1' },
-        { id: 'K3', language: 'L3' },
+        { id: 'K1', input: 'L3' },
+        { id: 'K2', input: 'L1' },
+        { id: 'K3', input: 'L3' },
     ];
-    const groups = groupKeysByLanguage(keys);
+    const groups = groupKeysByInput(keys);
     assert.deepEqual(
-        JSON.parse(JSON.stringify(groups.map((g) => [g.language, g.keys.map((k) => k.id)]))),
+        JSON.parse(JSON.stringify(groups.map((g) => [g.input, g.keys.map((k) => k.id)]))),
         [
             ['L1', ['K2']],
             ['L3', ['K1', 'K3']],
@@ -67,9 +67,9 @@ test("groups an event's keys by language in the order of the Languages list", ()
     );
 });
 
-test('a language filter only holds when the event has keys in that language', () => {
-    const keys = [{ id: 'K1', language: 'L1' }];
-    assert.equal(resolveLanguageFilter(keys, 'L1'), 'L1');
-    assert.equal(resolveLanguageFilter(keys, 'L2'), '');
-    assert.equal(resolveLanguageFilter(keys, null), '');
+test('a input filter only holds when the event has keys in that input', () => {
+    const keys = [{ id: 'K1', input: 'L1' }];
+    assert.equal(resolveInputFilter(keys, 'L1'), 'L1');
+    assert.equal(resolveInputFilter(keys, 'L2'), '');
+    assert.equal(resolveInputFilter(keys, null), '');
 });

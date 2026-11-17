@@ -23,10 +23,21 @@ export interface HeartbeatOutput {
     sinceMs: number;
 }
 
+// The state of one beat: the signal arriving in one of bunryu's pipelines. It is matched
+// to a Key Vault beat (input) by the pipeline's name.
+export interface HeartbeatInput {
+    pipeline: string;
+    status: Status;
+    message: string;
+    sinceMs: number;
+}
+
 export interface Heartbeat {
     instance: string;
     sentAt: string;
     outputs: HeartbeatOutput[];
+    // Optional: an older bunryu sends none.
+    inputs: HeartbeatInput[];
 }
 
 function text(value: unknown, max: number): string {
@@ -57,22 +68,22 @@ export function parseHeartbeat(body: unknown): Heartbeat {
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
         throw new Error('The request body must be a JSON object.');
     }
-    const input = body as Record<string, unknown>;
-    if (input.version !== HEARTBEAT_VERSION) {
-        throw new Error(`Unsupported heartbeat version: ${String(input.version)}.`);
+    const beat = body as Record<string, unknown>;
+    if (beat.version !== HEARTBEAT_VERSION) {
+        throw new Error(`Unsupported heartbeat version: ${String(beat.version)}.`);
     }
-    const instance = String(input.instance ?? '');
+    const instance = String(beat.instance ?? '');
     if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(instance)) {
         throw new Error('instance must be 1-32 characters: a-z, 0-9 and "-".');
     }
-    const sentAt = new Date(String(input.sentAt ?? ''));
+    const sentAt = new Date(String(beat.sentAt ?? ''));
     if (Number.isNaN(sentAt.getTime())) throw new Error('sentAt must be an ISO date.');
-    if (!Array.isArray(input.outputs)) throw new Error('outputs must be an array.');
-    if (input.outputs.length > MAX_OUTPUTS) {
+    if (!Array.isArray(beat.outputs)) throw new Error('outputs must be an array.');
+    if (beat.outputs.length > MAX_OUTPUTS) {
         throw new Error(`outputs has more than ${MAX_OUTPUTS} entries.`);
     }
 
-    const outputs = input.outputs.map((raw, index): HeartbeatOutput => {
+    const outputs = beat.outputs.map((raw, index): HeartbeatOutput => {
         if (!raw || typeof raw !== 'object') throw new Error(`outputs[${index}] is invalid.`);
         const o = raw as Record<string, unknown>;
         const hash = String(o.hash ?? '');
@@ -92,12 +103,37 @@ export function parseHeartbeat(body: unknown): Heartbeat {
         };
     });
 
-    return { instance, sentAt: sentAt.toISOString(), outputs };
+    const rawInputs = beat.inputs ?? [];
+    if (!Array.isArray(rawInputs)) throw new Error('inputs must be an array.');
+    if (rawInputs.length > MAX_OUTPUTS) {
+        throw new Error(`inputs has more than ${MAX_OUTPUTS} entries.`);
+    }
+    const inputs = rawInputs.map((raw, index): HeartbeatInput => {
+        if (!raw || typeof raw !== 'object') throw new Error(`inputs[${index}] is invalid.`);
+        const i = raw as Record<string, unknown>;
+        const pipeline = text(i.pipeline, 200);
+        if (!pipeline) throw new Error(`inputs[${index}].pipeline is required.`);
+        if (!STATUSES.includes(i.status as Status)) {
+            throw new Error(`inputs[${index}].status is invalid.`);
+        }
+        return {
+            pipeline,
+            status: i.status as Status,
+            message: safeMessage(i.message),
+            sinceMs: count(i.sinceMs),
+        };
+    });
+
+    return { instance, sentAt: sentAt.toISOString(), outputs, inputs };
 }
 
 // ---- Status of a key ----
 
 export interface StatusRow extends HeartbeatOutput {
+    instance: string;
+}
+
+export interface PipelineRow extends HeartbeatInput {
     instance: string;
 }
 
@@ -109,6 +145,9 @@ export interface KeyStatus {
     sinceMs: number;
     pipeline: string;
     output: string;
+    // bunryu runs this output in a pipeline whose name differs from the key's beat: the
+    // link was probably put in the wrong place.
+    inputMismatch: boolean;
 }
 
 // Shown when one URL is used by several outputs: a problem outranks a healthy output,
@@ -129,7 +168,39 @@ export function worstStatus(rows: StatusRow[]): KeyStatus | null {
         sinceMs: worst.sinceMs,
         pipeline: worst.pipeline,
         output: worst.output,
+        inputMismatch: false,
     };
+}
+
+export interface InputStatus {
+    status: Status;
+    message: string;
+    sinceMs: number;
+    // The pipeline's own spelling, which can differ from the beat's in case or spacing.
+    pipeline: string;
+}
+
+// Names are matched ignoring case and extra spaces: "Hindi", "hindi" and " Hindi  " are one.
+export function normalizeInputName(name: string): string {
+    return String(name ?? '')
+        .trim()
+        .replace(/s+/g, ' ')
+        .toLowerCase();
+}
+
+function worstInput(rows: PipelineRow[]): InputStatus | null {
+    let worst: PipelineRow | null = null;
+    for (const row of rows) {
+        if (!worst || RANK[row.status] > RANK[worst.status]) worst = row;
+    }
+    return worst
+        ? {
+              status: worst.status,
+              message: worst.message,
+              sinceMs: worst.sinceMs,
+              pipeline: worst.pipeline,
+          }
+        : null;
 }
 
 export interface InstanceInfo {
@@ -143,14 +214,25 @@ export interface StatusReport {
     online: boolean;
     instances: { instance: string; lastSeenAt: string; online: boolean }[];
     keys: Record<string, { main: KeyStatus | null; backup: KeyStatus | null }>;
+    // The state of each beat (by input id) whose pipeline bunryu reports, or null.
+    inputs: Record<string, InputStatus | null>;
 }
 
 export async function buildStatusReport(
-    keys: { id: string; server: string; key: string; server2: string; key2: string }[],
+    keys: {
+        id: string;
+        input?: string;
+        server: string;
+        key: string;
+        server2: string;
+        key2: string;
+    }[],
     rows: StatusRow[],
     instances: InstanceInfo[],
     hashSecret: string,
     nowMs: number,
+    pipelines: PipelineRow[] = [],
+    inputs: { id: string; name: string }[] = [],
 ): Promise<StatusReport> {
     const fresh = new Set(
         instances
@@ -165,23 +247,48 @@ export async function buildStatusReport(
         else byHash.set(row.hash, [row]);
     }
 
-    const statusOf = async (server: string, key: string): Promise<KeyStatus | null> => {
+    const byPipeline = new Map<string, PipelineRow[]>();
+    for (const row of pipelines) {
+        if (!fresh.has(row.instance)) continue;
+        const name = normalizeInputName(row.pipeline);
+        const list = byPipeline.get(name);
+        if (list) list.push(row);
+        else byPipeline.set(name, [row]);
+    }
+    const inputName = new Map(inputs.map((l) => [l.id, normalizeInputName(l.name)]));
+
+    const statusOf = async (
+        server: string,
+        key: string,
+        input: string | undefined,
+    ): Promise<KeyStatus | null> => {
         const url = keyUrl(server, key);
         if (!url) return null;
-        return worstStatus(byHash.get(await hashUrl(hashSecret, url)) ?? []);
+        const status = worstStatus(byHash.get(await hashUrl(hashSecret, url)) ?? []);
+        const expected = input === undefined ? undefined : inputName.get(input);
+        if (status && expected && status.pipeline) {
+            status.inputMismatch = normalizeInputName(status.pipeline) !== expected;
+        }
+        return status;
     };
 
     const result: StatusReport['keys'] = {};
     for (const k of keys) {
         result[k.id] = {
-            main: await statusOf(k.server, k.key),
-            backup: await statusOf(k.server2, k.key2),
+            main: await statusOf(k.server, k.key, k.input),
+            backup: await statusOf(k.server2, k.key2, k.input),
         };
+    }
+
+    const inputStatus: StatusReport['inputs'] = {};
+    for (const input of inputs) {
+        inputStatus[input.id] = worstInput(byPipeline.get(normalizeInputName(input.name)) ?? []);
     }
 
     return {
         online: fresh.size > 0,
         instances: instances.map((i) => ({ ...i, online: fresh.has(i.instance) })),
         keys: result,
+        inputs: inputStatus,
     };
 }

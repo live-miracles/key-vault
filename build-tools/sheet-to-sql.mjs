@@ -1,6 +1,7 @@
 // One-off migration of the Google Sheet into Postgres.
 //
 //   1. In the spreadsheet use File > Download > CSV for each tab: Event, Role, Language, Key.
+//      (The sheet still says Language; in Key Vault those rows are called inputs.)
 //      Put the four files in one folder, named Event.csv, Role.csv, Language.csv, Key.csv.
 //   2. node build-tools/sheet-to-sql.mjs <folder> > .migration/data.sql
 //   3. Review it, then run it against the project (SQL editor, or psql with the
@@ -70,14 +71,6 @@ function normalizeLanguage(value, allowAll) {
     const m = id.match(/^(?:L|lang)([1-9][0-9]*)$/i);
     return m ? `L${m[1]}` : id;
 }
-
-const sequenceOf = (rows, letter) =>
-    Math.max(
-        0,
-        ...rows
-            .map((r) => (r.id.match(new RegExp(`^${letter}([1-9][0-9]*)$`)) ?? [])[1] ?? 0)
-            .map(Number),
-    );
 
 export function convert({ Event, Role, Language, Key }, { skipOrphans = false } = {}) {
     const events = table(Event, 'Event').filter((e) => e.name);
@@ -153,17 +146,17 @@ export function convert({ Event, Role, Language, Key }, { skipOrphans = false } 
     languages.forEach((l, index) => {
         const order = Number(l.order) || index + 1;
         lines.push(
-            `insert into public.languages (id, name, sort_order) values (${literal(l.id)}, ${literal(l.name)}, ${order});`,
+            `insert into public.inputs (id, name, sort_order) values (${literal(l.id)}, ${literal(l.name)}, ${order});`,
         );
     });
     for (const r of keptRoles) {
         lines.push(
-            `insert into public.roles (id, event_id, email, type, language) values (${[r.id, r.event, r.email, r.type, r.language].map(literal).join(', ')});`,
+            `insert into public.roles (id, event_id, email, type, input) values (${[r.id, r.event, r.email, r.type, r.language].map(literal).join(', ')});`,
         );
     }
     for (const k of keptKeys) {
         lines.push(
-            `insert into public.keys (id, event_id, name, language, server, key, server2, key2, link, color_override, remarks) values (${[
+            `insert into public.keys (id, event_id, name, input, server, key, server2, key2, link, color_override, remarks) values (${[
                 k.id,
                 k.event,
                 k.name,
@@ -180,19 +173,6 @@ export function convert({ Event, Role, Language, Key }, { skipOrphans = false } 
                 .join(', ')});`,
         );
     }
-    // The next generated ids continue after the migrated ones.
-    for (const [sequence, rows, letter] of [
-        ['event_id_seq', events, 'E'],
-        ['role_id_seq', keptRoles, 'R'],
-        ['key_id_seq', keptKeys, 'K'],
-    ]) {
-        const last = sequenceOf(rows, letter);
-        lines.push(
-            last > 0
-                ? `select setval('public.${sequence}', ${last});`
-                : `select setval('public.${sequence}', 1, false);`,
-        );
-    }
     lines.push('commit;');
 
     return {
@@ -200,7 +180,7 @@ export function convert({ Event, Role, Language, Key }, { skipOrphans = false } 
         warnings,
         counts: {
             events: events.length,
-            languages: languages.length,
+            inputs: languages.length,
             roles: keptRoles.length,
             keys: keptKeys.length,
         },
@@ -230,7 +210,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         );
         for (const w of warnings) console.error(`skipped: ${w}`);
         console.error(
-            `${counts.events} events, ${counts.languages} languages, ${counts.roles} roles, ${counts.keys} keys`,
+            `${counts.events} events, ${counts.inputs} inputs, ${counts.roles} roles, ${counts.keys} keys`,
         );
         process.stdout.write(sql);
     } catch (error) {

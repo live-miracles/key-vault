@@ -7,7 +7,7 @@ function getEventRoles(email, events, roles, isAppOwner = false) {
             event: '*',
             email,
             type: ROLES.OWNER,
-            language: '*',
+            input: '*',
         });
     }
     const eventRoles = events.reduce((acc, e) => {
@@ -46,7 +46,7 @@ function hasEventAccess(eventRoles, action, eventId = null) {
     return isOwner;
 }
 
-function hasLanguageAccess(eventRoles) {
+function hasInputAccess(eventRoles) {
     return Boolean(eventRoles['*']?.some((r) => r.type === ROLES.OWNER));
 }
 
@@ -65,7 +65,7 @@ function hasRoleAccess(eventRoles, action, eventId, type = null) {
     return isAdmin;
 }
 
-function hasKeyAccess(eventRoles, action, eventId, language = null) {
+function hasKeyAccess(eventRoles, action, eventId, input = null) {
     if (!eventRoles[eventId]) return false;
 
     const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
@@ -74,13 +74,12 @@ function hasKeyAccess(eventRoles, action, eventId, language = null) {
         isAdmin ||
         eventRoles[eventId].some(
             (r) =>
-                r.type === ROLES.EDITOR &&
-                (r.language === '*' || r.language === language || language === null),
+                r.type === ROLES.EDITOR && (r.input === '*' || r.input === input || input === null),
         );
     const isViewer =
         isEditor ||
         eventRoles[eventId].some(
-            (r) => r.type === ROLES.VIEWER && (r.language === '*' || r.language === language),
+            (r) => r.type === ROLES.VIEWER && (r.input === '*' || r.input === input),
         );
 
     if (action === ACTIONS.VIEW) return isViewer;

@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-// The language list beside an event's keys and the overview page that sums up every event.
+// The input list beside an event's keys and the overview page that sums up every event.
 // Both read the same thing: how many keys there are and what bunryu reports about them.
 
 const OVERVIEW_VIEW = 'overview';
@@ -23,25 +23,25 @@ function summarizeKeyStatuses(keys, report) {
     return summary;
 }
 
-// The languages an event's keys use, in the order of the Languages list, each with its keys.
-function groupKeysByLanguage(keys) {
+// The inputs an event's keys use, in the order of the Inputs list, each with its keys.
+function groupKeysByInput(keys) {
     const groups = new Map();
     for (const key of keys) {
-        if (!groups.has(key.language)) groups.set(key.language, []);
-        groups.get(key.language).push(key);
+        if (!groups.has(key.input)) groups.set(key.input, []);
+        groups.get(key.input).push(key);
     }
     return [...groups.entries()]
-        .map(([language, languageKeys]) => ({ language, keys: languageKeys }))
+        .map(([input, inputKeys]) => ({ input, keys: inputKeys }))
         .sort((a, b) => {
-            const orderDiff = getLanguageOrder(a.language) - getLanguageOrder(b.language);
+            const orderDiff = getInputOrder(a.input) - getInputOrder(b.input);
             if (orderDiff !== 0) return orderDiff;
-            return getLanguageName(a.language).localeCompare(getLanguageName(b.language));
+            return getInputName(a.input).localeCompare(getInputName(b.input));
         });
 }
 
-// The language to filter by: the wanted one when the event has keys in it, otherwise all ('').
-function resolveLanguageFilter(keys, wanted) {
-    return wanted && keys.some((key) => key.language === wanted) ? wanted : '';
+// The input to filter by: the wanted one when the event has keys in it, otherwise all ('').
+function resolveInputFilter(keys, wanted) {
+    return wanted && keys.some((key) => key.input === wanted) ? wanted : '';
 }
 
 function statusPillsHtml(summary) {
@@ -53,32 +53,41 @@ function statusPillsHtml(summary) {
         .join('');
 }
 
-function renderLanguagePanel(eventKeys) {
-    const selected = resolveLanguageFilter(eventKeys, getUrlParam('language'));
-    const item = (language, label, keys) => {
-        const active = language === selected;
+// A small colored dot before an input's name: whether its signal is arriving.
+function inputDotHtml(inputId) {
+    const input = getInputStatus(inputId, keyStatus);
+    if (!input) return '';
+    const label = `Input: ${INPUT_LABELS[input.status] || input.status}`;
+    return `<span class="input-dot input-dot-${input.status}" title="${escapeHtml(label)}" role="img" aria-label="${escapeHtml(label)}"></span>`;
+}
+
+function renderInputPanel(eventKeys) {
+    const selected = resolveInputFilter(eventKeys, getUrlParam('input'));
+    const item = (input, label, keys) => {
+        const active = input === selected;
         return `
-            <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-language" data-language="${escapeHtml(language)}" aria-pressed="${active}">
+            <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${escapeHtml(input)}" aria-pressed="${active}">
+                ${input ? inputDotHtml(input) : ''}
                 <span class="lang-item-name">${label}</span>
                 <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(keys, keyStatus))}</span>
                 <span class="lang-item-count">${keys.length}</span>
             </button>`;
     };
-    document.querySelector('#language-list').innerHTML =
+    document.querySelector('#input-list').innerHTML =
         item('', 'All', eventKeys) +
-        groupKeysByLanguage(eventKeys)
-            .map(({ language, keys }) => item(language, languageLabelHtml(language), keys))
+        groupKeysByInput(eventKeys)
+            .map(({ input, keys }) => item(input, inputLabelHtml(input), keys))
             .join('');
     return selected;
 }
 
-function selectLanguage(language) {
-    setUrlParam('language', language || null);
+function selectInput(input) {
+    setUrlParam('input', input || null);
     renderKeyTable(getUrlParam('event'));
 }
 
-function openEvent(eventId, language = '') {
-    selectEvent(eventId, language || null);
+function openEvent(eventId, input = '') {
+    selectEvent(eventId, input || null);
 }
 
 function statCardHtml(label, value, className = '') {
@@ -107,12 +116,12 @@ function renderOverview() {
         .map((event) => {
             const eventKeys = keys.filter((k) => k.event === event.id);
             const summary = summarizeKeyStatuses(eventKeys, keyStatus);
-            const languages = groupKeysByLanguage(eventKeys).length;
+            const inputs = groupKeysByInput(eventKeys).length;
             return `
                 <tr class="overview-row" data-action="open-event" data-event="${escapeHtml(event.id)}" tabindex="0">
                     <td class="text-left font-medium">${escapeHtml(event.name)}${event.pending ? ' <span class="loading loading-dots loading-xs"></span>' : ''}</td>
                     <td>${eventKeys.length}</td>
-                    <td>${languages}</td>
+                    <td>${inputs}</td>
                     <td><span class="inline-flex gap-1">${statusPillsHtml(summary) || '<span class="text-base-content/40">—</span>'}</span></td>
                 </tr>`;
         })
@@ -132,10 +141,10 @@ function renderOverview() {
     const problemRows = problems
         .map(
             ({ key, status }) => `
-                <tr class="overview-row" data-action="open-event" data-event="${escapeHtml(key.event)}" data-language="${escapeHtml(key.language)}" tabindex="0" title="${escapeHtml(describeKeyStatus(status))}">
+                <tr class="overview-row" data-action="open-event" data-event="${escapeHtml(key.event)}" data-input="${escapeHtml(key.input)}" tabindex="0" title="${escapeHtml(describeKeyStatus(status))}">
                     <td><span class="status-pill status-${status.status}">${escapeHtml(STATUS_LABELS[status.status])}</span></td>
                     <td class="text-left">${escapeHtml(eventName(key.event))}</td>
-                    <td class="text-left">${languageLabelHtml(key.language)}</td>
+                    <td class="text-left">${inputLabelHtml(key.input)}</td>
                     <td class="text-left">${escapeHtml(getPlatformNamePreview(key.name))}</td>
                     <td class="text-base-content/70 text-left">${escapeHtml(getMiddleEllipsisText(status.message || '', 70, 55, 10))}</td>
                 </tr>`,
@@ -155,7 +164,7 @@ function renderOverview() {
             <h2 class="overview-heading">Events</h2>
             <div class="overview-table-wrap">
                 <table class="table">
-                    <thead><tr class="text-center"><th class="text-left">Event</th><th>Keys</th><th>Languages</th><th>Status</th></tr></thead>
+                    <thead><tr class="text-center"><th class="text-left">Event</th><th>Keys</th><th>Inputs</th><th>Status</th></tr></thead>
                     <tbody>${eventRows}</tbody>
                 </table>
             </div>

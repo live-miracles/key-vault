@@ -1,6 +1,6 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import type { Data, EventItem, KeyItem, LanguageItem, RoleItem, Store } from './operations.ts';
-import type { StatusRow } from './status.ts';
+import type { Data, EventItem, KeyItem, InputItem, RoleItem, Store } from './operations.ts';
+import type { PipelineRow, StatusRow } from './status.ts';
 
 // The Store over Postgres, used by the `api` Edge Function with the service role. The
 // operations have already checked who may do what, so this only reads and writes.
@@ -25,9 +25,13 @@ async function fetchAll(
     }
 }
 
-// E2 before E10: ids are a letter and a number.
-function byIdNumber(a: { id: string }, b: { id: string }): number {
-    return Number(a.id.slice(1)) - Number(b.id.slice(1));
+// Oldest first. Ids are random, so the creation time orders rows; rows made in the same
+// instant (an import) fall back to the id read as a natural number: E2 before E10.
+function byCreated(a: { created_at: string; id: string }, b: { created_at: string; id: string }) {
+    return (
+        Date.parse(a.created_at) - Date.parse(b.created_at) ||
+        a.id.localeCompare(b.id, 'en', { numeric: true })
+    );
 }
 
 const toRole = (r: any): RoleItem => ({
@@ -35,72 +39,79 @@ const toRole = (r: any): RoleItem => ({
     event: r.event_id,
     email: String(r.email).toLowerCase(),
     type: r.type,
-    language: r.language,
+    input: r.input,
 });
 
 export function createSupabaseStore(db: SupabaseClient): Store {
     return {
         async load(): Promise<Data> {
-            const [events, roles, languages, keys] = await Promise.all([
+            const [events, roles, inputs, keys] = await Promise.all([
                 fetchAll((from, to) =>
-                    db.from('events').select('id, name').order('id').range(from, to),
+                    db.from('events').select('id, name, created_at').order('id').range(from, to),
                 ),
                 fetchAll((from, to) =>
                     db
                         .from('roles')
-                        .select('id, event_id, email, type, language')
+                        .select('id, event_id, email, type, input, created_at')
                         .order('id')
                         .range(from, to),
                 ),
                 fetchAll((from, to) =>
-                    db.from('languages').select('id, name, sort_order').order('id').range(from, to),
+                    db.from('inputs').select('id, name, sort_order').order('id').range(from, to),
                 ),
                 fetchAll((from, to) =>
                     db
                         .from('keys')
                         .select(
-                            'id, event_id, name, language, server, key, server2, key2, link, color_override, remarks',
+                            'id, event_id, name, input, server, key, server2, key2, link, color_override, remarks, created_at',
                         )
                         .order('id')
                         .range(from, to),
                 ),
             ]);
             return {
-                events: (events as EventItem[]).sort(byIdNumber),
-                roles: roles.map(toRole).sort(byIdNumber),
-                languages: languages
-                    .map((l): LanguageItem => ({
+                events: [...events]
+                    .sort(byCreated)
+                    .map((e): EventItem => ({ id: e.id, name: e.name })),
+                roles: [...roles].sort(byCreated).map(toRole),
+                inputs: inputs
+                    .map((l): InputItem => ({
                         id: l.id,
                         name: l.name,
                         order: String(l.sort_order),
                     }))
                     .sort((a, b) => Number(a.order) - Number(b.order) || a.id.localeCompare(b.id)),
-                keys: keys
-                    .map((k): KeyItem => ({
-                        id: k.id,
-                        event: k.event_id,
-                        name: k.name,
-                        language: k.language,
-                        server: k.server,
-                        key: k.key,
-                        server2: k.server2,
-                        key2: k.key2,
-                        link: k.link,
-                        color: k.color_override,
-                        remarks: k.remarks,
-                    }))
-                    .sort(byIdNumber),
+                keys: [...keys].sort(byCreated).map((k): KeyItem => ({
+                    id: k.id,
+                    event: k.event_id,
+                    name: k.name,
+                    input: k.input,
+                    server: k.server,
+                    key: k.key,
+                    server2: k.server2,
+                    key2: k.key2,
+                    link: k.link,
+                    color: k.color_override,
+                    remarks: k.remarks,
+                })),
             };
         },
 
         async loadStatus() {
-            const [rows, instances] = await Promise.all([
+            const [rows, pipelines, instances] = await Promise.all([
                 fetchAll((from, to) =>
                     db
                         .from('stream_outputs')
                         .select(
                             'id, instance, hash, pipeline, output, status, message, failures, stopped_after_failures, since_ms',
                         )
+                        .order('id')
+                        .range(from, to),
+                ),
+                fetchAll((from, to) =>
+                    db
+                        .from('stream_inputs')
+                        .select('id, instance, pipeline, status, message, since_ms')
                         .order('id')
                         .range(from, to),
                 ),
@@ -123,6 +134,13 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                     failures: r.failures,
                     stoppedAfterFailures: r.stopped_after_failures,
                     sinceMs: Number(r.since_ms),
+                })),
+                pipelines: pipelines.map((i): PipelineRow => ({
+                    instance: i.instance,
+                    pipeline: i.pipeline,
+                    status: i.status,
+                    message: i.message,
+                    sinceMs: Number(i.since_ms),
                 })),
                 instances: instances.map((i) => ({
                     instance: i.instance,
@@ -152,9 +170,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         event_id: role.event,
                         email: role.email,
                         type: role.type,
-                        language: role.language,
+                        input: role.input,
                     })
-                    .select('id, event_id, email, type, language')
+                    .select('id, event_id, email, type, input')
                     .single(),
             );
             return toRole(row);
@@ -163,7 +181,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             check(
                 await db
                     .from('roles')
-                    .update({ email: role.email, type: role.type, language: role.language })
+                    .update({ email: role.email, type: role.type, input: role.input })
                     .eq('id', id)
                     .select('id')
                     .single(),
@@ -173,19 +191,17 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             check(await db.from('roles').delete().eq('id', id).select('id').single());
         },
 
-        async createLanguage(language) {
-            return check(
-                await db.rpc('create_language', { p_id: language.id, p_name: language.name }),
-            ) as LanguageItem;
+        async createInput(name) {
+            return check(await db.rpc('create_input', { p_name: name })) as InputItem;
         },
-        async updateLanguage(id, name) {
-            check(await db.from('languages').update({ name }).eq('id', id).select('id').single());
+        async updateInput(id, name) {
+            check(await db.from('inputs').update({ name }).eq('id', id).select('id').single());
         },
-        async reorderLanguages(ids) {
-            check(await db.rpc('reorder_languages', { p_ids: ids }));
+        async reorderInputs(ids) {
+            check(await db.rpc('reorder_inputs', { p_ids: ids }));
         },
-        async deleteLanguage(id) {
-            check(await db.from('languages').delete().eq('id', id).select('id').single());
+        async deleteInput(id) {
+            check(await db.from('inputs').delete().eq('id', id).select('id').single());
         },
 
         async createKey(key) {
@@ -195,7 +211,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                     .insert({
                         event_id: key.event,
                         name: key.name,
-                        language: key.language,
+                        input: key.input,
                         server: key.server,
                         key: key.key,
                         server2: key.server2,
@@ -215,7 +231,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                     .from('keys')
                     .update({
                         name: key.name,
-                        language: key.language,
+                        input: key.input,
                         server: key.server,
                         key: key.key,
                         server2: key.server2,

@@ -10,7 +10,6 @@ function renderRoleTable(eventId = null) {
             return renderRoleEditRow(r);
         }
 
-        const idIssue = getIdIssue(config.roles, r);
         const isCurrentUser = r.email.toLowerCase() === config.userEmail.toLowerCase();
         const canManageRole = hasRoleAccess(eventRoles, ACTIONS.UPDATE, r.event, r.type);
         const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
@@ -30,15 +29,12 @@ function renderRoleTable(eventId = null) {
               : '';
 
         return `
-            <tr class="hover:bg-base-300 text-center ${idIssueClass(idIssue)}" data-role-id="${escapeHtml(r.id)}" title="${escapeHtml(idIssue)}">
+            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
                 <th class="w-100" style="padding: 5px;">
-                    <div class="flex items-center justify-center gap-2">
-                        <span>${emailLabel}</span>
-                        ${idIssueBadgeHtml(idIssue)}
-                    </div>
+                    <span>${emailLabel}</span>
                 </th>
                 <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
-                <td class="w-50" style="padding: 5px;">${languageLabelHtml(r.language)}</td>
+                <td class="w-50" style="padding: 5px;">${inputLabelHtml(r.input)}</td>
                 <td style="padding: 5px;">${actions}</td>
             </tr>
         `;
@@ -51,7 +47,7 @@ function renderRoleTable(eventId = null) {
                 event: eventId,
                 email: '',
                 type: ROLES.VIEWER,
-                language: '*',
+                input: '*',
             }),
         );
     }
@@ -84,11 +80,11 @@ function compareRolesForTable(r1, r2) {
     if (r1.type !== r2.type) return parseInt(r2.type) - parseInt(r1.type);
     if (r2.event === '*' && r1.event !== '*') return 1;
     if (r2.event !== '*' && r1.event === '*') return -1;
-    if (r1.language === '*' && r2.language !== '*') return -1;
-    if (r1.language !== '*' && r2.language === '*') return 1;
+    if (r1.input === '*' && r2.input !== '*') return -1;
+    if (r1.input !== '*' && r2.input === '*') return 1;
 
-    const languageOrderDiff = getLanguageOrder(r1.language) - getLanguageOrder(r2.language);
-    if (languageOrderDiff !== 0) return languageOrderDiff;
+    const inputOrderDiff = getInputOrder(r1.input) - getInputOrder(r2.input);
+    if (inputOrderDiff !== 0) return inputOrderDiff;
     return r1.email.localeCompare(r2.email);
 }
 
@@ -99,13 +95,13 @@ function renderRoleEditRow(role) {
                 <input type="email" class="input input-sm role-email-input w-full" value="${escapeHtml(role.email)}" placeholder="email@example.com" maxlength="100" />
             </th>
             <td class="w-30" style="padding: 5px;">
-                <select class="select select-sm role-type-input w-full" data-action="render-role-language">
+                <select class="select select-sm role-type-input w-full" data-action="render-role-input">
                     ${roleTypeOptions(role.event, role.type)}
                 </select>
             </td>
             <td class="w-50" style="padding: 5px;">
-                <select class="select select-sm role-language-input w-full">
-                    ${roleLanguageOptions(role.language, role.type)}
+                <select class="select select-sm role-input-select w-full">
+                    ${roleInputOptions(role.input, role.type)}
                 </select>
             </td>
             <td style="padding: 5px;">
@@ -209,10 +205,10 @@ async function saveRoleInlineBtn(button) {
                 : config.roles.find((r) => r.id === row.dataset.roleId)?.event,
         email: row.querySelector('.role-email-input').value.trim(),
         type: row.querySelector('.role-type-input').value.trim(),
-        language: row.querySelector('.role-language-input').value.trim(),
+        input: row.querySelector('.role-input-select').value.trim(),
     };
     if (role.type === ROLES.ADMIN || role.type === ROLES.OWNER) {
-        role.language = '*';
+        role.input = '*';
     }
 
     // Validation
@@ -232,7 +228,7 @@ async function saveRoleInlineBtn(button) {
     const isAdd = role.id === '';
     const optimisticRole = {
         ...role,
-        id: isAdd ? getNextSequentialId(config.roles, 'R') : role.id,
+        id: isAdd ? newTempId() : role.id,
         pending: isAdd,
     };
 
@@ -322,32 +318,32 @@ function roleTypeOptions(eventId, selectedType = ROLES.VIEWER) {
         .join('');
 }
 
-function renderRoleLanguages() {
-    document.querySelectorAll('.role-language-input').forEach((input) => {
+function renderRoleInputs() {
+    document.querySelectorAll('.role-input-select').forEach((input) => {
         const row = input.closest('tr');
         const type = row?.querySelector('.role-type-input')?.value || ROLES.VIEWER;
-        input.innerHTML = roleLanguageOptions(input.value, type);
+        input.innerHTML = roleInputOptions(input.value, type);
     });
 }
 
-function renderRoleLanguageForRow(typeInput) {
+function renderRoleInputForRow(typeInput) {
     const row = typeInput.closest('tr');
-    const languageInput = row?.querySelector('.role-language-input');
-    if (!languageInput) return;
+    const inputSelect = row?.querySelector('.role-input-select');
+    if (!inputSelect) return;
 
-    languageInput.innerHTML = roleLanguageOptions(languageInput.value, typeInput.value);
+    inputSelect.innerHTML = roleInputOptions(inputSelect.value, typeInput.value);
 }
 
-function roleLanguageOptions(selectedLanguage = '*', roleType = ROLES.VIEWER) {
+function roleInputOptions(selectedInput = '*', roleType = ROLES.VIEWER) {
     const options =
         roleType === ROLES.ADMIN || roleType === ROLES.OWNER
             ? [{ id: '*', name: '* (All)' }]
-            : languageOptions({ includeAll: true });
+            : inputOptions({ includeAll: true });
 
     return options
         .map(
-            (language) =>
-                `<option value="${escapeHtml(language.id)}" ${language.id === selectedLanguage ? 'selected' : ''}>${escapeHtml(language.name)}</option>`,
+            (input) =>
+                `<option value="${escapeHtml(input.id)}" ${input.id === selectedInput ? 'selected' : ''}>${escapeHtml(input.name)}</option>`,
         )
         .join('');
 }

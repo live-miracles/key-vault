@@ -16,7 +16,7 @@ const fe = {
     hasEventAccess: frontend.get('hasEventAccess'),
     hasKeyAccess: frontend.get('hasKeyAccess'),
     hasKeyColorAccess: frontend.get('hasKeyColorAccess'),
-    hasLanguageAccess: frontend.get('hasLanguageAccess'),
+    hasInputAccess: frontend.get('hasInputAccess'),
     hasRoleAccess: frontend.get('hasRoleAccess'),
 };
 
@@ -27,10 +27,10 @@ test('role and action codes match the frontend', () => {
     assert.deepEqual(plain(shared.ACTIONS), plain(fe.ACTIONS));
 });
 
-// Every non-empty combination of (type, language) a user could hold in event E1.
+// Every non-empty combination of (type, input) a user could hold in event E1.
 const holdings = [];
 for (const type of ['0', '1', '2', '3']) {
-    for (const language of ['*', 'L1', 'L2']) holdings.push({ type, language });
+    for (const input of ['*', 'L1', 'L2']) holdings.push({ type, input });
 }
 const combos = [];
 for (let mask = 0; mask < 1 << 4; mask += 1) {
@@ -61,11 +61,11 @@ test('every access decision matches the frontend for all role combinations', () 
                         `event ${action} ${eventId}`,
                     );
                 }
-                for (const language of ['L1', 'L2', 'L3', null]) {
+                for (const input of ['L1', 'L2', 'L3', null]) {
                     assert.equal(
-                        shared.hasKeyAccess(a, action, 'E1', language),
-                        fe.hasKeyAccess(b, action, 'E1', language),
-                        `key ${action} ${language}`,
+                        shared.hasKeyAccess(a, action, 'E1', input),
+                        fe.hasKeyAccess(b, action, 'E1', input),
+                        `key ${action} ${input}`,
                     );
                 }
                 for (const type of ['0', '1', '2', '3', null]) {
@@ -77,7 +77,7 @@ test('every access decision matches the frontend for all role combinations', () 
                 }
                 compared += 1;
             }
-            assert.equal(shared.hasLanguageAccess(a), fe.hasLanguageAccess(b));
+            assert.equal(shared.hasInputAccess(a), fe.hasInputAccess(b));
             assert.equal(shared.hasKeyColorAccess(a, 'E1'), fe.hasKeyColorAccess(b, 'E1'));
         }
     }

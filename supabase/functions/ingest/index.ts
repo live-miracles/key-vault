@@ -58,6 +58,7 @@ Deno.serve(async (request) => {
         p_instance: heartbeat.instance,
         p_sent_at: heartbeat.sentAt,
         p_outputs: heartbeat.outputs,
+        p_inputs: heartbeat.inputs,
     });
     if (error) {
         console.error('ingest_heartbeat failed:', error.message);

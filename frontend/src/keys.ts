@@ -181,23 +181,33 @@ function renderKeyTable(eventId = null) {
     const eventKeys = config.keys
         .filter((k) => k.event === eventId)
         .sort((a, b) => {
-            const orderDiff = getLanguageOrder(a.language) - getLanguageOrder(b.language);
+            const orderDiff = getInputOrder(a.input) - getInputOrder(b.input);
             if (orderDiff !== 0) return orderDiff;
-            return getLanguageName(a.language).localeCompare(getLanguageName(b.language));
+            return getInputName(a.input).localeCompare(getInputName(b.input));
         });
-    // The left panel picks a language; the table shows only that language's keys. Duplicate
+    // The left panel picks a input; the table shows only that input's keys. Duplicate
     // URLs are still checked against the whole event, so a clash is never hidden by a filter.
-    const language = renderLanguagePanel(eventKeys);
-    const keys = language ? eventKeys.filter((k) => k.language === language) : eventKeys;
+    const input = renderInputPanel(eventKeys);
+    renderInputBanner(input);
+    const keys = input ? eventKeys.filter((k) => k.input === input) : eventKeys;
     const allUrls = eventKeys.flatMap((key) =>
         [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
     );
 
     const renderedKeys = keys.map((k, i) => {
-        const idIssue = getIdIssue(config.keys, k);
-        const { color, title: statusTitle } = getKeyDisplay(k, keyStatus);
+        const { color, title: detailTitle } = getKeyDisplay(k, keyStatus);
+        const note = k.pending
+            ? null
+            : describeKeyNote(k, keyStatus, Date.now(), getInputName(k.input));
+        const noteHtml = keyNoteHtml(note);
+        // Hovering gives owners and admins bunryu's own report; everyone else the note.
+        const statusTitle = hasRoleAccess(eventRoles, ACTIONS.UPDATE, k.event)
+            ? detailTitle
+            : note
+              ? [note.label, note.text].filter(Boolean).join(': ')
+              : '';
         const link = safeUrl(k.link);
-        const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.language);
+        const canManageKey = hasKeyAccess(eventRoles, ACTIONS.UPDATE, k.event, k.input);
         const isPending = Boolean(k.pending);
         const keyIdAttr = escapeHtml(k.id);
         const actions = isPending
@@ -243,9 +253,7 @@ function renderKeyTable(eventId = null) {
               })
             : '';
 
-        const languageIndex = keys.filter(
-            (key, index) => index <= i && key.language === k.language,
-        ).length;
+        const inputIndex = keys.filter((key, index) => index <= i && key.input === k.input).length;
         const platformNameCopyButton = isPending
             ? ''
             : `
@@ -254,20 +262,20 @@ function renderKeyTable(eventId = null) {
                     </button>
                 `;
         const tableRow = `
-                <tr class="key-row-hover ${color.bgCss} ${idIssueClass(idIssue)} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue || statusTitle)}">
+                <tr class="key-row-hover ${color.bgCss} text-center" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
                     <td style="padding: 2px">${i + 1}</td>
                     <td style="padding: 2px">
                         <div class="inline-flex items-center justify-center gap-1">
-                            ${languageLabelHtml(k.language)}
-                            <span>(${languageIndex})</span>
+                            ${inputLabelHtml(k.input)}
+                            <span>(${inputIndex})</span>
                         </div>
                     </td>
                     <td style="padding: 2px" title="${escapeHtml(k.name)}">
                         <div class="flex items-center justify-center gap-2">
                             <span>${escapeHtml(getPlatformNamePreview(k.name))}</span>
                             ${platformNameCopyButton}
-                            ${idIssueBadgeHtml(idIssue)}
                         </div>
+                        ${noteHtml}
                     </td>
                     <td style="padding: 2px">${mainUrlCell}</td>
                     <td style="padding: 2px">${backupUrlCell}</td>
@@ -277,29 +285,31 @@ function renderKeyTable(eventId = null) {
                 </tr>`;
         const cardActions = actions ? `<div class="key-card-actions">${actions}</div>` : '';
         const mobileCard = `
-                <article class="key-mobile-card ${color.bgCss} ${idIssueClass(idIssue)}" data-key-id="${keyIdAttr}" title="${escapeHtml(idIssue || statusTitle)}">
+                <article class="key-mobile-card ${color.bgCss}" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
                     <div class="key-card-topline">
                         <div class="min-w-0">
                             <div class="key-card-title" title="${escapeHtml(k.name)}">
                                 <span>${i + 1}. ${escapeHtml(k.name || '(unnamed)')}</span>
-                                ${idIssueBadgeHtml(idIssue)}
                             </div>
                             <div class="key-card-meta">
-                                ${languageLabelHtml(k.language)}
-                                <span>(${languageIndex})</span>
+                                ${inputLabelHtml(k.input)}
+                                <span>(${inputIndex})</span>
                             </div>
                         </div>
                         ${cardActions}
                     </div>
+                    ${noteHtml}
                     <div class="key-card-fields">
-                        ${renderMobileKeyField('Main Streaming URL', mainUrlCell)}
-                        ${renderMobileKeyField('Backup Streaming URL', backupUrlCell)}
-                        ${renderMobileKeyField('Web Link', webLinkCell)}
-                        ${renderMobileKeyField('Remarks', escapeHtml(k.remarks || ''))}
+                        ${renderMobileKeyField('Main stream', mainUrlCell)}
+                        ${renderMobileKeyField('Backup stream', backupUrlCell)}
+                        ${renderMobileKeyField('Watch link', webLinkCell)}
+                        ${renderMobileKeyField('Notes', escapeHtml(k.remarks || ''))}
                     </div>
                 </article>`;
         return { tableRow, mobileCard };
     });
+
+    renderKeysEmptyState(keys.length === 0, hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId));
 
     document.querySelector('#key-rows').innerHTML = renderedKeys
         .map((key) => key.tableRow)
@@ -321,6 +331,30 @@ function renderKeyTable(eventId = null) {
             showKeyColorMenu(event, card.dataset.keyId);
         });
     });
+}
+
+// When the chosen input is in trouble, say so above its streams.
+function renderInputBanner(inputId) {
+    const banner = document.querySelector('#input-banner');
+    const info = inputId ? describeInputBanner(inputId, getInputName(inputId), keyStatus) : null;
+    banner.classList.toggle('hidden', !info);
+    banner.className = banner.className.replace(/input-banner-w+/g, '').trim();
+    if (!info) {
+        banner.textContent = '';
+        return;
+    }
+    banner.classList.add(`input-banner-${info.state}`);
+    banner.innerHTML = `<span class="status-pill status-${info.state}">${escapeHtml(info.label)}</span><span>${escapeHtml(info.text)}</span>`;
+}
+
+// With nothing to show, say what to do next instead of leaving a blank table.
+function renderKeysEmptyState(isEmpty, canAdd) {
+    document.querySelector('#keys-empty').classList.toggle('hidden', !isEmpty);
+    document.querySelector('.key-table-scroll').classList.toggle('hidden', isEmpty);
+    document.querySelector('#keys-empty-add').classList.toggle('hidden', !canAdd);
+    document.querySelector('#keys-empty-text').textContent = canAdd
+        ? 'Add a stream for each place you will go live, such as YouTube or Facebook. We will show you where to find the stream key.'
+        : 'Nothing has been added for you to see yet.';
 }
 
 function renderMobileKeyField(label, content) {
@@ -460,18 +494,23 @@ async function addKeyBtn() {
     document.querySelector('#key-id-input').value = '';
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-name-input').value = '';
-    renderKeyLanguages(eventId, ACTIONS.CREATE);
-    // Adding while a language is selected starts on that language.
-    const languageInput = document.querySelector('#key-language-input');
-    const selectedLanguage = getUrlParam('language');
-    languageInput.value = [...languageInput.options].some((o) => o.value === selectedLanguage)
-        ? selectedLanguage
+    suggestedStreamName = '';
+    keyGuideExpanded = true;
+    document.querySelector('#key-modal-title').innerText = 'Add a stream';
+    document.querySelector('#save-key-btn').innerText = 'Save stream';
+    renderKeyInputs(eventId, ACTIONS.CREATE);
+    // Adding while a input is selected starts on that input.
+    const inputSelect = document.querySelector('#key-input-select');
+    const selectedInput = getUrlParam('input');
+    inputSelect.value = [...inputSelect.options].some((o) => o.value === selectedInput)
+        ? selectedInput
         : '';
-    renderServerInput('');
     document.querySelector('#stream-key-input').value = '';
     document.querySelector('#stream-key2-input').value = '';
+    renderServerInput('');
     renderServerInput('', '2');
     applyBackupServerLock();
+    document.querySelector('#backup-details').open = false;
     document.querySelector('#key-link-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
     clearKeyErrors();
@@ -490,8 +529,13 @@ function editKeyRow() {
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
-    renderKeyLanguages(key.event, ACTIONS.UPDATE);
-    document.querySelector('#key-language-input').value = key.language;
+    suggestedStreamName = '';
+    // Someone editing a key already knows where it came from: keep the guide folded away.
+    keyGuideExpanded = false;
+    document.querySelector('#key-modal-title').innerText = 'Edit stream';
+    document.querySelector('#save-key-btn').innerText = 'Save changes';
+    renderKeyInputs(key.event, ACTIONS.UPDATE);
+    document.querySelector('#key-input-select').value = key.input;
     document.querySelector('#key-link-input').value = key.link;
     document.querySelector('#key-remarks-input').value = key.remarks;
 
@@ -500,6 +544,7 @@ function editKeyRow() {
     renderServerInput(key.server);
     renderServerInput(key.server2, '2');
     applyBackupServerLock();
+    document.querySelector('#backup-details').open = Boolean(key.key2);
 
     clearKeyErrors();
 
@@ -516,6 +561,13 @@ function clearKeyErrors() {
     document.querySelectorAll('#key-modal .select-error').forEach((elem) => {
         elem.classList.remove('select-error');
     });
+    document.querySelectorAll('#key-modal .picker-error').forEach((elem) => {
+        elem.classList.remove('picker-error');
+    });
+    document.querySelectorAll('#key-modal .field-notice').forEach((elem) => {
+        elem.textContent = '';
+        elem.classList.add('hidden');
+    });
     const errorElem = document.querySelector('#key-form-error');
     errorElem.innerText = '';
     errorElem.classList.add('hidden');
@@ -524,14 +576,25 @@ function clearKeyErrors() {
 function markKeyFieldError(selector) {
     const elem = document.querySelector(selector);
     if (!elem) return;
-    elem.classList.add(elem.tagName === 'SELECT' ? 'select-error' : 'input-error');
+    if (elem.id === 'platform-picker') elem.classList.add('picker-error');
+    else elem.classList.add(elem.tagName === 'SELECT' ? 'select-error' : 'input-error');
 }
 
+// Shows what is wrong in plain words, marks the field, and takes the person to it: the
+// dialog is taller than a phone screen, so the message could otherwise be out of sight.
 function setKeyFormError(message, selectors = []) {
     const errorElem = document.querySelector('#key-form-error');
     errorElem.innerText = message;
     errorElem.classList.remove('hidden');
     selectors.filter(Boolean).forEach(markKeyFieldError);
+
+    const first = selectors
+        .filter(Boolean)
+        .map((selector) => document.querySelector(selector))
+        .find((elem) => elem && elem.getClientRects().length > 0);
+    const target = first?.id === 'platform-picker' ? first.querySelector('button') : first;
+    target?.focus?.({ preventScroll: true });
+    (target || errorElem).scrollIntoView?.({ block: 'center', behavior: 'smooth' });
 }
 
 function readEndpoint(suffix = '') {
@@ -572,7 +635,9 @@ function readEndpoint(suffix = '') {
 function setEndpointError(suffix, field, message) {
     const errorSelector =
         field === 'select'
-            ? '#key-server' + suffix + '-input'
+            ? suffix
+                ? '#key-server2-input'
+                : '#platform-picker'
             : field === 'server'
               ? '#key-custom-server' + suffix + '-input'
               : '#stream-key' + suffix + '-input';
@@ -615,23 +680,27 @@ function validateSrtEndpoint(endpoint, suffix) {
     const keyLenValid = !settings.passphrase || [16, 24, 32].includes(settings.pbKeyLen);
 
     if (!settings.host) {
-        setSrtError(suffix, 'host', 'Hostname is required');
+        setSrtError(suffix, 'host', 'Enter the server address (hostname) your provider gave you.');
         return false;
     }
     if (!portValid) {
-        setSrtError(suffix, 'port', 'Port must be between 1 and 65535');
+        setSrtError(suffix, 'port', 'The port is a number between 1 and 65535.');
         return false;
     }
     if (!latencyValid) {
-        setSrtError(suffix, 'latency', 'Latency must be greater than 0');
+        setSrtError(
+            suffix,
+            'latency',
+            'The delay buffer must be a number above 0 (240 is a safe start).',
+        );
         return false;
     }
     if (!passphraseValid) {
-        setSrtError(suffix, 'passphrase', 'Passphrase must be 10-79 characters');
+        setSrtError(suffix, 'passphrase', 'The password must be 10 to 79 characters long.');
         return false;
     }
     if (!keyLenValid) {
-        setSrtError(suffix, 'keyLen', 'Key length is required when passphrase is set');
+        setSrtError(suffix, 'keyLen', 'Choose an encryption strength when you set a password.');
         return false;
     }
     return true;
@@ -640,7 +709,7 @@ function validateSrtEndpoint(endpoint, suffix) {
 function validateEndpoint(endpoint, suffix = '', required = false) {
     if (!endpoint.server && !endpoint.key && !required) return true;
     if (!endpoint.server) {
-        setEndpointError(suffix, 'select', 'Server is required');
+        setEndpointError(suffix, 'select', "Please choose where you're streaming to.");
         return false;
     }
 
@@ -649,43 +718,28 @@ function validateEndpoint(endpoint, suffix = '', required = false) {
     }
 
     if (endpoint.server === 'rtmp') {
-        const selectors = [];
-        if (
-            !endpoint.serverUrl ||
-            (!endpoint.serverUrl.startsWith('rtmp://') &&
-                !endpoint.serverUrl.startsWith('rtmps://')) ||
-            endpoint.serverUrl.includes(' ')
-        ) {
-            selectors.push('#key-custom-server' + suffix + '-input');
-        }
-        if (
-            !endpoint.streamKey ||
-            endpoint.streamKey.startsWith('rtmp://') ||
-            endpoint.streamKey.startsWith('rtmps://') ||
-            endpoint.streamKey.startsWith('srt://') ||
-            endpoint.streamKey.includes(' ')
-        ) {
-            selectors.push('#stream-key' + suffix + '-input');
-        }
-        if (
-            !endpoint.key ||
-            (!endpoint.key.startsWith('rtmp://') && !endpoint.key.startsWith('rtmps://')) ||
-            endpoint.key.includes(' ')
-        ) {
-            setKeyFormError('Invalid RTMP URL', selectors);
+        const address = endpoint.serverUrl;
+        if (!address) {
+            setEndpointError(
+                suffix,
+                'server',
+                'Enter the server address your provider gave you. It starts with rtmp:// or rtmps://',
+            );
             return false;
         }
-        return true;
+        if (!/^rtmps?:\/\//.test(address) || /\s/.test(address)) {
+            setEndpointError(
+                suffix,
+                'server',
+                'The server address must start with rtmp:// or rtmps:// and have no spaces.',
+            );
+            return false;
+        }
     }
 
-    if (
-        endpoint.key === '' ||
-        endpoint.key.startsWith('rtmp://') ||
-        endpoint.key.startsWith('rtmps://') ||
-        endpoint.key.startsWith('srt://') ||
-        endpoint.key.includes(' ')
-    ) {
-        setEndpointError(suffix, 'key', 'Invalid RTMP Key');
+    const problem = getStreamKeyProblem(endpoint.server, endpoint.streamKey ?? endpoint.key);
+    if (problem) {
+        setEndpointError(suffix, 'key', problem);
         return false;
     }
 
@@ -702,7 +756,7 @@ async function saveKeyFormBtn(event) {
         id: document.getElementById('key-id-input').value.trim(),
         event: document.getElementById('key-event-input').value.trim(),
         name: document.getElementById('key-name-input').value.trim(),
-        language: document.getElementById('key-language-input').value.trim(),
+        input: document.getElementById('key-input-select').value.trim(),
         server: mainEndpoint.server,
         key: mainEndpoint.key,
         server2: backupEndpoint.server,
@@ -720,16 +774,21 @@ async function saveKeyFormBtn(event) {
     // Validation
     clearKeyErrors();
     if (key.name === '') {
-        setKeyFormError("Name can't be empty", ['#key-name-input']);
+        setKeyFormError(
+            'Give this stream a name your team will recognise, for example "YouTube English".',
+            ['#key-name-input'],
+        );
         event.preventDefault();
         return;
     } else if (!/^[a-zA-Z0-9_\- ]*$/.test(key.name)) {
-        setKeyFormError('Only letters, numbers, spaces, -, _', ['#key-name-input']);
+        setKeyFormError('Please use only letters, numbers, spaces, - and _ in the name.', [
+            '#key-name-input',
+        ]);
         event.preventDefault();
         return;
     }
-    if (key.language === '') {
-        setKeyFormError('Language is required', ['#key-language-input']);
+    if (key.input === '') {
+        setKeyFormError('Choose the input of this stream.', ['#key-input-select']);
         event.preventDefault();
         return;
     }
@@ -748,7 +807,10 @@ async function saveKeyFormBtn(event) {
                     getKeyBackupUrl(k) === getKeyMainUrl(key),
             )
     ) {
-        setKeyFormError('This URL has already been added', getEndpointErrorSelectors(mainEndpoint));
+        setKeyFormError(
+            'This stream is already added in this event (same address and key).',
+            getEndpointErrorSelectors(mainEndpoint),
+        );
         event.preventDefault();
         return;
     }
@@ -769,7 +831,7 @@ async function saveKeyFormBtn(event) {
             )
     ) {
         setKeyFormError(
-            'This URL has already been added',
+            'This backup is already used by another stream in this event.',
             getEndpointErrorSelectors(backupEndpoint, '2'),
         );
         event.preventDefault();
@@ -782,7 +844,7 @@ async function saveKeyFormBtn(event) {
         getKeyMainUrl(key) === getKeyBackupUrl(key)
     ) {
         setKeyFormError(
-            "Backup URL can't be the same as the Main",
+            'The backup must be different from the main stream.',
             getEndpointErrorSelectors(backupEndpoint, '2'),
         );
         event.preventDefault();
@@ -794,7 +856,7 @@ async function saveKeyFormBtn(event) {
     const isAdd = key.id === '';
     const optimisticKey = {
         ...key,
-        id: isAdd ? getNextSequentialId(config.keys, 'K') : key.id,
+        id: isAdd ? newTempId() : key.id,
         pending: isAdd,
     };
     replaceConfigItem('keys', optimisticKey, key.id || optimisticKey.id);
@@ -877,8 +939,8 @@ async function copyTextValue(text) {
     }
 }
 
-function renderKeyLanguages(eventId, action = ACTIONS.CREATE) {
-    renderLanguageSelect('#key-language-input', { eventId, action, placeholder: 'Language' });
+function renderKeyInputs(eventId, action = ACTIONS.CREATE) {
+    renderInputSelect('#key-input-select', { eventId, action, placeholder: 'Input' });
 }
 
 function renderServerInput(server, suffix = '') {
@@ -895,11 +957,8 @@ function renderServerInput(server, suffix = '') {
 
     select.value = isKnownServer ? server : '';
     customServer.classList.toggle('hidden', !isCustomRtmp);
-    customServer.classList.toggle('inline-block', isCustomRtmp);
     streamKeyField.classList.toggle('hidden', shouldHideStreamKey);
-    streamKeyField.classList.toggle('inline-block', !shouldHideStreamKey);
     srtServer.classList.toggle('hidden', !isCustomSrt);
-    srtServer.classList.toggle('contents', isCustomSrt);
 
     if (!server) {
         streamKeyInput.value = '';
@@ -918,6 +977,8 @@ function renderServerInput(server, suffix = '') {
     } else {
         setSrtInputs(DEFAULT_SRT_SETTINGS, suffix);
     }
+
+    if (!suffix) syncPlatformPicker(isKnownServer ? server : '');
 }
 
 function convertKnownCustomServerUrl(suffix = '') {
@@ -958,20 +1019,26 @@ function enforceLockedBackup(key) {
 
 function applyBackupServerLock() {
     const primaryServer = document.querySelector('#key-server-input').value;
-    const backupServerRow = document.querySelector('#backup-server-row');
+    const backupSection = document.querySelector('#backup-section');
+    const backupDetails = document.querySelector('#backup-details');
+    const backupNote = document.querySelector('#backup-note');
     const backupServerInput = document.querySelector('#key-server2-input');
     const backupCustomServerInput = document.querySelector('#key-custom-server2-input');
     const backupKeyInput = document.querySelector('#stream-key2-input');
     const backupServer = LOCKED_BACKUP_BY_SERVER[primaryServer];
     const isLocked = Boolean(backupServer);
     const isHidden = !primaryServer || Boolean(HIDDEN_BACKUP_BY_SERVER[primaryServer]);
+    const note = BACKUP_NOTES[primaryServer] || '';
 
-    backupServerRow.classList.toggle('hidden', isHidden);
-    backupServerRow.classList.toggle('flex', !isHidden);
+    backupSection.classList.toggle('hidden', !primaryServer);
+    backupDetails.classList.toggle('hidden', isHidden);
+    backupNote.textContent = note;
+    backupNote.classList.toggle('hidden', !note);
 
     if (isHidden) {
         renderServerInput('', '2');
         backupKeyInput.value = '';
+        backupDetails.open = false;
     }
 
     if (isLocked) {
@@ -1059,6 +1126,165 @@ function getKeyDisplay(key, report) {
     return { color: COLORS[''], title: '' };
 }
 
+// ===== The status note under a stream's name =====
+//
+// The row color says how a stream is doing; the note says it in words and, when something is
+// wrong, what to do. bunryu's own hints are written for the streaming team (hosts, ports,
+// FFmpeg), so the advice here is written for the media team: short, in terms of the key, the
+// platform and who to tell. It is a lookup on bunryu's redacted message, so an unknown
+// message gets the generic line and the raw text is never shown, only copyable.
+
+const NOTE_LABELS = {
+    running: 'Live',
+    warning: 'Unstable',
+    error: 'Problem',
+    stopped: 'Not sending',
+};
+
+const GENERIC_ADVICE = {
+    error: 'Nothing is being sent. Check the stream key and that the stream is started on the platform, then tell the streaming team.',
+    warning: 'It is sending, but not smoothly. Tell the streaming team if it keeps happening.',
+};
+
+// First match wins, so the more specific patterns come first.
+const ADVICE_PATTERNS = [
+    [
+        /error closing file/i,
+        'The platform stopped accepting the stream. This often fixes itself. If it does not, check the platform’s live page.',
+    ],
+    [
+        /server returned 40[13]|unauthorized|forbidden/i,
+        'The platform did not accept the stream key. It may be wrong or have expired. Get a fresh key from the platform and update it here.',
+    ],
+    [
+        /connection setup failure|connection rejected|econnreject|passphrase/i,
+        'The SRT link was rejected. Check the link, with its passphrase and stream id, with whoever gave it to you.',
+    ],
+    [
+        /connection refused|timed out|etimedout|name or service not known|could not resolve|failed to resolve|getaddrinfo/i,
+        'Could not reach the platform. Check the address and stream key you entered, and that the stream is started on the platform.',
+    ],
+    [
+        /input\/output error|broken pipe|connection reset by peer|end of file/i,
+        'The platform closed the connection. The stream key is often wrong, expired, or already in use by another stream. Check it on the platform.',
+    ],
+    [
+        /not (?:currently )?supported in container|incompatible with (?:output )?codec|not compatible with flv/i,
+        'The platform cannot accept this video format. Tell the streaming team.',
+    ],
+    [
+        /falling behind/i,
+        'The stream is reaching the platform slowly, usually because of the network. Tell the streaming team if it keeps happening.',
+    ],
+];
+
+function getStatusAdvice(status) {
+    const message = status.message || '';
+    for (const [pattern, advice] of ADVICE_PATTERNS) {
+        if (pattern.test(message)) return advice;
+    }
+    return GENERIC_ADVICE[status.status] || '';
+}
+
+// A short sentence for how long a stream has been live, from its start time in ms.
+function describeLiveFor(sinceMs, nowMs) {
+    if (!sinceMs) return '';
+    const ago = formatAgo(nowMs - sinceMs);
+    return ago === 'just now' ? '' : `for ${ago.replace(/ ago$/, '')}`;
+}
+
+// What to say under a stream's name, or null when nothing can be said. Without a fresh report
+// from bunryu nothing is claimed: bunryu only runs during events, so silence is normal.
+// `copy` is the technical detail for a Copy button, to paste to the streaming team.
+function describeKeyNote(key, report, nowMs = Date.now(), inputName = '') {
+    if (!report?.online) return null;
+    const input = getInputStatus(key.input, report);
+    const inputLabel = inputName ? `“${inputName}”` : 'this input';
+    const status = getKeyStatus(key, report);
+    if (!status) {
+        if (!getKeyMainUrl(key)) return null;
+        return {
+            state: 'none',
+            label: 'Not set up yet',
+            text: 'The streaming team has not set up this link yet, or still has the old one.',
+            copy: '',
+        };
+    }
+
+    const label = NOTE_LABELS[status.status] || status.status;
+    // The link runs in a pipeline of another name than this stream's input, so it was
+    // probably put in the wrong place. Said first: a healthy stream in the wrong place is
+    // still wrong.
+    const wrongInput = status.inputMismatch
+        ? `The streaming team has this link under “${status.pipeline}”, but this stream is for ${inputLabel}. One of them is wrong.`
+        : '';
+    if (status.status === 'running' || status.status === 'stopped') {
+        if (wrongInput)
+            return { state: 'warning', label: 'Check input', text: wrongInput, copy: '' };
+        return status.status === 'running'
+            ? { state: 'running', label, text: describeLiveFor(status.sinceMs, nowMs), copy: '' }
+            : { state: 'stopped', label, text: 'Set up, but not sending right now.', copy: '' };
+    }
+
+    const side = report.keys[key.id].main === status ? 'main' : 'backup';
+    const parts = [];
+    if (side === 'backup') parts.push('Backup stream:');
+    if (status.stoppedAfterFailures) {
+        parts.push(`Gave up after ${status.failures} failed attempts.`);
+    }
+    if (wrongInput) parts.push(wrongInput);
+    // When the input itself is not arriving, the destination is not the problem.
+    parts.push(
+        input?.status === 'error'
+            ? `The input ${inputLabel} is not arriving, so this is probably not a problem with the platform. Tell the streaming team.`
+            : getStatusAdvice(status),
+    );
+    const copy = status.message
+        ? [
+              `${key.name || 'Stream'} (${side} stream)`,
+              [status.pipeline, status.output].filter(Boolean).join(' → '),
+              status.message,
+          ]
+              .filter(Boolean)
+              .join(' | ')
+        : '';
+    return { state: status.status, label, text: parts.join(' ').trim(), copy };
+}
+
+const INPUT_LABELS = {
+    running: 'Receiving',
+    warning: 'Unstable',
+    error: 'Not arriving',
+    stopped: 'Idle',
+};
+
+// What bunryu reports about an input, found by the input's name, or null: nothing is claimed
+// without a fresh report, or for an input bunryu has no pipeline of that name for.
+function getInputStatus(inputId, report) {
+    if (!report?.online) return null;
+    return report.inputs?.[inputId] || null;
+}
+
+// The words above a list of streams when their input is in trouble, or null.
+function describeInputBanner(inputId, name, report) {
+    const input = getInputStatus(inputId, report);
+    if (!input || (input.status !== 'error' && input.status !== 'warning')) return null;
+    const text =
+        input.status === 'error'
+            ? `Nothing is arriving on input “${name}”. Its streams cannot be live until the signal is back, so there is no need to contact the platforms. Tell the streaming team.`
+            : `The signal on input “${name}” is unstable, so its streams may stutter. Tell the streaming team if it keeps happening.`;
+    return { state: input.status, label: INPUT_LABELS[input.status], text };
+}
+
+function keyNoteHtml(note) {
+    if (!note) return '';
+    const text = note.text ? `<span class="key-note-text">${escapeHtml(note.text)}</span>` : '';
+    const copy = note.copy
+        ? `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the error details to send to the streaming team" aria-label="Copy error details" data-action="copy-text" data-copy-value="${escapeHtml(note.copy)}">${iconSvg('copy')}</button>`
+        : '';
+    return `<div class="key-note"><span class="status-pill status-${note.state}">${escapeHtml(note.label)}</span>${text}${copy}</div>`;
+}
+
 const LOCKED_BACKUP_BY_SERVER = {
     fb: 'fb',
 };
@@ -1070,14 +1296,313 @@ const HIDDEN_BACKUP_BY_SERVER = {
 
 const YOUTUBE_BACKUP_SERVER_URL = 'rtmp://b.rtmp.youtube.com/live2?backup=1/';
 
-const KNOWN_RTMP_URL_SERVER_IDS = ['yt', 'fb'];
+const KNOWN_RTMP_URL_SERVER_IDS = ['yt', 'fb', 'vc'];
 
 const SERVERS = {
     '': { name: 'None', value: '' },
-    rtmp: { name: 'Custom RTMP', value: 'rtmp' },
-    srt: { name: 'Custom SRT', value: 'srt' },
+    rtmp: { name: 'Something else (rtmp://)', value: 'rtmp' },
+    srt: { name: 'SRT link', value: 'srt' },
     yt: { name: 'YouTube', value: 'rtmp://a.rtmp.youtube.com/live2/' },
     fb: { name: 'Facebook', value: 'rtmps://live-api-s.facebook.com:443/rtmp/' },
     ig: { name: 'Instagram', value: 'rtmps://edgetee-upload-${s_prp}.xx.fbcdn.net:443/rtmp/' },
-    vc: { name: 'VDO Cipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },
+    vc: { name: 'VdoCipher', value: 'rtmp://live-ingest-01.vd0.co:1935/livestream/' },
 };
+
+// ===== The guided "Add a stream" dialog =====
+//
+// Everything below is written for someone who has never seen a stream key: each platform gets
+// a few plain steps for finding its key, the key box takes a pasted full address and keeps
+// only the key, and an error says what to do rather than what failed.
+
+const PLATFORM_GUIDES = {
+    yt: {
+        stepTitle: 'Get your YouTube stream key',
+        title: 'How to find your key on YouTube',
+        steps: [
+            'Open YouTube Studio and sign in to the channel that will go live.',
+            'Click “Create” at the top right, then “Go live”.',
+            'Under “Stream settings”, find the “Stream key” and click “Copy”.',
+            'Come back here and paste it into the box below.',
+        ],
+        openUrl: 'https://studio.youtube.com',
+        openLabel: 'Open YouTube Studio',
+        note: 'You only need the key. The server address is filled in for you, and YouTube’s backup connection is set up automatically.',
+        keyLabel: 'YouTube stream key',
+        keyHelp: 'It is a few groups of letters and numbers, like abcd-1234-efgh-5678-ijkl.',
+        placeholder: 'abcd-1234-efgh-5678-ijkl',
+    },
+    fb: {
+        stepTitle: 'Get your Facebook stream key',
+        title: 'How to find your key on Facebook',
+        steps: [
+            'Open Facebook and go to the Page or profile that will go live.',
+            'Choose “Live video”, then “Streaming software”. The Live Producer opens.',
+            'Find the “Stream key” and click “Copy”.',
+            'Come back here and paste it into the box below.',
+        ],
+        openUrl: 'https://www.facebook.com/live/producer',
+        openLabel: 'Open Facebook Live',
+        note: 'Facebook keys can stop working after a while, or after one use. If the stream will not start, get a fresh key and update it here.',
+        keyLabel: 'Facebook stream key',
+        keyHelp:
+            'It starts with “FB-” followed by numbers and letters, like FB-1234567890-0-AbCdEfGh.',
+        placeholder: 'FB-1234567890-0-AbCdEfGh',
+    },
+    ig: {
+        stepTitle: 'Get your Instagram stream key',
+        title: 'How to find your key on Instagram',
+        steps: [
+            'On a computer, open Instagram and start a live video (Create, then Live).',
+            'Give the live a title, choose who can watch, and continue.',
+            'Copy the “Stream key”.',
+            'Come back here and paste the whole key into the box below.',
+        ],
+        openUrl: 'https://www.instagram.com/',
+        openLabel: 'Open Instagram',
+        note: 'Paste the whole key, including everything after “?s_prp=”. Instagram keys often work for one live only, so you may need a new one each time.',
+        keyLabel: 'Instagram stream key',
+        keyHelp: 'It is a long code that contains “?s_prp=”. Paste all of it.',
+        placeholder: 'Paste the whole key, including ?s_prp=…',
+    },
+    vc: {
+        stepTitle: 'Get your VdoCipher stream key',
+        title: 'How to find your key on VdoCipher',
+        steps: [
+            'Sign in to your VdoCipher dashboard.',
+            'Open your live stream, or create a new one.',
+            'Copy its “Stream key”.',
+            'Come back here and paste it into the box below.',
+        ],
+        openUrl: 'https://dashboard.vdocipher.com',
+        openLabel: 'Open VdoCipher',
+        note: 'You only need the key. The server address is filled in for you.',
+        keyLabel: 'VdoCipher stream key',
+        keyHelp: 'Paste the key exactly as VdoCipher shows it.',
+        placeholder: 'Paste your stream key here',
+    },
+    rtmp: {
+        stepTitle: 'Enter your stream details',
+        title: 'What to ask your streaming provider for',
+        steps: [
+            'A server address. It starts with rtmp:// or rtmps://.',
+            'A stream key. This is the secret code for your stream.',
+            'Type or paste each one below. If you only have one long address, paste it into the stream key box and we will split it for you.',
+        ],
+        note: 'Not sure what to enter? Ask the person who set up the streaming service.',
+        keyLabel: 'Stream key',
+        keyHelp: 'The secret code from your provider.',
+        placeholder: 'Paste your stream key here',
+    },
+    srt: {
+        stepTitle: 'Enter your SRT details',
+        title: 'What to ask your streaming provider for',
+        steps: [
+            'The server address and the port number of the SRT link.',
+            'Whether you connect to them (Caller) or they connect to you (Listener).',
+            'A password and a stream ID, only if they gave you these.',
+        ],
+        note: 'SRT is mostly used by technical teams. If you are not sure, ask the person who set up the stream.',
+        keyLabel: 'Stream key',
+        keyHelp: '',
+        placeholder: '',
+    },
+};
+
+// Shown above the backup section so nobody fills in what the platform does not need. Where
+// the form hides the backup box (YouTube, Instagram) the note is all there is; for Facebook
+// it explains the box that is left.
+const BACKUP_NOTES = {
+    yt: 'YouTube’s backup uses the same stream key as your main stream. Only the server address is different, and we add it for you. Nothing to fill in here.',
+    fb: 'Facebook’s backup uses the same server address as your main stream, but a different stream key. Paste the backup key from Facebook below.',
+    ig: 'Instagram has no backup stream. Leave this empty: there is nothing to fill in.',
+};
+
+// What the Name box is filled with when someone picks a platform and has typed nothing yet.
+const SUGGESTED_NAMES = { yt: 'YouTube', fb: 'Facebook', ig: 'Instagram', vc: 'VdoCipher' };
+
+let suggestedStreamName = '';
+let keyGuideExpanded = true;
+
+// Takes a pasted stream key and makes it what the form stores. People often copy the whole
+// address (rtmp://a.rtmp.youtube.com/live2/abcd-1234) instead of the key: when we recognise
+// the platform we keep just the key and say so. For "something else" we split the address
+// from the key at the last "/".
+function cleanStreamKeyInput(server, raw) {
+    const value = String(raw ?? '').trim();
+    const result = { server, key: value, serverUrl: '', notice: '' };
+    if (!/^rtmps?:\/\//.test(value)) return result;
+
+    const youtubeBackup = value.startsWith(YOUTUBE_BACKUP_SERVER_URL)
+        ? { server: 'yt', streamKey: value.slice(YOUTUBE_BACKUP_SERVER_URL.length) }
+        : null;
+    const instagram = /^rtmps:\/\/edgetee-upload-[^./]+\.xx\.fbcdn\.net:443\/rtmp\//.exec(value);
+    const known =
+        detectKnownRtmpServerUrl(value) ||
+        youtubeBackup ||
+        (instagram ? { server: 'ig', streamKey: value.slice(instagram[0].length) } : null);
+
+    if (known?.streamKey) {
+        return {
+            ...result,
+            server: known.server,
+            key: known.streamKey,
+            notice: `That was a full ${SERVERS[known.server].name} address. We kept just the stream key.`,
+        };
+    }
+    if (server === 'rtmp') {
+        const parts = splitRtmpUrl(value);
+        if (parts.serverUrl && parts.streamKey) {
+            return {
+                ...result,
+                key: parts.streamKey,
+                serverUrl: parts.serverUrl,
+                notice: 'We split the full address into the server address and the stream key.',
+            };
+        }
+    }
+    return result;
+}
+
+// What is wrong with a stream key, in words anyone can act on; '' when it looks fine.
+function getStreamKeyProblem(server, key) {
+    const value = String(key ?? '');
+    const platform = SERVERS[server]?.name || 'your provider';
+    if (!value) {
+        return server === 'rtmp'
+            ? 'Paste the stream key your provider gave you.'
+            : `Paste your ${platform} stream key. It is the secret code from ${platform}.`;
+    }
+    if (/\s/.test(value)) return 'A stream key has no spaces. Please copy it again.';
+    if (/^(rtmps?|srt):\/\//.test(value)) {
+        return 'That looks like a full address. Paste only the stream key, the part after the last “/”.';
+    }
+    if (server === 'ig' && !/[?&]s_prp=[^&]+/.test(value)) {
+        return 'An Instagram key contains “?s_prp=”. Please copy the whole key.';
+    }
+    return '';
+}
+
+function renderKeyGuide(server) {
+    const guide = PLATFORM_GUIDES[server];
+    const box = document.querySelector('#key-guide');
+    if (!guide) {
+        box.innerHTML = '';
+        return;
+    }
+
+    const open = guide.openUrl
+        ? `<a class="btn btn-sm mt-3" href="${escapeHtml(guide.openUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(guide.openLabel)}<span class="sr-only"> (opens in a new tab)</span></a>`
+        : '';
+    box.innerHTML = `
+        <details class="key-guide-box" ${keyGuideExpanded ? 'open' : ''}>
+            <summary>${escapeHtml(guide.title)}</summary>
+            <ol class="key-guide-steps">
+                ${guide.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join('')}
+            </ol>
+            ${open}
+            ${guide.note ? `<p class="key-guide-note">${escapeHtml(guide.note)}</p>` : ''}
+            <p class="key-guide-foot">Screens change now and then, so the names may look a little different.</p>
+        </details>`;
+
+    document.querySelector('#key-step-key-title').textContent = guide.stepTitle;
+    document.querySelector('#stream-key-legend').textContent = guide.keyLabel;
+    document.querySelector('#stream-key-help').textContent = guide.keyHelp;
+    document.querySelector('#stream-key-input').placeholder = guide.placeholder;
+}
+
+// Shows which platform tile is chosen, and the step that asks for its key.
+function syncPlatformPicker(server) {
+    document.querySelectorAll('#platform-picker .platform-tile').forEach((tile) => {
+        const active = tile.dataset.server === server;
+        tile.classList.toggle('platform-tile-active', active);
+        tile.setAttribute('aria-checked', String(active));
+    });
+    document.querySelector('#key-step-key').classList.toggle('hidden', !server);
+    renderKeyGuide(server);
+}
+
+function suggestStreamName(server) {
+    if (document.querySelector('#key-id-input').value) return;
+    const nameInput = document.querySelector('#key-name-input');
+    if (nameInput.value.trim() !== '' && nameInput.value !== suggestedStreamName) return;
+    suggestedStreamName = SUGGESTED_NAMES[server] || '';
+    nameInput.value = suggestedStreamName;
+}
+
+function pickPlatform(server) {
+    if (!Object.prototype.hasOwnProperty.call(SERVERS, server) || !server) return;
+    const select = document.querySelector('#key-server-input');
+    const previous = select.value;
+    if (previous === server) return;
+
+    // A key from another platform is of no use here, and would only confuse.
+    if (previous) {
+        document.querySelector('#stream-key-input').value = '';
+        document.querySelector('#key-custom-server-input').value = '';
+    }
+    keyGuideExpanded = true;
+    clearKeyErrors();
+    renderServerInput(server);
+    applyBackupServerLock();
+    suggestStreamName(server);
+
+    const next = document.querySelector(
+        server === 'srt'
+            ? '#key-srt-host-input'
+            : server === 'rtmp'
+              ? '#key-custom-server-input'
+              : '#stream-key-input',
+    );
+    next?.focus({ preventScroll: true });
+}
+
+function showKeyNotice(suffix, text) {
+    const notice = document.querySelector('#stream-key' + suffix + '-notice');
+    if (!notice) return;
+    notice.textContent = text;
+    notice.classList.toggle('hidden', !text);
+}
+
+// Runs whenever the key box changes: a pasted full address is turned into just the key.
+function handleStreamKeyInput(suffix = '') {
+    const input = document.querySelector('#stream-key' + suffix + '-input');
+    const select = document.querySelector('#key-server' + suffix + '-input');
+    if (!select.value || !/^\s*rtmps?:\/\//.test(input.value)) return;
+
+    const cleaned = cleanStreamKeyInput(select.value, input.value);
+    if (!cleaned.notice) return;
+
+    // A main key that belongs to another known platform moves the choice there; a backup
+    // is only cleaned, because its platform is fixed by the main one.
+    if (!suffix && cleaned.server !== select.value) {
+        renderServerInput(cleaned.server);
+        applyBackupServerLock();
+        suggestStreamName(cleaned.server);
+    }
+    input.value = cleaned.key;
+    if (cleaned.serverUrl) {
+        const custom = document.querySelector('#key-custom-server' + suffix + '-input');
+        if (!custom.value.trim()) custom.value = cleaned.serverUrl;
+    }
+    showKeyNotice(suffix, cleaned.notice);
+}
+
+async function pasteStreamKey(suffix = '') {
+    const input = document.querySelector('#stream-key' + suffix + '-input');
+    let text = '';
+    try {
+        text = (await navigator.clipboard.readText()).trim();
+    } catch (_) {
+        // The browser may refuse to share the clipboard.
+    }
+    input.focus();
+    if (!text) {
+        showErrorAlert(
+            'We could not read what you copied. Click in the box and press Ctrl+V (or long-press and choose Paste).',
+            false,
+        );
+        return;
+    }
+    input.value = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+}

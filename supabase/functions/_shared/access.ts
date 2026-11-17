@@ -23,7 +23,7 @@ export interface RoleLike {
     event: string;
     email: string;
     type: string;
-    language: string;
+    input: string;
 }
 
 export type EventRoles = Record<string, RoleLike[]>;
@@ -36,7 +36,7 @@ export function getEventRoles(
 ): EventRoles {
     const userRoles = roles.filter((r) => r.email === email);
     if (isAppOwner) {
-        userRoles.push({ event: '*', email, type: ROLES.OWNER, language: '*' });
+        userRoles.push({ event: '*', email, type: ROLES.OWNER, input: '*' });
     }
     const eventRoles: EventRoles = {};
     for (const e of events) eventRoles[e.id] = [];
@@ -72,7 +72,7 @@ export function hasEventAccess(
     return isOwner;
 }
 
-export function hasLanguageAccess(eventRoles: EventRoles): boolean {
+export function hasInputAccess(eventRoles: EventRoles): boolean {
     return Boolean(eventRoles['*']?.some((r) => r.type === ROLES.OWNER));
 }
 
@@ -100,7 +100,7 @@ export function hasKeyAccess(
     eventRoles: EventRoles,
     action: Action,
     eventId: string,
-    language: string | null = null,
+    input: string | null = null,
 ): boolean {
     if (!eventRoles[eventId]) return false;
 
@@ -110,13 +110,12 @@ export function hasKeyAccess(
         isAdmin ||
         eventRoles[eventId].some(
             (r) =>
-                r.type === ROLES.EDITOR &&
-                (r.language === '*' || r.language === language || language === null),
+                r.type === ROLES.EDITOR && (r.input === '*' || r.input === input || input === null),
         );
     const isViewer =
         isEditor ||
         eventRoles[eventId].some(
-            (r) => r.type === ROLES.VIEWER && (r.language === '*' || r.language === language),
+            (r) => r.type === ROLES.VIEWER && (r.input === '*' || r.input === input),
         );
 
     if (action === ACTIONS.VIEW) return isViewer;

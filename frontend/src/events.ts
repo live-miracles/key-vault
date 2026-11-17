@@ -5,13 +5,10 @@ function renderEventTabBar(eventId = null) {
     const event = events.find((e) => e.id === eventId);
     const onOverview = !event && isOverviewView();
     const name = onOverview ? 'Overview' : event?.name || '';
-    const headerIssue = event ? getIdIssue(config.events, event) : '';
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
-    const canManageLanguages = hasLanguageAccess(eventRoles);
+    const canManageInputs = hasInputAccess(eventRoles);
     document.getElementById('event-name').innerText = name;
-    document.getElementById('event-name').className = headerIssue ? 'text-error' : '';
-    document.getElementById('event-name').title = headerIssue;
 
     document.querySelector('#add-event-btn').disabled = !canCreateEvents;
     document.querySelector('#add-event-btn').classList.toggle('hidden', !canCreateEvents);
@@ -24,8 +21,8 @@ function renderEventTabBar(eventId = null) {
         document.querySelector('#delete-event-btn').classList.add('hidden');
     }
 
-    document.querySelector('#show-settings-btn').disabled = !canManageLanguages;
-    document.querySelector('#show-settings-btn').classList.toggle('hidden', !canManageLanguages);
+    document.querySelector('#show-settings-btn').disabled = !canManageInputs;
+    document.querySelector('#show-settings-btn').classList.toggle('hidden', !canManageInputs);
 
     document.querySelector('#edit-event-btn').disabled = isPending;
     document.querySelector('#delete-event-btn').disabled = isPending;
@@ -40,12 +37,10 @@ function renderEventTabBar(eventId = null) {
     tabsElem.replaceChildren(
         ...(events.length > 0 ? [overviewTab] : []),
         ...events.map((e) => {
-            const idIssue = getIdIssue(config.events, e);
             const tab = document.createElement('a');
             tab.role = 'tab';
-            tab.className = `tab ${eventId === e.id ? 'tab-active' : ''} ${idIssue ? 'text-error bg-error/10' : ''}`;
-            tab.textContent = idIssue ? `${e.name || '(unnamed)'} (ID issue)` : e.name;
-            tab.title = idIssue;
+            tab.className = `tab ${eventId === e.id ? 'tab-active' : ''}`;
+            tab.textContent = e.name;
             tab.addEventListener('click', () => selectEvent(e.id, null));
             return tab;
         }),
@@ -63,7 +58,7 @@ async function addEventBtn() {
 
     const snapshot = cloneConfig();
     const optimisticEvent = {
-        id: getNextSequentialId(config.events, 'E'),
+        id: newTempId(),
         name: `Event ${nextNumber}`,
         pending: true,
     };
@@ -182,7 +177,7 @@ async function deleteEventBtn() {
 // The home page: totals and problems across every event.
 function selectOverview() {
     if (config.events.length === 0) return selectEvent('');
-    setUrlParams({ event: null, language: null, view: OVERVIEW_VIEW });
+    setUrlParams({ event: null, input: null, view: OVERVIEW_VIEW });
     showEventView(false);
     renderEventTabBar(null);
     for (const button of [
@@ -202,9 +197,9 @@ function showEventView(show) {
     document.querySelector('#overview-view').classList.toggle('hidden', show);
 }
 
-// `language` picks the language filter; leave it out to keep the one already chosen.
-function selectEvent(id, language = undefined) {
-    setUrlParams({ event: id, view: null, ...(language === undefined ? {} : { language }) });
+// `input` picks the input filter; leave it out to keep the one already chosen.
+function selectEvent(id, input = undefined) {
+    setUrlParams({ event: id, view: null, ...(input === undefined ? {} : { input }) });
     document.querySelector('#overview-view').classList.add('hidden');
 
     const hasEvents = config.events.length > 0;
@@ -250,7 +245,7 @@ function selectEvent(id, language = undefined) {
     }
 
     renderKeyTable(id);
-    renderKeyLanguages(id);
+    renderKeyInputs(id);
     if (hasKeyAccess(eventRoles, ACTIONS.CREATE, id) && config.events.some((e) => e.id === id)) {
         document.querySelector('#add-key-btn').classList.remove('hidden');
     } else {

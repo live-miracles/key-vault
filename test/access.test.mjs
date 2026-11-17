@@ -7,7 +7,7 @@ function loadAccess() {
     return loadFrontendScripts(['frontend/src/access.ts']);
 }
 
-test('owners receive access to every event and global language settings', () => {
+test('owners receive access to every event and global input settings', () => {
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const roles = [
@@ -15,7 +15,7 @@ test('owners receive access to every event and global language settings', () => 
             event: '*',
             email: 'owner@example.test',
             type: ROLES.OWNER,
-            language: '*',
+            input: '*',
         },
     ];
     const events = [{ id: 'E1' }, { id: 'E2' }];
@@ -24,7 +24,7 @@ test('owners receive access to every event and global language settings', () => 
 
     assert.deepEqual(Object.keys(eventRoles).sort(), ['*', 'E1', 'E2']);
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.CREATE), true);
-    assert.equal(runtime.get('hasLanguageAccess')(eventRoles), true);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles), true);
 });
 
 test('app owner receives owner access without a role row', () => {
@@ -36,14 +36,14 @@ test('app owner receives owner access without a role row', () => {
 
     assert.deepEqual(Object.keys(eventRoles).sort(), ['*', 'E1', 'E2']);
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.DELETE, 'E1'), true);
-    assert.equal(runtime.get('hasLanguageAccess')(eventRoles), true);
+    assert.equal(runtime.get('hasInputAccess')(eventRoles), true);
 });
 
 test('event admins can create new events', () => {
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const eventRoles = {
-        E1: [{ event: 'E1', type: ROLES.ADMIN, language: '*' }],
+        E1: [{ event: 'E1', type: ROLES.ADMIN, input: '*' }],
     };
 
     assert.equal(runtime.get('hasEventAccess')(eventRoles, ACTIONS.CREATE), true);
@@ -53,10 +53,10 @@ test('admins can add admins and manage non-owner roles, and owners can manage ow
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const adminEventRoles = {
-        E1: [{ event: 'E1', type: ROLES.ADMIN, language: '*' }],
+        E1: [{ event: 'E1', type: ROLES.ADMIN, input: '*' }],
     };
     const ownerEventRoles = {
-        E1: [{ event: 'E1', type: ROLES.OWNER, language: '*' }],
+        E1: [{ event: 'E1', type: ROLES.OWNER, input: '*' }],
     };
 
     assert.equal(
@@ -77,13 +77,13 @@ test('admins can add admins and manage non-owner roles, and owners can manage ow
     );
 });
 
-test('language-restricted viewers and editors only receive matching key access', () => {
+test('input-restricted viewers and editors only receive matching key access', () => {
     const runtime = loadAccess();
     const { ACTIONS, ROLES } = runtime.get('({ ACTIONS, ROLES })');
     const eventRoles = {
         E1: [
-            { event: 'E1', type: ROLES.VIEWER, language: 'L1' },
-            { event: 'E1', type: ROLES.EDITOR, language: 'L2' },
+            { event: 'E1', type: ROLES.VIEWER, input: 'L1' },
+            { event: 'E1', type: ROLES.EDITOR, input: 'L2' },
         ],
     };
 

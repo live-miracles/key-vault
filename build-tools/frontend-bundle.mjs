@@ -11,7 +11,7 @@ const APP_FILES = [
     'utils.ts',
     'access.ts',
     'events.ts',
-    'languages.ts',
+    'inputs.ts',
     'roles.ts',
     'keys.ts',
     'overview.ts',

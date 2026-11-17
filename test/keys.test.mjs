@@ -153,3 +153,59 @@ test('keeps changed streaming configurations uncolored until configured', () => 
 
     assert.equal(changedKey.color, KEY_COLORS.NONE);
 });
+
+test('keeps only the stream key when a whole address is pasted', () => {
+    const runtime = loadKeys();
+    const clean = (server, value) => plain(runtime.get('cleanStreamKeyInput')(server, value));
+
+    // A bare key is left alone, apart from the spaces around it.
+    assert.deepEqual(clean('yt', '  abcd-1234 '), {
+        server: 'yt',
+        key: 'abcd-1234',
+        serverUrl: '',
+        notice: '',
+    });
+
+    // A full YouTube address, main or backup, becomes the key.
+    for (const url of [
+        'rtmp://a.rtmp.youtube.com/live2/abcd-1234',
+        'rtmp://b.rtmp.youtube.com/live2?backup=1/abcd-1234',
+    ]) {
+        const cleaned = clean('yt', url);
+        assert.equal(cleaned.server, 'yt');
+        assert.equal(cleaned.key, 'abcd-1234');
+        assert.match(cleaned.notice, /YouTube/);
+    }
+
+    // An address for another known platform moves the choice there.
+    assert.equal(clean('yt', 'rtmps://live-api-s.facebook.com:443/rtmp/FB-1-0-x').server, 'fb');
+    assert.equal(clean('yt', 'rtmp://live-ingest-01.vd0.co:1935/livestream/key-9').server, 'vc');
+    const instagram = clean(
+        'ig',
+        'rtmps://edgetee-upload-abc1.xx.fbcdn.net:443/rtmp/IG-1?s_prp=abc1',
+    );
+    assert.deepEqual([instagram.server, instagram.key], ['ig', 'IG-1?s_prp=abc1']);
+
+    // "Something else" splits the address from the key at the last slash.
+    const custom = clean('rtmp', 'rtmp://live.example.test/app/secret');
+    assert.deepEqual(
+        [custom.server, custom.serverUrl, custom.key],
+        ['rtmp', 'rtmp://live.example.test/app/', 'secret'],
+    );
+
+    // An unknown address for a known platform is left for the checks to explain.
+    assert.equal(clean('yt', 'rtmp://other.example.test/live/k').notice, '');
+});
+
+test('explains what is wrong with a stream key in plain words', () => {
+    const runtime = loadKeys();
+    const problem = runtime.get('getStreamKeyProblem');
+
+    assert.equal(problem('yt', 'abcd-1234'), '');
+    assert.match(problem('yt', ''), /Paste your YouTube stream key/);
+    assert.match(problem('rtmp', ''), /key your provider gave you/);
+    assert.match(problem('yt', 'two words'), /no spaces/);
+    assert.match(problem('yt', 'rtmp://a.rtmp.youtube.com/live2/k'), /full address/);
+    assert.match(problem('ig', 'IG-1-2'), /s_prp/);
+    assert.equal(problem('ig', 'IG-1-2?s_prp=abc'), '');
+});

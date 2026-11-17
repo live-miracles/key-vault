@@ -2,12 +2,19 @@
 
 A safer way to store and manage stream keys for big events.
 
-This is a Google Apps Script web app backed by a Google Sheet. After creating and configuring the
-Apps Script project, you will be able to:
+The media team adds every destination for an event (YouTube, Instagram, Facebook, TV channels and
+other third parties) through a guided form that cleans up and checks what they paste. The streaming
+server, bunryu, is configured from these links and reports each output's live status back, so every
+destination shows whether it is set up, whether it is running, and what to try when it is not.
+`CONTEXT.md` has the background and the terms.
+
+You can:
 
 - Create events.
 - Add stream keys for an event.
 - Add role-based access controls to restrict which keys each user can access.
+
+It runs on Vercel and Supabase. It replaced a Google Apps Script app backed by a Google Sheet.
 
 ## Project structure
 
@@ -89,5 +96,5 @@ The step-by-step order, with checks and fixes for the usual errors, is in `docs/
 
 - Owner: can edit or delete events and assign event admins.
 - Admin: can add viewers and editors.
-- Editor: can edit keys for an event and can be restricted to languages.
-- Viewer: can only view an event's keys and can be restricted to languages.
+- Editor: can edit keys for an event and can be restricted to inputs.
+- Viewer: can only view an event's keys and can be restricted to inputs.

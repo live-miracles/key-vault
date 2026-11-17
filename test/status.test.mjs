@@ -168,3 +168,136 @@ test('with two instances only the live one counts', async () => {
     );
     assert.equal(report.keys.K1.main.status, 'running');
 });
+
+// ---- inputs ----
+
+const inputRow = (pipeline, status, extra = {}) => ({
+    instance: 'prod',
+    pipeline,
+    status,
+    message: '',
+    sinceMs: 0,
+    ...extra,
+});
+
+test('parseHeartbeat takes inputs, and treats a missing list as none', () => {
+    assert.deepEqual(parseHeartbeat(heartbeat()).inputs, []);
+    const parsed = parseHeartbeat(
+        heartbeat({
+            inputs: [
+                {
+                    pipeline: 'Hindi',
+                    status: 'error',
+                    message: 'no signal rtmp://x/y/SECRET',
+                    sinceMs: 5,
+                },
+            ],
+        }),
+    );
+    assert.equal(parsed.inputs[0].pipeline, 'Hindi');
+    assert.equal(parsed.inputs[0].status, 'error');
+    assert.ok(!parsed.inputs[0].message.includes('SECRET'));
+});
+
+test('parseHeartbeat rejects bad inputs', () => {
+    assert.throws(() => parseHeartbeat(heartbeat({ inputs: 'x' })), /inputs must be/);
+    assert.throws(
+        () => parseHeartbeat(heartbeat({ inputs: [{ pipeline: '', status: 'running' }] })),
+        /pipeline/,
+    );
+    assert.throws(
+        () => parseHeartbeat(heartbeat({ inputs: [{ pipeline: 'Hindi', status: 'bad' }] })),
+        /status/,
+    );
+});
+
+test('an input is matched to a pipeline by name, ignoring case and spaces', async () => {
+    const inputs = [
+        { id: 'L1', name: 'Hindi' },
+        { id: 'L2', name: 'Tamil' },
+        { id: 'L3', name: 'German' },
+    ];
+    const report = await buildStatusReport(
+        [],
+        [],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }],
+        SECRET,
+        NOW,
+        [
+            inputRow(' hindi  ', 'running'),
+            inputRow('TAMIL', 'warning'),
+            inputRow('Tamil', 'error'),
+            inputRow('Unrelated', 'error'),
+        ],
+        inputs,
+    );
+    assert.equal(report.inputs.L1.status, 'running');
+    // Two pipelines of one name: the worse one shows.
+    assert.equal(report.inputs.L2.status, 'error');
+    // No pipeline of that name is reported.
+    assert.equal(report.inputs.L3, null);
+});
+
+test('an output running in another pipeline than its input is marked', async () => {
+    const mainHash = await hashUrl(SECRET, keyUrl('yt', 'abcd-1234'));
+    const keys = [
+        { id: 'K1', input: 'L1', server: 'yt', key: 'abcd-1234', server2: '', key2: '' },
+        { id: 'K2', input: 'L9', server: 'yt', key: 'other', server2: '', key2: '' },
+    ];
+    const inputs = [
+        { id: 'L1', name: 'Hindi' },
+        { id: 'L9', name: 'Tamil' },
+    ];
+    const otherHash = await hashUrl(SECRET, keyUrl('yt', 'other'));
+    const instances = [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }];
+
+    const report = await buildStatusReport(
+        keys,
+        [
+            row('running', { hash: mainHash, pipeline: 'Tamil' }),
+            row('running', { hash: otherHash, pipeline: ' tamil' }),
+        ],
+        instances,
+        SECRET,
+        NOW,
+        [],
+        inputs,
+    );
+    // The link of a Hindi stream runs in the Tamil pipeline: probably put in the wrong place.
+    assert.equal(report.keys.K1.main.inputMismatch, true);
+    // Same name apart from case and spaces: fine.
+    assert.equal(report.keys.K2.main.inputMismatch, false);
+
+    // Nothing is claimed when the input or the pipeline is unknown.
+    const unknown = await buildStatusReport(
+        keys,
+        [row('running', { hash: mainHash, pipeline: '' })],
+        instances,
+        SECRET,
+        NOW,
+        [],
+        inputs,
+    );
+    assert.equal(unknown.keys.K1.main.inputMismatch, false);
+    const noInputs = await buildStatusReport(
+        keys,
+        [row('running', { hash: mainHash, pipeline: 'Tamil' })],
+        instances,
+        SECRET,
+        NOW,
+    );
+    assert.equal(noInputs.keys.K1.main.inputMismatch, false);
+});
+
+test('inputs of a bunryu that went quiet are ignored', async () => {
+    const report = await buildStatusReport(
+        [],
+        [],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - FRESH_MS - 1000).toISOString() }],
+        SECRET,
+        NOW,
+        [inputRow('Hindi', 'running')],
+        [{ id: 'L1', name: 'Hindi' }],
+    );
+    assert.equal(report.inputs.L1, null);
+});

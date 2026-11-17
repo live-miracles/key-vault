@@ -4,34 +4,14 @@ function getRandomWaitTime() {
     return parseInt((1 + Math.random()) * 1000);
 }
 
-function isValidLanguageIdMock(id) {
-    return /^L([1-9][0-9]*)$/.test(String(id));
+// The real backend makes random ids; the mock does the same.
+function newMockId() {
+    return globalThis.crypto?.randomUUID?.() ?? 'mock-' + Math.random().toString(36).slice(2);
 }
 
-function normalizeLanguageIdMock(id, allowAll = false) {
-    const languageId = String(id ?? '').trim();
-    if (allowAll && languageId === '*') return languageId;
-    if (/^[1-9][0-9]*$/.test(languageId)) return `L${languageId}`;
-
-    const prefixedMatch = languageId.match(/^(?:L|lang)([1-9][0-9]*)$/i);
-    if (prefixedMatch) return `L${prefixedMatch[1]}`;
-
-    return languageId;
-}
-
-function getSequentialIdNumberMock(id, prefix) {
-    const match = String(id ?? '').match(new RegExp(`^${prefix}([1-9][0-9]*)$`));
-    return match ? Number(match[1]) : null;
-}
-
-function getNextSequentialIdMock(items, prefix) {
-    const maxNumber = Math.max(
-        ...items
-            .map((item) => getSequentialIdNumberMock(item.id, prefix))
-            .filter((number) => number !== null),
-        0,
-    );
-    return `${prefix}${maxNumber + 1}`;
+function normalizeInputIdMock(id, allowAll = false) {
+    const inputId = String(id ?? '').trim();
+    return allowAll && inputId === '*' ? '*' : inputId;
 }
 
 function getAllDataMock(etag) {
@@ -56,12 +36,12 @@ function getAllDataMock(etag) {
             testEvents.filter((e) => hasEventAccess(eventRoles, ACTIONS.VIEW, e.id)),
         ), // important to return copy
         keys: structuredClone(
-            testKeys.filter((k) => hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.language)),
+            testKeys.filter((k) => hasKeyAccess(eventRoles, ACTIONS.VIEW, k.event, k.input)),
         ),
         roles: structuredClone(
             testRoles.filter((r) => hasRoleAccess(eventRoles, ACTIONS.VIEW, r.event, r.type)),
         ),
-        languages: structuredClone(testLanguages),
+        inputs: structuredClone(testInputs),
     };
     data.size = JSON.stringify(data).length;
 
@@ -77,7 +57,7 @@ function addEventMock(event) {
     }
 
     etagMock += 1;
-    event.id = getNextSequentialIdMock(testEvents, 'E');
+    event.id = newMockId();
     testEvents.push(event);
     event.row = testEvents.length + 1;
 
@@ -138,10 +118,10 @@ function addRoleMock(role) {
             error: 'Invalid parameters',
         };
     }
-    role.language = normalizeLanguageIdMock(role.language, true);
+    role.input = normalizeInputIdMock(role.input, true);
 
     etagMock += 1;
-    role.id = getNextSequentialIdMock(testRoles, 'R');
+    role.id = newMockId();
     testRoles.push(role);
     role.row = testRoles.length + 1;
 
@@ -155,7 +135,7 @@ function editRoleMock(role) {
             error: 'Invalid parameters',
         };
     }
-    role.language = normalizeLanguageIdMock(role.language, true);
+    role.input = normalizeInputIdMock(role.input, true);
 
     const old = testRoles.find((r) => r.id === role.id);
     if (!old) {
@@ -196,99 +176,78 @@ function deleteRoleMock(id) {
     return { success: true, data: true };
 }
 
-function addLanguageMock(language) {
-    if (!language) {
+function addInputMock(input) {
+    if (!input || !String(input.name ?? '').trim()) {
         return {
             success: false,
             error: 'Invalid parameters',
         };
     }
-    language.id = normalizeLanguageIdMock(language.id);
-
-    if (!isValidLanguageIdMock(language.id)) {
-        return {
-            success: false,
-            error: 'Language id must be L1 or higher',
-        };
-    }
-
-    if (testLanguages.some((l) => l.id === language.id)) {
-        return {
-            success: false,
-            error: 'Language already exists: ' + language.id,
-        };
-    }
+    input = { id: newMockId(), name: String(input.name).trim() };
 
     etagMock += 1;
-    language.order = String(Math.max(...testLanguages.map((l) => Number(l.order) || 0), 0) + 1);
-    testLanguages.push(language);
-    language.row = testLanguages.length + 1;
+    input.order = String(Math.max(...testInputs.map((l) => Number(l.order) || 0), 0) + 1);
+    testInputs.push(input);
+    input.row = testInputs.length + 1;
 
-    return { success: true, data: language };
+    return { success: true, data: input };
 }
 
-function editLanguageMock(language) {
-    if (!language || !language.id) {
+function editInputMock(input) {
+    if (!input || !input.id) {
         return {
             success: false,
             error: 'Invalid parameters',
         };
     }
-    language.id = normalizeLanguageIdMock(language.id);
+    input.id = normalizeInputIdMock(input.id);
 
-    const old = testLanguages.find((l) => l.id === language.id);
+    const old = testInputs.find((l) => l.id === input.id);
     if (!old) {
         return {
             success: false,
-            error: 'Language not found: ' + language.id,
-        };
-    }
-
-    if (!isValidLanguageIdMock(language.id)) {
-        return {
-            success: false,
-            error: 'Language id must be L1 or higher',
+            error: 'Input not found: ' + input.id,
         };
     }
 
     etagMock += 1;
-    old.name = language.name;
+    old.name = input.name;
 
     return { success: true, data: old };
 }
 
-function reorderLanguagesMock(languageIds) {
-    if (!Array.isArray(languageIds)) {
+function reorderInputsMock(inputIds) {
+    if (!Array.isArray(inputIds)) {
         return {
             success: false,
             error: 'Invalid parameters',
         };
     }
 
-    languageIds = languageIds.map((id) => normalizeLanguageIdMock(id));
-    const currentIds = new Set(testLanguages.map((language) => language.id));
-    const newIds = new Set(languageIds);
+    inputIds = inputIds.map((id) => normalizeInputIdMock(id));
+    const currentIds = new Set(testInputs.map((input) => input.id));
+    const newIds = new Set(inputIds);
     if (
-        languageIds.length !== testLanguages.length ||
+        inputIds.length !== testInputs.length ||
         newIds.size !== currentIds.size ||
-        languageIds.some((id) => !currentIds.has(id))
+        inputIds.some((id) => !currentIds.has(id))
     ) {
         return {
             success: false,
-            error: 'Language list mismatch',
+            error: 'Input list mismatch',
         };
     }
 
     etagMock += 1;
-    languageIds.forEach((id, index) => {
-        const language = testLanguages.find((l) => l.id === id);
-        language.order = String(index + 1);
+    inputIds.forEach((id, index) => {
+        const input = testInputs.find((l) => l.id === id);
+        input.order = String(index + 1);
     });
 
-    return { success: true, data: structuredClone(testLanguages) };
+    return { success: true, data: structuredClone(testInputs) };
 }
 
-function deleteLanguageMock(id) {
+function deleteInputMock(id) {
     if (!id) {
         return {
             success: false,
@@ -296,28 +255,25 @@ function deleteLanguageMock(id) {
         };
     }
 
-    id = normalizeLanguageIdMock(id);
-    const language = testLanguages.find((l) => l.id === id);
-    if (!language) {
+    id = normalizeInputIdMock(id);
+    const input = testInputs.find((l) => l.id === id);
+    if (!input) {
         return {
             success: false,
-            error: 'Language not found: ' + id,
+            error: 'Input not found: ' + id,
         };
     }
 
-    if (
-        testKeys.some((key) => key.language === id) ||
-        testRoles.some((role) => role.language === id)
-    ) {
+    if (testKeys.some((key) => key.input === id) || testRoles.some((role) => role.input === id)) {
         return {
             success: false,
-            error: 'Language is in use: ' + id,
+            error: 'Input is in use: ' + id,
         };
     }
 
     etagMock += 1;
-    testLanguages.splice(
-        testLanguages.findIndex((l) => l.id === id),
+    testInputs.splice(
+        testInputs.findIndex((l) => l.id === id),
         1,
     );
 
@@ -331,10 +287,10 @@ function addKeyMock(key) {
             error: 'Invalid parameters',
         };
     }
-    key.language = normalizeLanguageIdMock(key.language);
+    key.input = normalizeInputIdMock(key.input);
 
     etagMock += 1;
-    key.id = getNextSequentialIdMock(testKeys, 'K');
+    key.id = newMockId();
     testKeys.push(key);
     key.row = testKeys.length + 1;
 
@@ -348,7 +304,7 @@ function editKeyMock(key) {
             error: 'Invalid parameters',
         };
     }
-    key.language = normalizeLanguageIdMock(key.language);
+    key.input = normalizeInputIdMock(key.input);
 
     const old = testKeys.find((k) => k.id === key.id);
     if (!old) {
@@ -447,39 +403,39 @@ const testRoles = [
         event: 'E1',
         email: testEmail1,
         type: ROLES.ADMIN,
-        language: '*',
+        input: '*',
     },
     {
         id: 'R2',
         event: '*',
         email: testEmail2,
         type: ROLES.OWNER,
-        language: '*',
+        input: '*',
     },
     {
         id: 'R3',
         event: 'E2',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'L1',
+        input: 'L1',
     },
     {
         id: 'R4',
         event: 'E2',
         email: testEmail1,
         type: ROLES.EDITOR,
-        language: 'L2',
+        input: 'L2',
     },
     {
         id: 'R5',
         event: 'E1',
         email: testEmail3,
         type: ROLES.VIEWER,
-        language: 'L9',
+        input: 'L9',
     },
 ];
 
-const testLanguages = [
+const testInputs = [
     {
         id: 'L1',
         name: 'English',
@@ -503,7 +459,7 @@ const testKeys = [
         id: 'K1',
         event: 'E1',
         name: 'Channel 1',
-        language: 'L1',
+        input: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -517,7 +473,7 @@ const testKeys = [
         id: 'K2',
         event: 'E1',
         name: 'Very Long Platform Name Channel Demo',
-        language: 'L2',
+        input: 'L2',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -531,7 +487,7 @@ const testKeys = [
         id: 'K3',
         event: 'E1',
         name: 'Channel 3',
-        language: 'L1',
+        input: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -545,7 +501,7 @@ const testKeys = [
         id: 'K4',
         event: 'E2',
         name: 'Channel 4',
-        language: 'L1',
+        input: 'L1',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -559,7 +515,7 @@ const testKeys = [
         id: 'K5',
         event: 'E1',
         name: 'Channel 5',
-        language: 'L1',
+        input: 'L1',
         server: 'rtmp',
         key: 'rtmp://123.123.123.123/live/abc-123-abc-123-abc-123',
         server2: '',
@@ -573,7 +529,7 @@ const testKeys = [
         id: 'K6',
         event: 'E2',
         name: 'Channel 6',
-        language: 'L2',
+        input: 'L2',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -586,8 +542,8 @@ const testKeys = [
         row: 7,
         id: 'K7',
         event: 'E1',
-        name: 'Missing Language Demo',
-        language: 'L9',
+        name: 'Missing Input Demo',
+        input: 'L9',
         server: 'yt',
         key: 'abc-123-abc-123-missing',
         server2: '',
@@ -601,7 +557,7 @@ const testKeys = [
         id: 'K8',
         event: 'E1',
         name: 'Instagram Demo',
-        language: 'L3',
+        input: 'L3',
         server: 'ig',
         key: 'IG-abc-123-abc-123?s_prp=demo',
         server2: '',
@@ -615,7 +571,7 @@ const testKeys = [
         id: 'K9',
         event: 'E1',
         name: 'Custom SRT Demo',
-        language: 'L3',
+        input: 'L3',
         server: 'srt',
         key: 'srt://stream.example.com:10000?mode=caller&latency=240000&passphrase=demo-passphrase&pbkeylen=16&streamid=%23%21%3A%3Ar%3Dlive%2Fdemo%2Cm%3Dpublish',
         server2: '',
@@ -623,20 +579,6 @@ const testKeys = [
         color: '',
         link: '',
         remarks: '',
-    },
-    {
-        row: 10,
-        id: 'K9',
-        event: 'E1',
-        name: 'Duplicate ID Demo',
-        language: 'L2',
-        server: 'yt',
-        key: 'duplicate-id-demo-key',
-        server2: '',
-        key2: '',
-        color: '',
-        link: '',
-        remarks: 'Mock row with the same ID as another key',
     },
 ];
 
@@ -650,6 +592,7 @@ function getStatusMock() {
         sinceMs: Date.now() - 600000,
         pipeline: 'Demo pipeline',
         output: 'Demo output',
+        inputMismatch: false,
         ...extra,
     });
     return {
@@ -668,10 +611,36 @@ function getStatusMock() {
                     backup: null,
                 },
                 K3: {
-                    main: status('warning', { message: 'Timestamps are jumping.' }),
+                    main: status('warning', {
+                        message: 'Output is falling behind live.',
+                    }),
                     backup: null,
                 },
-                K4: { main: status('stopped'), backup: null },
+                // Runs in a pipeline of another name than its input: put in the wrong place.
+                K4: {
+                    main: status('stopped', { pipeline: 'Tamil', inputMismatch: true }),
+                    backup: null,
+                },
+            },
+            inputs: {
+                L1: {
+                    status: 'running',
+                    message: '',
+                    sinceMs: Date.now() - 3600000,
+                    pipeline: 'English',
+                },
+                L2: {
+                    status: 'error',
+                    message: 'No signal',
+                    sinceMs: Date.now() - 120000,
+                    pipeline: 'German',
+                },
+                L3: {
+                    status: 'warning',
+                    message: 'Low bitrate',
+                    sinceMs: Date.now() - 600000,
+                    pipeline: 'Hindi',
+                },
             },
         },
     };
@@ -709,17 +678,17 @@ googleMock.script.run.withFailureHandler = (_) => ({
         deleteRole: (id) => {
             setTimeout(() => f(deleteRoleMock(id)), getRandomWaitTime());
         },
-        addLanguage: (language) => {
-            setTimeout(() => f(addLanguageMock(language)), getRandomWaitTime());
+        addInput: (input) => {
+            setTimeout(() => f(addInputMock(input)), getRandomWaitTime());
         },
-        editLanguage: (language) => {
-            setTimeout(() => f(editLanguageMock(language)), getRandomWaitTime());
+        editInput: (input) => {
+            setTimeout(() => f(editInputMock(input)), getRandomWaitTime());
         },
-        reorderLanguages: (languageIds) => {
-            setTimeout(() => f(reorderLanguagesMock(languageIds)), getRandomWaitTime());
+        reorderInputs: (inputIds) => {
+            setTimeout(() => f(reorderInputsMock(inputIds)), getRandomWaitTime());
         },
-        deleteLanguage: (id) => {
-            setTimeout(() => f(deleteLanguageMock(id)), getRandomWaitTime());
+        deleteInput: (id) => {
+            setTimeout(() => f(deleteInputMock(id)), getRandomWaitTime());
         },
         addKey: (key) => {
             setTimeout(() => f(addKeyMock(key)), getRandomWaitTime());

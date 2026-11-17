@@ -61,49 +61,57 @@ try {
     }
 
     // ---- ids, events, roles ----
+    // Ids are random UUIDs the database makes; the caller never picks one.
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
     const created = JSON.parse(psql(`select public.create_event('Event one', 'a@example.test')`));
-    assert.equal(created.event.id, 'E1');
-    assert.equal(created.adminRole.id, 'R1');
+    const eventId = created.event.id;
+    assert.match(eventId, uuid);
+    assert.match(created.adminRole.id, uuid);
     assert.equal(created.adminRole.type, '2');
-    assert.equal(created.adminRole.language, '*');
+    assert.equal(created.adminRole.input, '*');
     const bare = JSON.parse(psql(`select public.create_event('Event two', null)`));
-    assert.equal(bare.event.id, 'E2');
+    assert.notEqual(bare.event.id, eventId);
     assert.equal(bare.adminRole, null);
 
-    // ---- languages ----
-    assert.deepEqual(JSON.parse(psql(`select public.create_language('L1', 'English')`)), {
-        id: 'L1',
-        name: 'English',
-        order: '1',
-    });
-    assert.equal(JSON.parse(psql(`select public.create_language('L2', 'Hindi')`)).order, '2');
-    psql(`select public.reorder_languages(array['L2', 'L1'])`);
+    // ---- inputs ----
+    const english = JSON.parse(psql(`select public.create_input('English')`));
+    assert.match(english.id, uuid);
+    assert.equal(english.name, 'English');
+    assert.equal(english.order, '1');
+    const hindi = JSON.parse(psql(`select public.create_input('Hindi')`));
+    assert.equal(hindi.order, '2');
+    psql(`select public.reorder_inputs(array['${hindi.id}', '${english.id}'])`);
     assert.equal(
-        psql(`select string_agg(id, ',' order by sort_order) from public.languages`),
-        'L2,L1',
+        psql(`select string_agg(name, ',' order by sort_order) from public.inputs`),
+        'Hindi,English',
     );
-    psql(`select public.create_language('bad', 'x')`, { fail: true });
+    // A row made before this change keeps its id, and the two kinds sit side by side.
+    psql(`insert into public.inputs (id, name, sort_order) values ('L1', 'Legacy', 3)`);
 
     // ---- keys ----
-    psql(`insert into public.keys (event_id, name, language, server, key)
-          values ('E1', 'Main', 'L1', 'yt', 'abcd-1234')`);
-    assert.equal(psql(`select id from public.keys`), 'K1');
+    psql(`insert into public.keys (event_id, name, input, server, key)
+          values ('${eventId}', 'Main', '${english.id}', 'yt', 'abcd-1234')`);
+    assert.match(psql(`select id from public.keys`), uuid);
     psql(
-        `insert into public.keys (event_id, name, language, server, key, color_override)
-          values ('E1', 'Bad color', 'L1', 'yt', 'k', '9')`,
+        `insert into public.keys (event_id, name, input, server, key, color_override)
+          values ('${eventId}', 'Bad color', '${english.id}', 'yt', 'k', '9')`,
         { fail: true },
     );
-    psql(`delete from public.languages where id = 'L1'`, { fail: true });
-    psql(`insert into public.roles (event_id, email, type) values ('E9', 'x@example.test', '1')`, {
-        fail: true,
-    });
-    psql(`insert into public.roles (event_id, email, type) values ('E1', 'x@example.test', '7')`, {
-        fail: true,
-    });
+    psql(`delete from public.inputs where id = '${english.id}'`, { fail: true });
+    psql(
+        `insert into public.roles (event_id, email, type) values ('missing', 'x@example.test', '1')`,
+        {
+            fail: true,
+        },
+    );
+    psql(
+        `insert into public.roles (event_id, email, type) values ('${eventId}', 'x@example.test', '7')`,
+        { fail: true },
+    );
     // Emails compare without case.
     assert.equal(psql(`select count(*) from public.roles where email = 'A@EXAMPLE.TEST'`), '1');
     // Deleting an event takes its roles and keys with it.
-    psql(`delete from public.events where id = 'E1'`);
+    psql(`delete from public.events where id = '${eventId}'`);
     assert.equal(psql(`select count(*) from public.keys`), '0');
     assert.equal(psql(`select count(*) from public.roles`), '0');
 
@@ -132,6 +140,18 @@ try {
         psql(`select output_count from public.ingest_instances where instance = 'prod'`),
         '1',
     );
+    // Inputs are replaced with the outputs, and are optional.
+    const inputBeat = (inputs) =>
+        `select public.ingest_heartbeat('prod', now(), '[]'::jsonb, '${JSON.stringify(inputs)}'::jsonb)`;
+    assert.equal(
+        psql(inputBeat([{ pipeline: 'Hindi', status: 'error', message: 'no signal' }])),
+        '0',
+    );
+    assert.equal(psql(`select pipeline || ':' || status from public.stream_inputs`), 'Hindi:error');
+    psql(inputBeat([{ pipeline: '', status: 'running' }]), { fail: true });
+    psql(inputBeat([{ pipeline: 'Hindi', status: 'bogus' }]), { fail: true });
+    assert.equal(psql(beat([])), '0');
+    assert.equal(psql(`select count(*) from public.stream_inputs`), '0');
     assert.equal(psql(beat([])), '0');
     assert.equal(psql(`select count(*) from public.stream_outputs`), '0');
 
@@ -162,7 +182,7 @@ try {
     assert.equal(
         psql(
             `select bool_and(relrowsecurity) from pg_class where relnamespace = 'public'::regnamespace
-             and relname in ('events','languages','roles','keys','ingest_instances','stream_outputs')`,
+             and relname in ('events','inputs','roles','keys','ingest_instances','stream_outputs')`,
         ),
         't',
     );

@@ -6,11 +6,11 @@ import { hashUrl, keyUrl } from '../supabase/functions/_shared/key-url.ts';
 import { createMemoryStore } from './memory-store.mjs';
 
 const NOW = Date.parse('2026-11-13T10:00:00Z');
-const key = (id, event, language, extra = {}) => ({
+const key = (id, event, input, extra = {}) => ({
     id,
     event,
     name: `Key ${id}`,
-    language,
+    input,
     server: 'yt',
     key: `abcd-${id}`,
     server2: '',
@@ -27,14 +27,14 @@ function seed() {
             { id: 'E1', name: 'Event one' },
             { id: 'E2', name: 'Event two' },
         ],
-        languages: [
+        inputs: [
             { id: 'L1', name: 'English', order: '1' },
             { id: 'L2', name: 'Hindi', order: '2' },
         ],
         roles: [
-            { id: 'R1', event: 'E1', email: 'admin@example.test', type: '2', language: '*' },
-            { id: 'R2', event: 'E1', email: 'editor@example.test', type: '1', language: 'L1' },
-            { id: 'R3', event: 'E1', email: 'viewer@example.test', type: '0', language: 'L2' },
+            { id: 'R1', event: 'E1', email: 'admin@example.test', type: '2', input: '*' },
+            { id: 'R2', event: 'E1', email: 'editor@example.test', type: '1', input: 'L1' },
+            { id: 'R3', event: 'E1', email: 'viewer@example.test', type: '0', input: 'L2' },
         ],
         keys: [key('K1', 'E1', 'L1'), key('K2', 'E1', 'L2'), key('K3', 'E2', 'L1')],
     });
@@ -66,7 +66,7 @@ test('a user only receives the events, roles and keys they may view', async () =
     );
     assert.deepEqual(asViewer.roles, []);
     assert.equal(asViewer.userEmail, 'viewer@example.test');
-    assert.equal(asViewer.languages.length, 2);
+    assert.equal(asViewer.inputs.length, 2);
 
     const asOwner = (await ops.getAllData(store, owner)).data;
     assert.equal(asOwner.keys.length, 3);
@@ -119,12 +119,12 @@ test('events: admins create, only owners edit and delete', async () => {
     );
 });
 
-test('keys: editors write only their language, viewers nothing', async () => {
+test('keys: editors write only their input, viewers nothing', async () => {
     const store = seed();
-    const input = (language) => ({
+    const input = (input) => ({
         event: 'E1',
         name: 'New',
-        language,
+        input,
         server: 'yt',
         key: 'abcd-9999',
     });
@@ -133,12 +133,10 @@ test('keys: editors write only their language, viewers nothing', async () => {
     assert.equal((await ops.addKey(store, editor, input('L2'))).success, false);
     const added = await ops.addKey(store, editor, input('L1'));
     assert.equal(added.success, true);
-    assert.equal(added.data.id.startsWith('K'), true);
+    assert.ok(added.data.id);
+    assert.notEqual(added.data.id, 'K1');
 
-    assert.equal(
-        (await ops.addKey(store, editor, { ...input('L1'), language: '9' })).success,
-        false,
-    );
+    assert.equal((await ops.addKey(store, editor, { ...input('L1'), input: '9' })).success, false);
     assert.equal((await ops.addKey(store, editor, { ...input('L1'), key: '' })).success, false);
 
     assert.equal(
@@ -198,7 +196,7 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
             event: 'E1',
             email: 'New@Example.test',
             type: '1',
-            language: 'L1',
+            input: 'L1',
             ...extra,
         });
 
@@ -210,19 +208,19 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
     assert.equal((await add(admin, { type: '3' })).success, false);
     assert.equal((await add(owner, { type: '3' })).success, true);
 
-    const admins = await add(admin, { type: '2', language: 'L1' });
-    assert.equal(admins.data.language, '*');
+    const admins = await add(admin, { type: '2', input: 'L1' });
+    assert.equal(admins.data.input, '*');
 
     assert.equal((await add(admin, { email: 'a@b.test, c@d.test' })).success, false);
     assert.equal((await add(admin, { type: '7' })).success, false);
-    assert.equal((await add(admin, { language: 'L9' })).success, false);
+    assert.equal((await add(admin, { input: 'L9' })).success, false);
 
     const editedRole = await ops.editRole(store, admin, {
         id: added.data.id,
         event: 'E1',
         email: 'new@example.test',
         type: '0',
-        language: 'L2',
+        input: 'L2',
     });
     assert.equal(editedRole.success, true);
     assert.equal(store.state.roles.find((r) => r.id === added.data.id).type, '0');
@@ -232,36 +230,34 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
     assert.equal((await ops.deleteRole(store, admin, 'R404')).success, false);
 });
 
-test('languages: only owners manage them, and one in use stays', async () => {
+test('inputs: only owners manage them, and one in use stays', async () => {
     const store = seed();
 
-    assert.equal((await ops.addLanguage(store, admin, { id: 'L3', name: 'Tamil' })).success, false);
-    const added = await ops.addLanguage(store, owner, { id: '3', name: 'Tamil' });
-    assert.equal(added.data.id, 'L3');
+    assert.equal((await ops.addInput(store, admin, { name: 'Tamil' })).success, false);
+    const added = await ops.addInput(store, owner, { name: '  Tamil  ' });
+    assert.equal(added.success, true);
+    assert.equal(added.data.name, 'Tamil');
     assert.equal(added.data.order, '3');
+    // The id is made by the store, never taken from the caller, and is never reused.
+    const again = await ops.addInput(store, owner, { id: added.data.id, name: 'Again' });
+    assert.notEqual(again.data.id, added.data.id);
+    assert.equal((await ops.deleteInput(store, owner, again.data.id)).success, true);
+    assert.equal((await ops.addInput(store, owner, { name: '   ' })).success, false);
+    assert.equal((await ops.addInput(store, owner, {})).success, false);
 
-    assert.equal((await ops.addLanguage(store, owner, { id: 'L3', name: 'Again' })).success, false);
-    assert.equal((await ops.addLanguage(store, owner, { id: '*', name: 'All' })).success, false);
-    assert.equal((await ops.addLanguage(store, owner, { id: 'Lx', name: 'Bad' })).success, false);
+    const newId = added.data.id;
+    assert.equal((await ops.editInput(store, owner, { id: newId, name: 'Tamizh' })).success, true);
+    assert.equal(store.state.inputs.find((l) => l.id === newId).name, 'Tamizh');
 
+    assert.equal((await ops.deleteInput(store, owner, 'L1')).error, 'Input is in use: L1');
+    assert.equal((await ops.deleteInput(store, owner, newId)).success, true);
+
+    assert.equal((await ops.reorderInputs(store, owner, ['L2'])).error, 'Input list mismatch');
     assert.equal(
-        (await ops.editLanguage(store, owner, { id: 'L3', name: 'Tamizh' })).success,
-        true,
+        (await ops.reorderInputs(store, owner, ['L2', 'L2'])).error,
+        'Input list mismatch',
     );
-    assert.equal(store.state.languages.find((l) => l.id === 'L3').name, 'Tamizh');
-
-    assert.equal((await ops.deleteLanguage(store, owner, 'L1')).error, 'Language is in use: L1');
-    assert.equal((await ops.deleteLanguage(store, owner, 'L3')).success, true);
-
-    assert.equal(
-        (await ops.reorderLanguages(store, owner, ['L2'])).error,
-        'Language list mismatch',
-    );
-    assert.equal(
-        (await ops.reorderLanguages(store, owner, ['L2', 'L2'])).error,
-        'Language list mismatch',
-    );
-    const reordered = await ops.reorderLanguages(store, owner, ['L2', 'L1']);
+    const reordered = await ops.reorderInputs(store, owner, ['L2', 'L1']);
     assert.deepEqual(
         reordered.data.map((l) => [l.id, l.order]),
         [
@@ -269,7 +265,7 @@ test('languages: only owners manage them, and one in use stays', async () => {
             ['L1', '2'],
         ],
     );
-    assert.equal((await ops.reorderLanguages(store, admin, ['L2', 'L1'])).success, false);
+    assert.equal((await ops.reorderInputs(store, admin, ['L2', 'L1'])).success, false);
 });
 
 test('getStatus covers only the keys the user may see', async () => {
@@ -289,17 +285,26 @@ test('getStatus covers only the keys the user may see', async () => {
                 sinceMs: 1,
             },
         ],
+        pipelines: [
+            { instance: 'prod', pipeline: 'hindi', status: 'error', message: '', sinceMs: 1 },
+        ],
         instances: [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }],
     };
 
     const asViewer = (await ops.getStatus(store, viewer)).data;
     assert.deepEqual(Object.keys(asViewer.keys), ['K2']);
     assert.equal(asViewer.keys.K2.main.status, 'error');
+    assert.equal(asViewer.keys.K2.main.inputMismatch, false);
+    // Only the inputs of keys the user may see, matched to the pipeline by name.
+    assert.deepEqual(Object.keys(asViewer.inputs), ['L2']);
+    assert.equal(asViewer.inputs.L2.status, 'error');
     assert.equal(asViewer.online, true);
 
     const asEditor = (await ops.getStatus(store, editor)).data;
     assert.deepEqual(Object.keys(asEditor.keys), ['K1']);
     assert.equal(asEditor.keys.K1.main, null);
+    assert.deepEqual(Object.keys(asEditor.inputs), ['L1']);
+    assert.equal(asEditor.inputs.L1, null);
 });
 
 test('only owners can read the settings bunryu needs', async () => {
@@ -331,20 +336,20 @@ test('only owners can read the settings bunryu needs', async () => {
 test('only the listed operations are callable', () => {
     assert.deepEqual(Object.keys(ops.OPERATIONS).sort(), [
         'addEvent',
+        'addInput',
         'addKey',
-        'addLanguage',
         'addRole',
         'deleteEvent',
+        'deleteInput',
         'deleteKey',
-        'deleteLanguage',
         'deleteRole',
         'editEvent',
+        'editInput',
         'editKey',
-        'editLanguage',
         'editRole',
         'getAllData',
         'getBunryuSettings',
         'getStatus',
-        'reorderLanguages',
+        'reorderInputs',
     ]);
 });

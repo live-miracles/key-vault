@@ -125,8 +125,32 @@ test('buildStatusReport takes the worse of main and backup, and says which', asy
     assert.equal(report.keys.K1.state, 'error');
     assert.equal(report.keys.K1.side, 'backup');
     assert.equal(report.keys.K1.stoppedAfterFailures, true);
+    // Each stream keeps its own status, so a card can show main and backup apart.
+    assert.deepEqual(report.keys.K1.sides, { main: 'running', backup: 'error' });
     // bunryu has no output with this link: not set up.
     assert.equal(report.keys.K2.state, 'not_configured');
+    assert.deepEqual(report.keys.K2.sides, { main: 'not_configured', backup: 'not_configured' });
+});
+
+test('each side is reported on its own: a stopped backup, and no backup at all', async () => {
+    const mainHash = await hashUrl(SECRET, streamUrl('vc', 'abcd-1234'));
+    const backupHash = await hashUrl(SECRET, streamUrl('rtmp', 'rtmp://x.test/live/key'));
+    const withBackup = dest('K1', {
+        platform: 'vc',
+        backupPlatform: 'rtmp',
+        backupStreamKey: 'rtmp://x.test/live/key',
+    });
+    const noBackup = dest('K2', { platform: 'vc' });
+    const report = await buildStatusReport(
+        [withBackup, noBackup],
+        [row('running', { hash: mainHash }), row('stopped', { hash: backupHash })],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }],
+        SECRET,
+        NOW,
+    );
+    assert.deepEqual(report.keys.K1.sides, { main: 'running', backup: 'stopped' });
+    // A destination with no backup link has no backup side to show.
+    assert.deepEqual(report.keys.K2.sides, { main: 'running', backup: null });
 });
 
 test('a healthy main stream outranks a stopped backup, and a destination with no link has no status', async () => {

@@ -8,7 +8,7 @@ For the media team: how to add a stream destination and tell whether it is worki
 
 - **An event** is one occasion being streamed. Switch between events with the tabs along the bottom.
 - **Inputs** (on the left) are the feeds of that event, such as English or Hindi. Click one to see only its destinations, or click **All**. A dot beside each says whether its signal is arriving.
-- **Destinations** are the cards: every place an input goes live, such as a YouTube channel, a Facebook page or a TV channel.
+- **Destinations** are the cards: every place an input goes live, such as a YouTube channel, a Facebook page or a TV channel. On each card, a dot before **Main** and before **Backup** says whether that stream is on: green is live, yellow is unstable, red is a problem, and grey is off or not started yet. Hover a dot for the words. A destination with no backup has no backup dot, and while bunryu is not reporting there are no dots.
 - **Search** at the top finds a destination by name, input, platform or note. Paste a stream key into it to find who is using that key.
 - **Dark or light.** Key Vault opens dark. The sun or moon button at the bottom right switches to light (handy in a bright room) and back. It remembers your choice on that device.
 

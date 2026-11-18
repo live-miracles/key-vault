@@ -172,11 +172,18 @@ export interface PipelineRow extends HeartbeatInput {
 
 // What bunryu reports for a destination, the worse of its main and backup stream. The
 // browser words it; it works nothing out.
+// One stream of a destination. null: the destination has no link on that side (no backup).
+// "not_configured": Key Vault has the link and bunryu has no output with it (yet).
+export type SideState = Status | 'not_configured' | null;
+
 export interface KeyStatus {
     // "not_configured": Key Vault has the link and bunryu has no output with it (yet).
     state: Status | 'not_configured';
     // Which of the two streams the status is about.
     side: 'main' | 'backup';
+    // Each stream on its own, so a card can show whether main and backup are on or off. The
+    // fields above are the worse of the two.
+    sides: { main: SideState; backup: SideState };
     message: string;
     failures: number;
     stoppedAfterFailures: boolean;
@@ -279,6 +286,7 @@ export async function buildStatusReport(
         return {
             state: worst.status,
             side: 'main',
+            sides: { main: null, backup: null },
             message: worst.message,
             failures: worst.failures,
             stoppedAfterFailures: worst.stoppedAfterFailures,
@@ -299,7 +307,16 @@ export async function buildStatusReport(
             continue;
         }
         const mainStatus = await statusOf(main, k.input);
-        const backupStatus = await statusOf(backupUrl(k), k.input);
+        const backup = backupUrl(k);
+        const backupStatus = await statusOf(backup, k.input);
+        const sides: KeyStatus['sides'] = {
+            main: mainStatus ? (mainStatus.state as Status) : 'not_configured',
+            backup: backup
+                ? backupStatus
+                    ? (backupStatus.state as Status)
+                    : 'not_configured'
+                : null,
+        };
         const candidates = [
             mainStatus,
             backupStatus ? { ...backupStatus, side: 'backup' as const } : null,
@@ -311,6 +328,7 @@ export async function buildStatusReport(
             result[k.id] = {
                 state: 'not_configured',
                 side: 'main',
+                sides,
                 message: '',
                 failures: 0,
                 stoppedAfterFailures: false,
@@ -322,7 +340,7 @@ export async function buildStatusReport(
             continue;
         }
         const { status: _status, ...status } = worst;
-        result[k.id] = status;
+        result[k.id] = { ...status, sides };
     }
 
     const inputStatus: StatusReport['inputs'] = {};

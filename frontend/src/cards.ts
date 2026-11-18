@@ -17,11 +17,12 @@ import {
     STATUS_LABELS,
     describeInputBanner,
     describeKeyNote,
+    describeSide,
     getInputStatus,
     getKeyDisplay,
     isTroubleNote,
 } from './status-wording.ts';
-import type { KeyNote } from './status-wording.ts';
+import type { KeyNote, SideDot } from './status-wording.ts';
 
 // What a card needs besides the destination itself.
 export interface CardContext {
@@ -77,18 +78,24 @@ function renderLinkChip({
     value,
     duplicate = false,
     disabled = false,
+    dot = null,
 }: {
     label: string;
     value: string;
     duplicate?: boolean;
     disabled?: boolean;
+    dot?: SideDot | null;
 }): string {
     if (!value) return '';
+    // Whether this stream is on: the same dot as an input's, before the word.
+    const dotHtml = dot
+        ? `<span class="input-dot input-dot-${dot.state} mr-1.5" title="${escapeHtml(dot.label)}" role="img" aria-label="${escapeHtml(dot.label)}"></span>`
+        : '';
     const title = duplicate ? `${value}\nAlso used by another destination` : value;
     const copy = disabled
         ? ''
         : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the ${escapeHtml(label.toLowerCase())} link" aria-label="Copy the ${escapeHtml(label.toLowerCase())} link" data-action="copy-text" data-copy-value="${escapeHtml(value)}">${iconSvg('copy')}</button>`;
-    return `<span class="dest-link"><span class="dest-link-name ${duplicate ? 'text-error' : ''}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>${copy}</span>`;
+    return `<span class="dest-link">${dotHtml}<span class="dest-link-name ${duplicate ? 'text-error' : ''}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>${copy}</span>`;
 }
 
 // The viewers' web page for the stream: a button that opens it in a new tab.
@@ -215,12 +222,14 @@ export function renderCard(key: KeyItem, eventKeys: KeyItem[], ctx: CardContext)
             value: mainUrl(key),
             duplicate: clashing('Main'),
             disabled: isPending,
+            dot: isPending ? null : describeSide(key, 'main', report, nowMs),
         }),
         renderLinkChip({
             label: 'Backup',
             value: backupUrl(key),
             duplicate: clashing('Backup'),
             disabled: isPending,
+            dot: isPending ? null : describeSide(key, 'backup', report, nowMs),
         }),
         renderWatchButton(safeUrl(key.link)),
     ].join('');

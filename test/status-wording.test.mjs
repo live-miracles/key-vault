@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
     describeInputBanner,
     describeKeyNote,
+    describeSide,
     getInputStatus,
     getKeyDisplay,
     reportedStatus,
@@ -256,4 +257,59 @@ test('a link under the wrong input is still said, even when the input is off', (
         { inputs: { L1: OFF } },
     );
     assert.equal(describeKeyNote(key(), wrong, NOW, 'Hindi').label, 'Problem');
+});
+
+test('main and backup each get a dot: green, amber, red or grey', () => {
+    const r = (sides, extra = {}) =>
+        report(
+            { K1: status('error', { sides }) },
+            { inputs: { L1: { status: 'running' } }, ...extra },
+        );
+    const sides = { main: 'running', backup: 'error' };
+    assert.deepEqual(describeSide(key(), 'main', r(sides), NOW), {
+        state: 'running',
+        label: 'Main: Live',
+    });
+    assert.deepEqual(describeSide(key(), 'backup', r(sides), NOW), {
+        state: 'error',
+        label: 'Backup: Problem',
+    });
+    assert.equal(
+        describeSide(key(), 'main', r({ main: 'warning', backup: null }), NOW).state,
+        'warning',
+    );
+    // Off on purpose, and not given to bunryu yet, are both grey, with their own words.
+    const off = r({ main: 'stopped', backup: 'not_configured' });
+    assert.deepEqual(describeSide(key(), 'main', off, NOW), {
+        state: 'stopped',
+        label: 'Main: Not sending',
+    });
+    assert.deepEqual(describeSide(key(), 'backup', off, NOW), {
+        state: 'stopped',
+        label: 'Backup: Not set up yet',
+    });
+});
+
+test('no dot where nothing can be said: no backup, no fresh report, an older server', () => {
+    const r = report({ K1: status('running', { sides: { main: 'running', backup: null } }) });
+    assert.equal(describeSide(key(), 'backup', r, NOW), null);
+    assert.equal(describeSide(key(), 'main', { ...r, online: false }, NOW), null);
+    assert.equal(describeSide(key(), 'main', null, NOW), null);
+    // An older server sends no sides at all.
+    assert.equal(describeSide(key(), 'main', report({ K1: status('running') }), NOW), null);
+    assert.equal(describeSide(key(), 'main', report({}), NOW), null);
+});
+
+test('a stream waiting for its input to go live is grey, not red', () => {
+    const OFF = { status: 'stopped', sinceMs: 0 };
+    const sides = { main: 'error', backup: 'error' };
+    const r = report({ K1: status('error', { sides }) }, { inputs: { L1: OFF } });
+    assert.equal(describeSide(key(), 'main', r, NOW).state, 'stopped');
+    assert.equal(describeSide(key(), 'main', r, NOW).label, 'Main: Not started yet');
+    // A link under the wrong input is still shown as it is.
+    const wrong = report(
+        { K1: status('error', { sides, inputMismatch: true }) },
+        { inputs: { L1: OFF } },
+    );
+    assert.equal(describeSide(key(), 'main', wrong, NOW).state, 'error');
 });

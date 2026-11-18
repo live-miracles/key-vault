@@ -222,6 +222,41 @@ export function describeKeyNote(
     };
 }
 
+// ===== Main and backup =====
+
+export interface SideDot {
+    // The dot's colour: green, amber, red, or grey for off.
+    state: 'running' | 'warning' | 'error' | 'stopped';
+    // Plain words for its hover text: "Backup: Not sending".
+    label: string;
+}
+
+// Whether one stream of a destination, the main or the backup, is on: a dot and its words.
+// Null says nothing: there is no fresh report, the destination has no such link, or an older
+// server did not send the sides. A stream bunryu has not been given, or one waiting for its
+// input to go live, is grey, because it is not running, but it is not a fault either.
+export function describeSide(
+    key: { id: string; input: string },
+    side: 'main' | 'backup',
+    report: StatusReport | null | undefined,
+    nowMs = Date.now(),
+): SideDot | null {
+    if (!report?.online) return null;
+    const status = report.keys?.[key.id];
+    const state = status?.sides?.[side];
+    if (!status || !state) return null;
+    const name = side === 'main' ? 'Main' : 'Backup';
+    if (state === 'not_configured') {
+        return { state: 'stopped', label: `${name}: Not set up yet` };
+    }
+    const waiting =
+        state !== 'running' &&
+        !status.inputMismatch &&
+        getInputStatus(key.input, report, nowMs)?.status === 'stopped';
+    if (waiting) return { state: 'stopped', label: `${name}: Not started yet` };
+    return { state, label: `${name}: ${NOTE_LABELS[state] || state}` };
+}
+
 // ===== Inputs =====
 
 export const INPUT_LABELS: Record<string, string> = {

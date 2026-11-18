@@ -106,6 +106,27 @@ test('a card shows the name as text, the links as words, and the tools only to t
     assert.doesNotMatch(pending, /edit-key-by-id|copy-text/);
 });
 
+test('a card shows a dot before Main and before Backup, and none before a link that is not there', () => {
+    const withBackup = key({ backupPlatform: 'rtmp', backupStreamKey: 'rtmp://b.test/live/k' });
+    const sides = { main: 'running', backup: 'stopped' };
+    const report = {
+        online: true,
+        instances: [],
+        inputs: { i1: { status: 'running', message: '', sinceMs: 0, pipeline: 'Hindi' } },
+        keys: { k1: { ...errorStatus, state: 'running', sides } },
+    };
+    const html = renderCard(withBackup, [withBackup], ctx({ report }));
+    assert.match(html, /input-dot-running[^>]*title="Main: Live"/);
+    assert.match(html, /input-dot-stopped[^>]*title="Backup: Not sending"/);
+
+    // No report: nothing is claimed. Saving: no dots either.
+    assert.doesNotMatch(renderCard(withBackup, [withBackup], ctx()), /input-dot/);
+    assert.doesNotMatch(
+        renderCard({ ...withBackup, pending: true }, [withBackup], ctx({ report })),
+        /input-dot/,
+    );
+});
+
 test('a card for a destination in trouble says what to try, and admins also get bunryu’s own report', () => {
     const report = { online: true, instances: [], inputs: {}, keys: { k1: errorStatus } };
     const editor = renderCard(key(), [key()], ctx({ report }));

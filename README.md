@@ -10,25 +10,32 @@ destination shows whether it is set up, whether it is running, and what to try w
 
 You can:
 
-- Create events.
-- Add stream keys for an event.
-- Add role-based access controls to restrict which keys each user can access.
+- Create events, each with its own inputs.
+- Add destinations (platform, stream key, optional backup) for an input.
+- Give people a role to restrict which destinations each of them can see or change.
 
-It runs on Vercel and Supabase. It replaced a Google Apps Script app backed by a Google Sheet.
+It runs on Vercel and Supabase.
 
 ## Project structure
 
 ```text
 ├── frontend/
-│   ├── src/*.ts         # Browser code (plain scripts sharing globals, as the tests load them)
-│   ├── src/supabase.ts  # Google sign-in and the call to the api function (own bundle)
+│   ├── src/             # Browser code: ES modules, one entry (main.ts)
+│   │   ├── demo/        # The demo's seed data and its in-browser backend
+│   │   └── *.ts         # Pure modules (status wording, search, cards, model) and the screens
 │   ├── index.html       # HTML shell
-│   └── input.css        # Tailwind CSS source
+│   └── input.css        # Tailwind CSS source and the theme
 ├── supabase/
-│   ├── migrations/      # Database schema
-│   └── functions/       # api (the app's operations) and ingest (bunryu heartbeats)
-├── build-tools/         # Site builds and the Sheet-to-SQL export
-└── docs/refactor-plan.md
+│   ├── migrations/      # The database schema
+│   └── functions/
+│       ├── api/         # One Edge Function: POST /api/<operation>
+│       ├── ingest/      # Where bunryu reports its heartbeats
+│       └── _shared/     # The rules, shared with the browser where it makes sense:
+│                        #   platforms.ts (where a destination can go), access.ts (who may do what),
+│                        #   operations.ts (the operations, over a Store), status.ts, types.ts
+├── build-tools/         # build.mjs (esbuild, demo and real modes) and dev.mjs (dev server)
+├── docs/                # setup.md, bunryu-contract.md, adr/ (decisions)
+└── test/                # Unit tests; migrations-db-check.mjs needs Docker
 ```
 
 ## How it fits together
@@ -39,14 +46,19 @@ Browser → Vercel static site → Supabase Auth (Google)
 bunryu ──every minute──► Edge Function `ingest` → Postgres
 ```
 
-The browser never reads the database directly: every table has row-level security with no policy,
-and the `api` function checks the user's role (the rules in `frontend/src/access.ts` and
-`supabase/functions/_shared/access.ts`, which a test keeps identical) before using the service role.
+The browser never reads the database directly: every table has row-level security with no policy.
+Every call goes to the `api` function, which decides what the signed-in user may do
+(`supabase/functions/_shared/access.ts`), checks the destination against the platform rules
+(`platforms.ts`, the same module the form uses) and only then uses the service role. The data it
+returns says what the user may do with each item, so the screens hold no rules of their own.
 
-bunryu reports the status of each output once a minute. It sends a hash of each destination URL,
-never the URL. Key Vault hashes its own main and backup URLs and matches them, so a key shows
-as running, warning, error or configured-but-stopped without anyone setting a color. Colors are not
-editable by hand. See `docs/refactor-plan.md` for the heartbeat contract.
+bunryu reports the status of each output once a minute. It sends a hash of each destination address,
+never the address. Key Vault hashes its own main and backup addresses and matches them, so a
+destination shows as running, warning, error or configured-but-stopped without anyone setting a
+colour. See `docs/bunryu-contract.md`.
+
+The demo site runs the same operations in the browser against an in-memory store, with sample data
+and statuses.
 
 ## Local development
 
@@ -55,46 +67,42 @@ npm install
 npm run dev
 ```
 
-This serves the demo (a built-in mock backend with sample data and statuses) at
-`http://localhost:2837`. There is no live reload; refresh the page after a change.
+This serves the demo at `http://localhost:2837` with live reload (set `PORT` to use another port).
 
 ```bash
 npm test              # unit tests, no database needed
-npm run typecheck
-npm run test:db       # applies the migrations to a throwaway Postgres in Docker
+npm run typecheck     # frontend and server
+npm run format:check
+npm run test:db       # applies the migration to a throwaway Postgres in Docker
 ```
 
 To build the real site locally, set the project URL and the **publishable** key (never a secret key;
-the build refuses one) and run `npm run build:vercel`; the result is in `web/`.
+the build refuses one) and run `npm run build`; the result is in `dist/`. `npm run build:demo` builds
+the demo instead.
 
 ```bash
-KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBLISHABLE_KEY=<publishable key> npm run build:vercel
+KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBLISHABLE_KEY=<publishable key> npm run build
 ```
 
 ## Setting up Supabase and Vercel
 
-The step-by-step order, with checks and fixes for the usual errors, is in `docs/cutover.md`. In short:
+The step-by-step order, with checks and fixes for the usual errors, is in `docs/setup.md`. In short:
 
-1. Create a Supabase project. Under Authentication → Providers enable Google (client id and secret
-   from a Google Cloud OAuth client whose redirect URI is
-   `https://<project-ref>.supabase.co/auth/v1/callback`), and set the Site URL and a Redirect URL to the
-   site's address in Authentication → URL Configuration (the default sends sign-in back to
-   `http://localhost:3000`).
-2. Set the function secrets (see `docs/refactor-plan.md` for what each is):
-   `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_OWNER_EMAILS`, `KEY_VAULT_SECRET`.
+1. Create a Supabase project. Under Authentication → Providers enable Google, and set the Site URL
+   and a Redirect URL to the site's address (the default sends sign-in back to `http://localhost:3000`).
+2. Set the function secrets `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_OWNER_EMAILS` and `KEY_VAULT_SECRET`
+   (what each is: `docs/bunryu-contract.md`).
 3. Add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`;
-   `.github/workflows/deploy-supabase.yml` then applies the migrations and deploys both functions on every
-   change under `supabase/`.
+   `.github/workflows/deploy-supabase.yml` then applies the migration and deploys both functions on
+   every change under `supabase/`.
 4. Import the repository in Vercel and set `KEY_VAULT_SUPABASE_URL` and
    `KEY_VAULT_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` does the rest.
-5. To bring over the existing Google Sheet, download its four tabs as CSV
-   (`Event`, `Role`, `Language`, `Key`) into one folder and run
-   `npm run sheet:sql -- <folder> > .migration/data.sql`, then run that file against the database. It lists
-   anything that cannot be migrated instead of guessing. The file holds real keys: delete it afterwards.
 
 ## Roles
 
-- Owner: can edit or delete events and assign event admins.
-- Admin: can add viewers and editors.
-- Editor: can edit keys for an event and can be restricted to inputs.
-- Viewer: can only view an event's keys and can be restricted to inputs.
+- Owner: can edit or delete events and assign event admins. An owner anywhere is an owner everywhere.
+- Admin: manages an event's inputs and can add viewers, editors and other admins.
+- Editor: can add and edit destinations, and can be limited to one input.
+- Viewer: can only view destinations, and can be limited to one input.
+
+Anyone listed in `KEY_VAULT_OWNER_EMAILS` is an owner without a role.

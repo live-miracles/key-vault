@@ -1,222 +1,185 @@
-// @ts-nocheck
+// The list of inputs beside an event's destinations, and adding, renaming, deleting and
+// reordering them. The list is the open event's own: its admins manage it right here.
 
-// The inputs of one event, in the order its admins gave them; with no event, every input.
-function getInputs(eventId = null) {
-    return [...(config.inputs || [])]
-        .filter((input) => input.id && input.name && (!eventId || input.event === eventId))
-        .sort((a, b) => {
-            const orderDiff = Number(a.order || 0) - Number(b.order || 0);
-            if (orderDiff !== 0) return orderDiff;
-            return a.name.localeCompare(b.name);
-        });
+import { actions, app } from './app.ts';
+import { inputDotHtml, inputLabelHtml, statusPillsHtml } from './cards.ts';
+import { $, $$, confirmAction } from './dom.ts';
+import { escapeHtml, iconSvg } from './html.ts';
+import { inputsOf } from './model.ts';
+import type { KeyItem } from './model.ts';
+import {
+    ALL_INPUTS,
+    listEventInputs,
+    resolveInputFilter,
+    summarizeKeyStatuses,
+} from './overview.ts';
+import { route } from './route.ts';
+
+// The input the event view is showing, so adding a destination can start on it. Empty under All.
+let shownInputId = '';
+export function shownInput(): string {
+    return shownInputId;
 }
 
-function getInputName(id) {
-    if (id === '*') return '* (All)';
-    return getInputs().find((input) => input.id === id)?.name || id;
+// The list on the left: this event's own inputs, one of them always chosen. Returns the choice.
+export function renderInputPanel(eventId: string, eventKeys: KeyItem[]): string {
+    const { data, status } = app;
+    const inputIds = listEventInputs(data, eventId, eventKeys);
+    const selected = resolveInputFilter(inputIds, route.input());
+    shownInputId = selected === ALL_INPUTS ? '' : selected;
+    const canManage = Boolean(data.events.find((e) => e.id === eventId)?.can.manageInputs);
+    $('#add-input-btn').classList.toggle('hidden', !canManage);
+
+    const row = (input: string, keys: KeyItem[]) => {
+        const active = input === selected;
+        const own = data.inputs.find((i) => i.id === input && i.event === eventId);
+        const isPending = Boolean(own?.pending);
+        const manage = canManage && own && !isPending;
+        // Shown on hover only. Delete is never greyed out: if the input is still used, clicking
+        // it says what to remove first.
+        const tools = manage
+            ? `<span class="lang-tools">
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Rename this input" aria-label="Rename input ${escapeHtml(own.name)}" data-action="edit-input-by-id">${iconSvg('pen')}</button>
+                    <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete this input" aria-label="Delete input ${escapeHtml(own.name)}" data-action="delete-input-by-id">${iconSvg('trash')}</button>
+               </span>`
+            : '';
+        const count = isPending
+            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+            : `<span class="lang-item-count">${keys.length}</span>`;
+        return `
+            <div class="lang-row ${active ? 'lang-row-active' : ''}" data-input-id="${escapeHtml(input)}" ${manage ? 'draggable="true" title="Drag to change the order"' : ''}>
+                <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${escapeHtml(input)}" aria-pressed="${active}">
+                    ${inputDotHtml(input, status)}
+                    <span class="lang-item-name">${inputLabelHtml(data, input)}</span>
+                    <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(keys, status))}</span>
+                    ${count}
+                </button>
+                ${tools}
+            </div>`;
+    };
+    // All comes first and counts every destination of the event. It has no tools: it is not an
+    // input, so it cannot be renamed, deleted or moved.
+    const allRow = () => {
+        const active = selected === ALL_INPUTS;
+        return `
+            <div class="lang-row ${active ? 'lang-row-active' : ''}">
+                <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${ALL_INPUTS}" aria-pressed="${active}">
+                    <span class="lang-item-name">All</span>
+                    <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(eventKeys, status))}</span>
+                    <span class="lang-item-count">${eventKeys.length}</span>
+                </button>
+            </div>`;
+    };
+    $('#input-list').innerHTML =
+        (inputIds.length ? allRow() : '') +
+        inputIds
+            .map((input) =>
+                row(
+                    input,
+                    eventKeys.filter((key) => key.input === input),
+                ),
+            )
+            .join('');
+
+    for (const el of $$('#input-list .lang-row[draggable="true"]')) {
+        el.addEventListener('dragstart', dragInputStart);
+        el.addEventListener('dragover', dragInputOver);
+        el.addEventListener('drop', dropInput);
+        el.addEventListener('dragend', dragInputEnd);
+    }
+    return selected;
 }
 
-function hasMissingInput(id) {
-    return id !== '*' && !getInputs().some((input) => input.id === id);
+export function selectInput(input: string | undefined) {
+    route.go({ input: input && input !== ALL_INPUTS ? input : null });
 }
 
-function inputLabelHtml(id) {
-    if (!hasMissingInput(id)) return escapeHtml(getInputName(id));
+// ===== Add, rename, delete =====
 
-    return `
-        <span class="text-error inline-flex items-center justify-center gap-1" title="Input not found">
-            ${iconSvg('error', 'h-4 w-4')}
-            <span>${escapeHtml(id)}</span>
-        </span>
-    `;
+function openInputModal({ id, name }: { id: string; name: string }) {
+    $<HTMLInputElement>('#input-id-field').value = id;
+    $<HTMLInputElement>('#input-name-field').value = name;
+    $('#input-modal-title').innerText = id ? 'Edit input' : 'Add an input';
+    $('#save-input-btn').innerText = id ? 'Save changes' : 'Add input';
+    ($('#input-name-field').nextElementSibling as HTMLElement).innerText = '';
+    $('#input-name-field').classList.remove('input-error');
+    $<HTMLDialogElement>('#input-modal').showModal();
+    $('#input-name-field').focus();
 }
 
-function getInputOrder(id) {
-    const input = getInputs().find((item) => item.id === id);
-    return input ? Number(input.order || 0) : Number.MAX_SAFE_INTEGER;
+function canManageInputs(eventId: string | null): boolean {
+    return Boolean(app.data.events.find((e) => e.id === eventId)?.can.manageInputs);
 }
 
-function inputOptions({ includeAll = false, eventId = null, action = null } = {}) {
-    const options = includeAll ? [{ id: '*', name: '* (All)' }] : [];
-    const inputs = getInputs(eventId).filter(
-        (input) => !action || hasKeyAccess(eventRoles, action, eventId, input.id),
-    );
-    return options.concat(inputs);
-}
-
-function renderInputSelect(selector, options = {}) {
-    const placeholder = options.placeholder
-        ? [
-              {
-                  id: '',
-                  name: options.placeholder,
-                  disabled: true,
-              },
-          ]
-        : [];
-    document.querySelector(selector).innerHTML = placeholder
-        .concat(inputOptions(options))
-        .map(
-            (input) =>
-                `<option value="${escapeHtml(input.id)}" ${input.disabled ? 'disabled' : ''}>${escapeHtml(input.name)}</option>`,
-        )
-        .join('');
-}
-
-// After the inputs of an event change, everything that lists them is drawn again.
-function renderInputViews() {
-    const eventId = getUrlParam('event');
-    renderRoleInputs();
-    renderKeyInputs(eventId);
-    renderKeyTable(eventId);
-}
-
-function openInputModal({ id, name }) {
-    const modal = document.querySelector('#input-modal');
-    // The id is made by the server when a input is added; it is only kept here to know
-    // which input an edit is for.
-    document.querySelector('#input-id-field').value = id;
-    document.querySelector('#input-name-field').value = name;
-    document.querySelector('#input-modal-title').innerText = id ? 'Edit input' : 'Add an input';
-    document.querySelector('#save-input-btn').innerText = id ? 'Save changes' : 'Add input';
-    document.querySelector('#input-name-field').nextElementSibling.innerText = '';
-    document.querySelector('#input-name-field').classList.remove('input-error');
-    modal.showModal();
-    document.querySelector('#input-name-field').focus();
-}
-
-function addInputBtn() {
-    if (!hasInputAccess(eventRoles, getUrlParam('event'))) return;
+export function addInputBtn() {
+    if (!canManageInputs(route.event())) return;
     openInputModal({ id: '', name: '' });
 }
 
-function editInputById(inputId) {
-    const input = config.inputs.find((l) => l.id === inputId);
-    if (!input) {
-        console.error('Input not found:', inputId);
-        return;
-    }
-    if (!hasInputAccess(eventRoles, input.event)) return;
-
+export function editInputById(inputId: string | undefined) {
+    const input = app.data.inputs.find((i) => i.id === inputId);
+    if (!input || !canManageInputs(input.event)) return;
     openInputModal(input);
 }
 
-async function saveInputFormBtn(event) {
-    const eventId = getUrlParam('event');
-    const id = document.getElementById('input-id-field').value.trim();
-    const name = document.getElementById('input-name-field').value.trim();
-    const isEdit = id !== '';
-
-    const errorElem = document.querySelector('#input-name-field').nextElementSibling;
-    if (!hasInputAccess(eventRoles, eventId)) {
+export async function saveInputForm(event: Event) {
+    const eventId = route.event() ?? '';
+    const id = $<HTMLInputElement>('#input-id-field').value.trim();
+    const name = $<HTMLInputElement>('#input-name-field').value.trim();
+    const errorElem = $('#input-name-field').nextElementSibling as HTMLElement;
+    const fail = (message: string) => {
+        errorElem.innerText = message;
+        $('#input-name-field').classList.add('input-error');
         event.preventDefault();
-        return;
-    }
-    if (name === '') {
-        errorElem.innerText = 'Please type the name of the input, for example "Hindi".';
-        document.querySelector('#input-name-field').classList.add('input-error');
-        event.preventDefault();
-        return;
-    }
-    // A name only has to differ from the other inputs of this event.
-    if (
-        config.inputs.some(
-            (l) =>
-                l.event === eventId &&
-                l.id !== id &&
-                String(l.name).trim().toLowerCase() === name.toLowerCase(),
-        )
-    ) {
-        errorElem.innerText = 'This event already has an input with this name.';
-        document.querySelector('#input-name-field').classList.add('input-error');
-        event.preventDefault();
-        return;
-    }
-
-    const snapshot = cloneConfig();
-    const oldInput = config.inputs.find((l) => l.id === id);
-    const ownOrders = config.inputs.filter((l) => l.event === eventId).map((l) => Number(l.order));
-    const optimisticInput = {
-        ...oldInput,
-        id: isEdit ? id : newTempId(),
-        event: eventId,
-        name,
-        pending: !isEdit,
-        order: oldInput?.order || String(Math.max(...ownOrders, 0) + 1),
     };
 
-    replaceConfigItem('inputs', optimisticInput);
-    renderInputViews();
-
-    showLoading();
-    try {
-        const newInput = processResponse(
-            await api(
-                isEdit ? 'editInput' : 'addInput',
-                isEdit ? { id, name } : { event: eventId, name },
-            ),
-        );
-        if (newInput === null) {
-            restoreConfig(snapshot);
-            renderInputViews();
-            return;
-        }
-        replaceConfigItem('inputs', newInput, optimisticInput.id);
-        // A new input is opened straight away, ready for its first stream.
-        if (!isEdit) setUrlParam('input', newInput.id);
-        renderInputViews();
-    } finally {
-        hideLoading();
-    }
-}
-
-async function deleteInputById(inputId) {
-    const input = config.inputs.find((l) => l.id === inputId);
-    if (!input) {
-        console.error('Input not found:', inputId);
+    if (!canManageInputs(eventId)) {
+        event.preventDefault();
         return;
     }
-    if (!hasInputAccess(eventRoles, input.event)) return;
+    if (name === '') return fail('Please type the name of the input, for example "Hindi".');
+    // A name only has to differ from the other inputs of this event.
+    const taken = app.data.inputs.some(
+        (i) =>
+            i.event === eventId &&
+            i.id !== id &&
+            i.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (taken) return fail('This event already has an input with this name.');
 
-    if (!(await confirmAction(`Delete the input "${input.name}"? This cannot be undone.`))) {
-        return;
-    }
+    if (id) await actions.renameInput(id, name);
+    // A new input is opened straight away, ready for its first destination.
+    else await actions.addInput(eventId, name, (newId) => route.go({ input: newId }));
+}
 
-    const snapshot = cloneConfig();
-    config.inputs = config.inputs.filter((l) => l.id !== input.id);
-    if (getUrlParam('input') === input.id) setUrlParam('input', null);
-    renderInputViews();
+export async function deleteInputById(inputId: string | undefined) {
+    const input = app.data.inputs.find((i) => i.id === inputId);
+    if (!input || !canManageInputs(input.event)) return;
+    if (!(await confirmAction(`Delete the input "${input.name}"? This cannot be undone.`))) return;
 
-    showLoading();
-    try {
-        const res = processResponse(await api('deleteInput', input.id));
-        if (res === null) {
-            restoreConfig(snapshot);
-            renderInputViews();
-        }
-    } finally {
-        hideLoading();
+    if (route.input() === input.id) route.fix({ input: null });
+    await actions.removeInput(input.id);
+}
+
+// ===== Reordering: drag an input in the list on the left. The order is that event's own. =====
+
+let draggedInputId: string | null = null;
+
+const draggableInputRows = () => $$('#input-list .lang-row[draggable="true"]');
+
+function dragInputStart(event: DragEvent) {
+    const row = event.currentTarget as HTMLElement;
+    draggedInputId = row.dataset.inputId ?? null;
+    row.classList.add('opacity-50');
+    if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', draggedInputId ?? '');
     }
 }
 
-// ----- Reordering: drag an input in the list on the left. The order is that event's own. -----
-
-let draggedInputId = null;
-
-const draggableInputRows = () => [
-    ...document.querySelectorAll('#input-list .lang-row[draggable="true"]'),
-];
-
-function dragInputStart(event) {
-    draggedInputId = event.currentTarget.dataset.inputId;
-    event.currentTarget.classList.add('opacity-50');
-    event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData('text/plain', draggedInputId);
-}
-
-function dragInputOver(event) {
+function dragInputOver(event: DragEvent) {
     event.preventDefault();
-    const targetRow = event.currentTarget;
+    const targetRow = event.currentTarget as HTMLElement;
     if (!draggedInputId || targetRow.dataset.inputId === draggedInputId) return;
 
     const draggedRow = draggableInputRows().find((row) => row.dataset.inputId === draggedInputId);
@@ -232,46 +195,21 @@ function dragInputOver(event) {
     else targetRow.before(draggedRow);
 }
 
-async function dropInput(event) {
+async function dropInput(event: DragEvent) {
     event.preventDefault();
-    const eventId = getUrlParam('event');
-    const inputIds = draggableInputRows().map((row) => row.dataset.inputId);
-    const own = getInputs(eventId);
+    const eventId = route.event() ?? '';
+    const ids = draggableInputRows().map((row) => row.dataset.inputId ?? '');
+    const own = inputsOf(app.data, eventId);
     // While an input is still being saved the list is not complete, so it cannot be ordered.
-    if (
-        inputIds.join('|') === own.map((input) => input.id).join('|') ||
-        own.some((input) => input.pending)
-    ) {
-        renderKeyTable(eventId);
+    if (ids.join('|') === own.map((input) => input.id).join('|') || own.some((i) => i.pending)) {
+        dragInputEnd(event);
+        route.refresh();
         return;
     }
-
-    const snapshot = cloneConfig();
-    const setOrder = (inputs) => {
-        config.inputs = config.inputs.filter((l) => l.event !== eventId).concat(inputs);
-    };
-    setOrder(
-        inputIds.map((id, index) => ({
-            ...config.inputs.find((l) => l.id === id),
-            order: String(index + 1),
-        })),
-    );
-    renderInputViews();
-
-    showLoading();
-    try {
-        const newInputs = processResponse(
-            await api('reorderInputs', { event: eventId, ids: inputIds }),
-        );
-        if (newInputs !== null) setOrder(newInputs);
-        else restoreConfig(snapshot);
-        renderInputViews();
-    } finally {
-        hideLoading();
-    }
+    await actions.reorderInputs(eventId, ids);
 }
 
-function dragInputEnd(event) {
-    event.currentTarget.classList.remove('opacity-50');
+function dragInputEnd(event: DragEvent) {
+    (event.currentTarget as HTMLElement).classList.remove('opacity-50');
     draggedInputId = null;
 }

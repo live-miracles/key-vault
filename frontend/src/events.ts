@@ -1,219 +1,106 @@
-// @ts-nocheck
+// The event bar and the event's own card: which event is open, adding, renaming and deleting.
 
-function renderEventTabBar(eventId = null) {
-    const events = config.events.filter((e) => e.id || e.name);
-    const event = events.find((e) => e.id === eventId);
+import { actions, app } from './app.ts';
+import { $, confirmAction } from './dom.ts';
+import { route } from './route.ts';
+
+const NAME_PATTERN = /^[a-zA-Z0-9_\- ]*$/;
+
+function show(selector: string, visible: boolean) {
+    $(selector).classList.toggle('hidden', !visible);
+}
+
+// Opens an event, and by default its input list on All.
+export function selectEvent(eventId: string, input: string | null = null) {
+    route.go({ event: eventId, view: null, input });
+}
+
+export function renderEventBar(eventId: string) {
+    const { data } = app;
+    const event = data.events.find((e) => e.id === eventId);
     const isPending = Boolean(event?.pending);
-    const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
+    const hasEvents = data.events.length > 0;
+
     // An event is named in its own card, beside the controls that act on it alone.
-    document.getElementById('event-card-name').innerText = event?.name || '';
-    document.getElementById('event-card-name').title = event?.name || '';
+    $('#event-card-name').innerText = event?.name || '';
+    $('#event-card-name').title = event?.name || '';
 
-    document.querySelector('#add-event-btn').disabled = !canCreateEvents;
-    document.querySelector('#add-event-btn').classList.toggle('hidden', !canCreateEvents);
+    $<HTMLButtonElement>('#add-event-btn').disabled = !data.canCreateEvents;
+    show('#add-event-btn', data.canCreateEvents);
+    show('#edit-event-btn', Boolean(event?.can.rename) && !isPending);
+    show('#delete-event-btn', Boolean(event?.can.delete) && !isPending);
+    $<HTMLButtonElement>('#edit-event-btn').disabled = isPending;
+    $<HTMLButtonElement>('#delete-event-btn').disabled = isPending;
 
-    if (hasEventAccess(eventRoles, ACTIONS.UPDATE, eventId) && !isPending) {
-        document.querySelector('#edit-event-btn').classList.remove('hidden');
-        document.querySelector('#delete-event-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#edit-event-btn').classList.add('hidden');
-        document.querySelector('#delete-event-btn').classList.add('hidden');
-    }
+    $('#no-events-message').innerText = data.canCreateEvents
+        ? 'No events currently configured. Please add them.'
+        : 'No events are available for the signed-in email:';
+    $('#no-events-email').innerText = data.canCreateEvents
+        ? ''
+        : `${data.userEmail || 'unknown email'}.`;
+    show('#no-events-access', !hasEvents);
+    $('#no-events-access').classList.toggle('flex', !hasEvents);
+    show('#key-table', hasEvents);
 
-    document.querySelector('#edit-event-btn').disabled = isPending;
-    document.querySelector('#delete-event-btn').disabled = isPending;
+    // Who may see or change who has access, and add destinations, is the server's answer.
+    show('#show-roles-btn', Boolean(event?.can.viewRoles));
+    const canManageRoles = Boolean(event && event.can.addRoleTypes.length > 0);
+    show('#add-role-btn', canManageRoles);
+    show('#edit-role-btn', canManageRoles);
+    show('#delete-role-btn', canManageRoles);
+    show('#add-key-btn', Boolean(event?.can.addKeys));
 
-    const tabsElem = document.querySelector('.tabs');
-    tabsElem.replaceChildren(
-        ...events.map((e) => {
+    $('.tabs').replaceChildren(
+        ...data.events.map((e) => {
             const tab = document.createElement('a');
             tab.role = 'tab';
             tab.className = `tab ${eventId === e.id ? 'tab-active' : ''}`;
             tab.textContent = e.name;
-            tab.addEventListener('click', () => selectEvent(e.id, null));
+            tab.addEventListener('click', () => selectEvent(e.id));
             return tab;
         }),
     );
 }
 
-async function addEventBtn() {
-    if (!hasEventAccess(eventRoles, ACTIONS.CREATE)) return;
-
-    const eventNumbers = config.events
-        .filter((e) => e.name.startsWith('Event '))
-        .map((e) => parseInt(e.name.split(' ')[1], 10));
-    const maxNumber = Math.max(...eventNumbers, 0);
-    const nextNumber = maxNumber + 1;
-
-    const snapshot = cloneConfig();
-    const optimisticEvent = {
-        id: newTempId(),
-        name: `Event ${nextNumber}`,
-        pending: true,
-    };
-
-    config.events.push(optimisticEvent);
-    updateEventRoles(config);
-    selectEvent(optimisticEvent.id);
-
-    showLoading();
-    document.querySelector('#add-event-btn').disabled = true;
-    try {
-        const savedEvent = processResponse(await api('addEvent', { name: `Event ${nextNumber}` }));
-        if (savedEvent === null) {
-            restoreConfig(snapshot);
-            return;
-        }
-        if (savedEvent.adminRole) {
-            config.roles.push(savedEvent.adminRole);
-        }
-        delete savedEvent.adminRole;
-        replaceConfigItem('events', savedEvent, optimisticEvent.id);
-        updateEventRoles(config);
-        selectEvent(savedEvent.id);
-    } finally {
-        document.querySelector('#add-event-btn').disabled = false;
-        hideLoading();
-    }
+export async function addEventBtn() {
+    if (!app.data.canCreateEvents) return;
+    $<HTMLButtonElement>('#add-event-btn').disabled = true;
+    await actions.addEvent((id) => selectEvent(id));
+    $<HTMLButtonElement>('#add-event-btn').disabled = !app.data.canCreateEvents;
 }
 
-function editEventBtn() {
-    const eventId = getUrlParam('event');
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        console.error('Event not found:', eventId);
-        return;
-    }
-
-    document.querySelector('#event-id-input').value = event.id;
-    document.querySelector('#event-name-input').value = event.name;
-    document.getElementById('event-modal').showModal();
+export function editEventBtn() {
+    const event = app.data.events.find((e) => e.id === route.event());
+    if (!event) return;
+    $<HTMLInputElement>('#event-id-input').value = event.id;
+    $<HTMLInputElement>('#event-name-input').value = event.name;
+    $<HTMLDialogElement>('#event-modal').showModal();
 }
 
-async function saveEventFormBtn(evt) {
-    const event = {
-        id: document.getElementById('event-id-input').value.trim(),
-        name: document.getElementById('event-name-input').value.trim(),
-    };
+export async function saveEventForm(evt: Event) {
+    const id = $<HTMLInputElement>('#event-id-input').value.trim();
+    const name = $<HTMLInputElement>('#event-name-input').value.trim();
 
-    // Validation
-    let errorElem = document.querySelector('#event-name-input').nextElementSibling;
-    if (event.name === '') {
+    const errorElem = $('#event-name-input').nextElementSibling as HTMLElement;
+    if (name === '') {
         errorElem.innerText = "Name can't be empty";
         evt.preventDefault();
         return;
-    } else if (!/^[a-zA-Z0-9_\- ]*$/.test(event.name)) {
+    }
+    if (!NAME_PATTERN.test(name)) {
         errorElem.innerText = 'Only letters, numbers, spaces, -, _';
         evt.preventDefault();
         return;
-    } else {
-        errorElem.innerText = '';
     }
+    errorElem.innerText = '';
 
-    // Sending request
-    const snapshot = cloneConfig();
-    replaceConfigItem('events', event);
-    updateEventRoles(config);
-    selectEvent(event.id);
-
-    showLoading();
-    document.querySelector('#edit-event-btn').disabled = true;
-    try {
-        const newEvent = processResponse(await api('editEvent', event));
-        if (newEvent === null) {
-            restoreConfig(snapshot, event.id);
-            return;
-        }
-        replaceConfigItem('events', newEvent);
-        updateEventRoles(config);
-        selectEvent(newEvent.id);
-    } finally {
-        document.querySelector('#edit-event-btn').disabled = false;
-        hideLoading();
-    }
+    await actions.renameEvent(id, name);
 }
 
-async function deleteEventBtn() {
-    const eventId = getUrlParam('event');
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        console.error('Event not found:', eventId);
-        return;
-    }
+export async function deleteEventBtn() {
+    const event = app.data.events.find((e) => e.id === route.event());
+    if (!event) return;
+    if (!(await confirmAction(`Delete the event "${event.name}"? This cannot be undone.`))) return;
 
-    if (!(await confirmAction(`Delete the event "${event.name}"? This cannot be undone.`))) {
-        return;
-    }
-
-    const snapshot = cloneConfig();
-    config.events = config.events.filter((e) => e.id !== event.id);
-    updateEventRoles(config);
-    selectEvent(config.events[0]?.id ?? '');
-
-    showLoading();
-    document.querySelector('#delete-event-btn').disabled = true;
-    try {
-        const res = processResponse(await api('deleteEvent', event.id));
-        if (res === null) {
-            restoreConfig(snapshot, event.id);
-        }
-    } finally {
-        document.querySelector('#delete-event-btn').disabled = false;
-        hideLoading();
-    }
-}
-
-// `input` picks the input filter; leave it out to keep the one already chosen.
-function selectEvent(id, input = undefined) {
-    setUrlParams({ event: id, view: null, ...(input === undefined ? {} : { input }) });
-
-    const hasEvents = config.events.length > 0;
-    const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
-    document.querySelector('#no-events-message').innerText = canCreateEvents
-        ? 'No events currently configured. Please add them.'
-        : 'No events are available for the signed-in email:';
-    document.querySelector('#no-events-email').innerText = canCreateEvents
-        ? ''
-        : `${config.userEmail || 'unknown email'}.`;
-    document.querySelector('#no-events-access').classList.toggle('hidden', hasEvents);
-    document.querySelector('#no-events-access').classList.toggle('flex', !hasEvents);
-    document.querySelector('#key-table').classList.toggle('hidden', !hasEvents);
-
-    renderEventTabBar(id);
-
-    if (!hasEvents) {
-        document.querySelector('#show-roles-btn').classList.add('hidden');
-        document.querySelector('#add-role-btn').classList.add('hidden');
-        document.querySelector('#edit-role-btn').classList.add('hidden');
-        document.querySelector('#delete-role-btn').classList.add('hidden');
-        document.querySelector('#add-key-btn').classList.add('hidden');
-        renderRoleTable(id);
-        renderKeyTable(id);
-        return;
-    }
-
-    renderRoleTable(id);
-    if (hasRoleAccess(eventRoles, ACTIONS.VIEW, id)) {
-        document.querySelector('#show-roles-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#show-roles-btn').classList.add('hidden');
-    }
-
-    if (hasRoleAccess(eventRoles, ACTIONS.CREATE, id)) {
-        document.querySelector('#add-role-btn').classList.remove('hidden');
-        document.querySelector('#edit-role-btn').classList.remove('hidden');
-        document.querySelector('#delete-role-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#add-role-btn').classList.add('hidden');
-        document.querySelector('#edit-role-btn').classList.add('hidden');
-        document.querySelector('#delete-role-btn').classList.add('hidden');
-    }
-
-    renderKeyTable(id);
-    renderKeyInputs(id);
-    if (hasKeyAccess(eventRoles, ACTIONS.CREATE, id) && config.events.some((e) => e.id === id)) {
-        document.querySelector('#add-key-btn').classList.remove('hidden');
-    } else {
-        document.querySelector('#add-key-btn').classList.add('hidden');
-    }
+    await actions.deleteEvent(event.id, (next) => selectEvent(next));
 }

@@ -3,15 +3,9 @@
     "configurations": [
         {
             "name": "demo",
-            "runtimeExecutable": "node",
-            "runtimeArgs": ["build-tools/serve.mjs", "./site", "2837"],
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "dev"],
             "port": 2837
-        },
-        {
-            "name": "web",
-            "runtimeExecutable": "node",
-            "runtimeArgs": ["build-tools/serve.mjs", "./web", "3001"],
-            "port": 3001
         }
     ]
 }

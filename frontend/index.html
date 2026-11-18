@@ -5,11 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Key Vault</title>
 
-    <!-- assets:start -->
     <link rel="icon" type="image/svg+xml" href="./logo.svg" />
     <link rel="icon" type="image/png" href="./logo.png" />
-    <link rel="stylesheet" href="./output.css" />
-    <!-- assets:end -->
+    <link rel="stylesheet" href="./app.css" />
+    <script type="module" src="./app.js"></script>
   </head>
   <body class="text-base-content flex min-h-screen flex-col overflow-x-hidden">
     <svg class="wave-bg" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
@@ -64,7 +63,7 @@
           <img src="./logo.png" alt="" class="h-12 w-12" />
           <h1 class="text-2xl font-semibold">Key Vault</h1>
           <p class="text-base-content/70 text-sm">Sign in with your Google account to see your events.</p>
-          <button type="button" id="sign-in-btn" class="btn btn-accent mt-2 w-full">Sign in with Google</button>
+          <button type="button" id="sign-in-btn" class="btn btn-accent mt-2 w-full" data-action="sign-in">Sign in with Google</button>
           <p id="login-message" class="text-error min-h-5 text-sm" role="alert"></p>
         </div>
       </div>
@@ -119,8 +118,8 @@
       </ul>
     </div>
 
-    <div id="key-color-menu" class="bg-base-200 border-base-300 rounded-box fixed z-1000 hidden border shadow-lg">
-      <ul class="menu w-fit p-2" id="key-color-menu-options"></ul>
+    <div id="key-links-menu" class="bg-base-200 border-base-300 rounded-box fixed z-1000 hidden border shadow-lg">
+      <ul class="menu w-fit p-2" id="key-links-menu-options"></ul>
     </div>
 
     <dialog id="input-modal" class="modal">

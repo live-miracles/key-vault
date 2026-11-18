@@ -1,6 +1,6 @@
 {
-    "buildCommand": "npm run build:vercel",
-    "outputDirectory": "web",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
     "cleanUrls": true,
     "headers": [
         {

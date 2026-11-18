@@ -1,0 +1,212 @@
+// What the demo site starts with: a couple of events with inputs, people and destinations of
+// every platform, and bunryu's report on them. The report is real in the one way that matters:
+// each output's hash is made from the destination's address with the demo secret, exactly as
+// bunryu would, so the server's own status code matches them to the destinations.
+
+import { hashUrl } from '../../../supabase/functions/_shared/link-hash.ts';
+import type { MemoryState } from '../../../supabase/functions/_shared/memory-store.ts';
+import { backupUrl, mainUrl } from '../../../supabase/functions/_shared/platforms.ts';
+import type { Status, StatusRow } from '../../../supabase/functions/_shared/status.ts';
+import type { KeyRow } from '../../../supabase/functions/_shared/types.ts';
+
+export const DEMO_EMAIL = 'demo@example.org';
+export const DEMO_HASH_SECRET = 'demo-hash-secret';
+export const DEMO_SECRET = 'demo-secret-this-is-not-a-real-key-0123456789';
+
+const MINUTE = 60_000;
+
+export async function buildDemoState(
+    nowMs = Date.now(),
+    uuid: () => string = () => crypto.randomUUID(),
+): Promise<MemoryState> {
+    const event = (name: string) => ({ id: uuid(), name });
+    const winter = event('Winter Retreat');
+    const spring = event('Spring Festival');
+
+    const input = (eventId: string, name: string, position: number) => ({
+        id: uuid(),
+        event: eventId,
+        name,
+        position,
+    });
+    const english = input(winter.id, 'English', 1);
+    const hindi = input(winter.id, 'Hindi', 2);
+    const tamil = input(winter.id, 'Tamil', 3);
+    const german = input(winter.id, 'German', 4);
+    const springEnglish = input(spring.id, 'English', 1);
+    const springHindi = input(spring.id, 'Hindi', 2);
+
+    const role = (
+        eventId: string,
+        email: string,
+        type: 'viewer' | 'editor' | 'admin' | 'owner',
+        inputId: string | null = null,
+    ) => ({ id: uuid(), event: eventId, email, type, input: inputId });
+
+    const edited = (by: string, action: 'added' | 'edited', minutesAgo: number) => ({
+        updatedBy: by,
+        updatedAction: action,
+        updatedAt: new Date(nowMs - minutesAgo * MINUTE).toISOString(),
+    });
+    const key = (
+        eventId: string,
+        inputId: string,
+        name: string,
+        platform: string,
+        streamKey: string,
+        extra: Partial<KeyRow> = {},
+    ): KeyRow => ({
+        id: uuid(),
+        event: eventId,
+        name,
+        input: inputId,
+        platform,
+        streamKey,
+        backupPlatform: '',
+        backupStreamKey: '',
+        link: '',
+        remarks: '',
+        ...edited('ann@example.org', 'added', 3 * 24 * 60),
+        ...extra,
+    });
+
+    const keys: KeyRow[] = [
+        key(winter.id, english.id, 'YouTube English', 'yt', 'abcd-1234-efgh-5678-ijkl', {
+            link: 'https://www.youtube.com/watch?v=demo-english',
+            remarks: 'Main public stream',
+        }),
+        key(winter.id, english.id, 'Facebook English', 'fb', 'FB-1234567890-0-AbCdEfGh', {
+            backupPlatform: 'fb',
+            backupStreamKey: 'FB-1234567890-1-ZyXwVuTs',
+            link: 'https://www.facebook.com/example/live',
+            ...edited('ravi@example.org', 'edited', 45),
+        }),
+        key(winter.id, english.id, 'Instagram English', 'ig', 'IG-77-1?s_prp=xyz789'),
+        key(winter.id, hindi.id, 'YouTube Hindi', 'yt', 'hndi-aaaa-bbbb-cccc-dddd'),
+        key(winter.id, hindi.id, 'VdoCipher Hindi', 'vc', 'hindi-stream-001', {
+            remarks: 'Set up, waiting for the event',
+        }),
+        key(
+            winter.id,
+            hindi.id,
+            'Channel 3 SRT Hindi',
+            'srt',
+            'srt://203.0.113.10:9000?mode=caller&latency=240000&passphrase=0123456789&pbkeylen=32&streamid=ch3',
+            {
+                remarks: 'New link, sent by the channel today',
+                ...edited('ravi@example.org', 'edited', 5),
+            },
+        ),
+        key(winter.id, tamil.id, 'YouTube Tamil', 'yt', 'tmil-aaaa-bbbb-cccc-dddd'),
+        key(
+            winter.id,
+            german.id,
+            'Partner Stream German',
+            'rtmp',
+            'rtmp://partner.example.net/live/german-77',
+            {
+                backupPlatform: 'rtmp',
+                backupStreamKey: 'rtmp://partner-b.example.net/live/german-77',
+            },
+        ),
+        key(spring.id, springEnglish.id, 'YouTube English', 'yt', 'sprg-eng1-aaaa-bbbb-cccc'),
+        key(spring.id, springHindi.id, 'Facebook Hindi', 'fb', 'FB-99-0-QwErTy'),
+    ];
+    const byName = (eventId: string, name: string) => {
+        const found = keys.find((k) => k.event === eventId && k.name === name);
+        if (!found) throw new Error(`Demo destination missing: ${name}`);
+        return found;
+    };
+
+    // One output of bunryu for an address, as bunryu reports it: by hash, never by address.
+    const rows: StatusRow[] = [];
+    const output = async (
+        url: string,
+        status: Status,
+        pipeline: string,
+        label: string,
+        extra: Partial<StatusRow> = {},
+    ) => {
+        rows.push({
+            instance: 'demo',
+            hash: await hashUrl(DEMO_HASH_SECRET, url),
+            pipeline,
+            output: label,
+            status,
+            message: '',
+            failures: 0,
+            stoppedAfterFailures: false,
+            sinceMs: nowMs - 95 * MINUTE,
+            ...extra,
+        });
+    };
+
+    const youtubeEnglish = byName(winter.id, 'YouTube English');
+    await output(mainUrl(youtubeEnglish), 'running', 'English', 'YouTube');
+    await output(backupUrl(youtubeEnglish), 'running', 'English', 'YouTube backup');
+
+    const facebookEnglish = byName(winter.id, 'Facebook English');
+    await output(mainUrl(facebookEnglish), 'warning', 'English', 'Facebook', {
+        message: 'Output is falling behind live',
+    });
+    await output(backupUrl(facebookEnglish), 'running', 'English', 'Facebook backup');
+
+    await output(mainUrl(byName(winter.id, 'Instagram English')), 'error', 'English', 'Instagram', {
+        message: 'Server returned 403 Forbidden',
+        failures: 5,
+        stoppedAfterFailures: true,
+    });
+
+    await output(mainUrl(byName(winter.id, 'YouTube Hindi')), 'running', 'Hindi', 'YouTube', {
+        sinceMs: nowMs - 12 * MINUTE,
+    });
+    await output(mainUrl(byName(winter.id, 'VdoCipher Hindi')), 'stopped', 'Hindi', 'VdoCipher');
+    // "Channel 3 SRT Hindi" has no output: bunryu does not have this link yet.
+
+    // The Tamil input has no signal, so its destination fails for a reason that is not the platform.
+    await output(mainUrl(byName(winter.id, 'YouTube Tamil')), 'error', 'Tamil', 'YouTube', {
+        message: 'Connection refused',
+        failures: 3,
+    });
+
+    // This link runs in the English pipeline, though the destination is for German.
+    const partner = byName(winter.id, 'Partner Stream German');
+    await output(mainUrl(partner), 'running', 'English', 'Partner');
+    await output(backupUrl(partner), 'stopped', 'English', 'Partner backup');
+
+    await output(mainUrl(byName(spring.id, 'YouTube English')), 'running', 'English', 'YouTube', {
+        sinceMs: nowMs - 30 * MINUTE,
+    });
+
+    const pipeline = (name: string, status: Status, message = '') => ({
+        instance: 'demo',
+        pipeline: name,
+        status,
+        message,
+        sinceMs: nowMs - 100 * MINUTE,
+    });
+
+    return {
+        events: [winter, spring],
+        inputs: [english, hindi, tamil, german, springEnglish, springHindi],
+        roles: [
+            role(winter.id, 'ann@example.org', 'admin'),
+            role(winter.id, 'ravi@example.org', 'editor', hindi.id),
+            role(winter.id, 'maya@example.org', 'editor', english.id),
+            role(winter.id, 'partner@example.org', 'viewer'),
+            role(spring.id, 'ann@example.org', 'admin'),
+            role(spring.id, 'maya@example.org', 'editor'),
+        ],
+        keys,
+        status: {
+            rows,
+            pipelines: [
+                pipeline('English', 'running'),
+                pipeline('Hindi', 'running'),
+                pipeline('Tamil', 'error', 'No signal'),
+                pipeline('German', 'running'),
+            ],
+            instances: [{ instance: 'demo', lastSeenAt: new Date(nowMs).toISOString() }],
+        },
+    };
+}

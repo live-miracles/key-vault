@@ -1,9 +1,5 @@
 dist
 node_modules
-site
-v
-output.css
-frontend/output.css
 package-lock.json
+frontend/output.css
 *.min.js
-web

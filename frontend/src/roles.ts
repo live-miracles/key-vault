@@ -1,94 +1,77 @@
-// @ts-nocheck
+// The Share dialog: who has access to the open event, and adding, changing and removing them.
+// What a person may do is the server's answer (`canChange` on each role, `addRoleTypes` on the
+// event); nothing here works a permission out.
 
-function renderRoleTable(eventId = null) {
-    const roles = config.roles
-        .filter((r) => r.event === eventId || r.event === '*')
-        .sort(compareRolesForTable);
+import type { RoleType } from '../../supabase/functions/_shared/types.ts';
+import { inputLabelHtml } from './cards.ts';
+import { actions, app } from './app.ts';
+import { $, $$, confirmAction } from './dom.ts';
+import { escapeHtml, iconSvg } from './html.ts';
+import { ROLE_LABELS, inputPosition, inputsOf } from './model.ts';
+import type { RoleItem } from './model.ts';
+import { route } from './route.ts';
 
-    const roleRows = roles.map((r) => {
-        if (selectedRoleId === r.id) {
-            return renderRoleEditRow(r);
-        }
+// Highest first, as the role list reads and as the choices are offered.
+const ROLE_ORDER: RoleType[] = ['owner', 'admin', 'editor', 'viewer'];
 
-        const isCurrentUser = r.email.toLowerCase() === config.userEmail.toLowerCase();
-        const canManageRole = hasRoleAccess(eventRoles, ACTIONS.UPDATE, r.event, r.type);
-        const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
-        const actions = r.pending
-            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
-            : canManageRole
-              ? `
-                        <div class="flex justify-center gap-1">
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" data-action="edit-role-by-id">
-                                ${iconSvg('pen')}
-                            </button>
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" data-action="delete-role-by-id">
-                                ${iconSvg('trash')}
-                            </button>
-                        </div>
-                    `
-              : '';
+// The role being edited: null is none, '' is the new one being added.
+let selectedRoleId: string | null = null;
 
-        return `
-            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
-                <th class="w-100" style="padding: 5px;">
-                    <span>${emailLabel}</span>
-                </th>
-                <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_MAP[r.type])}</td>
-                <td class="w-50" style="padding: 5px;">${inputLabelHtml(r.input)}</td>
-                <td style="padding: 5px;">${actions}</td>
-            </tr>
-        `;
-    });
+function eventId(): string {
+    return route.event() ?? '';
+}
 
-    if (selectedRoleId === '') {
-        roleRows.push(
-            renderRoleEditRow({
-                id: '',
-                event: eventId,
-                email: '',
-                type: ROLES.VIEWER,
-                input: '*',
-            }),
-        );
+// Owners first, then admins, editors and viewers; within a type, those who see every input
+// before those limited to one, in the order of the inputs, then by email.
+export function compareRoles(
+    a: RoleItem,
+    b: RoleItem,
+    positionOf: (inputId: string) => number = (id) => inputPosition(app.data, id),
+): number {
+    if (a.type !== b.type) return ROLE_ORDER.indexOf(a.type) - ROLE_ORDER.indexOf(b.type);
+    if (a.input === null && b.input !== null) return -1;
+    if (a.input !== null && b.input === null) return 1;
+    if (a.input !== null && b.input !== null) {
+        const byInput = positionOf(a.input) - positionOf(b.input);
+        if (byInput !== 0) return byInput;
     }
-
-    document.querySelector('#role-rows').innerHTML = roleRows.join('');
-
-    // Add right-click event listeners to rows
-    document.querySelectorAll('#role-rows tr[data-role-id]:not([data-editing])').forEach((row) => {
-        row.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            const roleId = row.dataset.roleId;
-            const role = config.roles.find((r) => r.id === roleId);
-            if (!role) {
-                console.error('Role not found');
-                return;
-            }
-            if (role.pending) return;
-            if (hasRoleAccess(eventRoles, ACTIONS.UPDATE, role.event, role.type)) {
-                showRoleContextMenu(e, roleId);
-            } else {
-                document.getElementById('role-context-menu').classList.add('hidden');
-            }
-        });
-    });
+    return a.email.localeCompare(b.email);
 }
 
-let selectedRoleId = null;
-
-function compareRolesForTable(r1, r2) {
-    if (r1.type !== r2.type) return parseInt(r2.type) - parseInt(r1.type);
-    if (r2.event === '*' && r1.event !== '*') return 1;
-    if (r2.event !== '*' && r1.event === '*') return -1;
-    if (r1.input === '*' && r2.input !== '*') return -1;
-    if (r1.input !== '*' && r2.input === '*') return 1;
-
-    const inputOrderDiff = getInputOrder(r1.input) - getInputOrder(r2.input);
-    if (inputOrderDiff !== 0) return inputOrderDiff;
-    return r1.email.localeCompare(r2.email);
+function roleInputLabel(input: string | null): string {
+    return input === null ? 'All' : inputLabelHtml(app.data, input);
 }
 
-function renderRoleEditRow(role) {
+// The role types the open event lets this person give, highest first.
+function roleTypeOptions(selectedType: string): string {
+    const event = app.data.events.find((e) => e.id === eventId());
+    const allowed = new Set(event?.can.addRoleTypes ?? []);
+    return ROLE_ORDER.filter((type) => allowed.has(type))
+        .map(
+            (type) =>
+                `<option value="${type}" ${type === selectedType ? 'selected' : ''}>${ROLE_LABELS[type]}</option>`,
+        )
+        .join('');
+}
+
+// Admins and owners see every input, so their only choice is All.
+function roleInputOptions(selectedInput: string | null, roleType: string): string {
+    const everything = roleType === 'admin' || roleType === 'owner';
+    const inputs = everything ? [] : inputsOf(app.data, eventId());
+    return [{ id: '', name: 'All' }, ...inputs]
+        .map(
+            (input) =>
+                `<option value="${escapeHtml(input.id)}" ${input.id === (selectedInput ?? '') ? 'selected' : ''}>${escapeHtml(input.name)}</option>`,
+        )
+        .join('');
+}
+
+function renderRoleEditRow(role: {
+    id: string;
+    email: string;
+    type: string;
+    input: string | null;
+}) {
     return `
         <tr class="text-center" data-role-id="${escapeHtml(role.id)}" data-editing="true">
             <th class="w-100" style="padding: 5px;">
@@ -96,7 +79,7 @@ function renderRoleEditRow(role) {
             </th>
             <td class="w-30" style="padding: 5px;">
                 <select class="select select-sm role-type-input w-full" data-action="render-role-input">
-                    ${roleTypeOptions(role.event, role.type)}
+                    ${roleTypeOptions(role.type)}
                 </select>
             </td>
             <td class="w-50" style="padding: 5px;">
@@ -118,251 +101,165 @@ function renderRoleEditRow(role) {
     `;
 }
 
-function editRoleById(roleId) {
-    selectedRoleId = roleId;
-    editRoleRow();
+export function renderRoleTable() {
+    const id = eventId();
+    const { data } = app;
+    const roles = data.roles.filter((r) => r.event === id).sort((a, b) => compareRoles(a, b));
+
+    const rows = roles.map((r) => {
+        if (selectedRoleId === r.id) return renderRoleEditRow(r);
+
+        const isCurrentUser = r.email.toLowerCase() === data.userEmail.toLowerCase();
+        const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
+        const actions = r.pending
+            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+            : r.canChange
+              ? `
+                        <div class="flex justify-center gap-1">
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" data-action="edit-role-by-id">
+                                ${iconSvg('pen')}
+                            </button>
+                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" data-action="delete-role-by-id">
+                                ${iconSvg('trash')}
+                            </button>
+                        </div>
+                    `
+              : '';
+        return `
+            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
+                <th class="w-100" style="padding: 5px;">
+                    <span>${emailLabel}</span>
+                </th>
+                <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_LABELS[r.type])}</td>
+                <td class="w-50" style="padding: 5px;">${roleInputLabel(r.input)}</td>
+                <td style="padding: 5px;">${actions}</td>
+            </tr>
+        `;
+    });
+
+    if (selectedRoleId === '') {
+        rows.push(renderRoleEditRow({ id: '', email: '', type: 'viewer', input: null }));
+    }
+    $('#role-rows').innerHTML = rows.join('');
+
+    // Right-click on a row opens its menu.
+    for (const row of $$('#role-rows tr[data-role-id]:not([data-editing])')) {
+        row.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const role = app.data.roles.find((r) => r.id === row.dataset.roleId);
+            if (role && !role.pending && role.canChange) showRoleContextMenu(e, role.id);
+            else $('#role-context-menu').classList.add('hidden');
+        });
+    }
 }
 
-function deleteRoleById(roleId) {
-    selectedRoleId = roleId;
-    deleteRoleRow();
+export function hideRoleContextMenu() {
+    $('#role-context-menu').classList.add('hidden');
 }
 
-function showRoleContextMenu(event, roleId) {
-    event.preventDefault();
-
+function showRoleContextMenu(event: MouseEvent, roleId: string) {
     selectedRoleId = roleId;
-    const menu = document.getElementById('role-context-menu');
-
-    // Make visible so we can measure it
+    const menu = $('#role-context-menu');
+    // Make visible so it can be measured.
     menu.classList.remove('hidden');
-
     const rect = menu.getBoundingClientRect();
     const margin = 8;
-
     let x = event.clientX;
     let y = event.clientY;
-
-    // Horizontal clamp
-    if (x + rect.width > window.innerWidth) {
-        x = window.innerWidth - rect.width - margin;
-    }
-
-    // Vertical: flip above cursor if needed
-    if (y + rect.height > window.innerHeight) {
-        y = y - rect.height - margin;
-    }
-
-    // Final safety clamp
-    x = Math.max(margin, x);
-    y = Math.max(margin, y);
-
-    menu.style.left = `${x}px`;
-    menu.style.top = `${y}px`;
+    if (x + rect.width > window.innerWidth) x = window.innerWidth - rect.width - margin;
+    // Flip above the cursor if needed.
+    if (y + rect.height > window.innerHeight) y = y - rect.height - margin;
+    menu.style.left = `${Math.max(margin, x)}px`;
+    menu.style.top = `${Math.max(margin, y)}px`;
 }
 
-async function addRoleBtn() {
-    const eventId = getUrlParam('event');
-    const event = config.events.find((e) => e.id === eventId);
-    if (!event) {
-        console.error('Event not found:', eventId);
-        return;
-    }
+function focusEditingRow() {
+    $<HTMLInputElement>('#role-rows tr[data-editing] .role-email-input')?.focus();
+}
 
+export function addRoleBtn() {
+    if (!app.data.events.some((e) => e.id === eventId())) return;
     selectedRoleId = '';
-    renderRoleTable(eventId);
-    document.querySelector('#role-rows tr[data-editing] .role-email-input')?.focus();
+    renderRoleTable();
+    focusEditingRow();
 }
 
-async function editRoleRow() {
-    if (!selectedRoleId) return;
-    const role = config.roles.find((r) => r.id === selectedRoleId);
-    if (!role) {
-        console.error('Role not found:', selectedRoleId);
-        return;
-    }
-
-    renderRoleTable(role.event);
-    document.querySelector('#role-rows tr[data-editing] .role-email-input')?.focus();
+export function editRoleById(roleId: string | undefined) {
+    if (!roleId || !app.data.roles.some((r) => r.id === roleId)) return;
+    selectedRoleId = roleId;
+    renderRoleTable();
+    focusEditingRow();
 }
 
-function cancelRoleInlineEdit() {
-    const eventId =
-        selectedRoleId === ''
-            ? getUrlParam('event')
-            : config.roles.find((r) => r.id === selectedRoleId)?.event || getUrlParam('event');
+// The context menu's Edit acts on the role it was opened for.
+export function editSelectedRole() {
+    editRoleById(selectedRoleId ?? undefined);
+}
+
+export function cancelRoleInlineEdit() {
     selectedRoleId = null;
-    renderRoleTable(eventId);
+    renderRoleTable();
 }
 
-async function saveRoleInlineBtn(button) {
-    const row = button.closest('tr');
-    const role = {
-        id: row.dataset.roleId,
-        event:
-            row.dataset.roleId === ''
-                ? getUrlParam('event')
-                : config.roles.find((r) => r.id === row.dataset.roleId)?.event,
-        email: row.querySelector('.role-email-input').value.trim(),
-        type: row.querySelector('.role-type-input').value.trim(),
-        input: row.querySelector('.role-input-select').value.trim(),
-    };
-    if (role.type === ROLES.ADMIN || role.type === ROLES.OWNER) {
-        role.input = '*';
-    }
+// Choosing another role type changes which inputs it can be limited to.
+export function renderRoleInputForRow(typeSelect: HTMLSelectElement) {
+    const inputSelect = typeSelect
+        .closest('tr')
+        ?.querySelector<HTMLSelectElement>('.role-input-select');
+    if (inputSelect)
+        inputSelect.innerHTML = roleInputOptions(inputSelect.value || null, typeSelect.value);
+}
 
-    // Validation
-    const emailInput = row.querySelector('.role-email-input');
-    if (role.email === '') {
+export async function saveRoleInline(button: HTMLElement) {
+    const row = button.closest('tr') as HTMLTableRowElement;
+    const id = row.dataset.roleId ?? '';
+    const emailInput = row.querySelector('.role-email-input') as HTMLInputElement;
+    const email = emailInput.value.trim();
+    const type = (row.querySelector('.role-type-input') as HTMLSelectElement).value as RoleType;
+    const chosenInput = (row.querySelector('.role-input-select') as HTMLSelectElement).value;
+    const input = type === 'admin' || type === 'owner' ? null : chosenInput || null;
+
+    if (email === '' || !emailInput.checkValidity()) {
         emailInput.classList.add('input-error');
         return;
-    } else if (!emailInput.checkValidity()) {
-        emailInput.classList.add('input-error');
-        return;
-    } else {
-        emailInput.classList.remove('input-error');
     }
+    emailInput.classList.remove('input-error');
 
-    // Send request
-    const snapshot = cloneConfig();
-    const isAdd = role.id === '';
-    const optimisticRole = {
-        ...role,
-        id: isAdd ? newTempId() : role.id,
-        pending: isAdd,
-    };
+    const event = id === '' ? eventId() : app.data.roles.find((r) => r.id === id)?.event;
+    if (!event) return;
 
     selectedRoleId = null;
-    replaceConfigItem('roles', optimisticRole, role.id || optimisticRole.id);
-    updateEventRoles(config);
-    renderRoleTable(role.event);
-
-    showLoading();
-    if (role.id === '') {
-        // Adding new row
-        document.querySelector('#add-role-btn').disabled = true;
-        console.assert(role.event);
-
-        try {
-            const newRole = processResponse(await api('addRole', role));
-            if (newRole === null) {
-                restoreConfig(snapshot, role.event);
-                return;
-            }
-            replaceConfigItem('roles', newRole, optimisticRole.id);
-            updateEventRoles(config);
-            renderRoleTable(newRole.event);
-        } finally {
-            document.querySelector('#add-role-btn').disabled = false;
-            hideLoading();
-        }
-    } else {
-        // Editing existing row
-        try {
-            const newRole = processResponse(await api('editRole', role));
-            if (newRole === null) {
-                restoreConfig(snapshot, role.event);
-                return;
-            }
-            replaceConfigItem('roles', newRole);
-            updateEventRoles(config);
-            renderRoleTable(newRole.event);
-        } finally {
-            hideLoading();
-        }
-    }
+    const addButton = $<HTMLButtonElement>('#add-role-btn');
+    if (id === '') addButton.disabled = true;
+    await actions.saveRole({ id, event, email, type, input });
+    addButton.disabled = false;
 }
 
-async function deleteRoleRow() {
-    if (!selectedRoleId) return;
-    const role = config.roles.find((r) => r.id === selectedRoleId);
-    if (!role) {
-        console.error('Role not found:', selectedRoleId);
-        return;
-    }
-
+export async function deleteRoleById(roleId: string | undefined) {
+    const role = app.data.roles.find((r) => r.id === roleId);
+    if (!role) return;
     if (
         !(await confirmAction(
-            `Remove ${role.email} (${ROLE_MAP[role.type]}) from this event?`,
+            `Remove ${role.email} (${ROLE_LABELS[role.type]}) from this event?`,
             'Remove',
         ))
     ) {
         return;
     }
-
-    const snapshot = cloneConfig();
-    config.roles = config.roles.filter((r) => r.id !== role.id);
-    updateEventRoles(config);
-    renderRoleTable(role.event);
-
-    showLoading();
-    try {
-        const res = processResponse(await api('deleteRole', role.id));
-        if (res === null) {
-            restoreConfig(snapshot, role.event);
-        }
-    } finally {
-        hideLoading();
-    }
+    await actions.removeRole(role.id);
 }
 
-function renderRoleTypes(eventId) {
-    document.querySelectorAll('.role-type-input').forEach((input) => {
-        input.innerHTML = roleTypeOptions(eventId, input.value);
-    });
+export function deleteSelectedRole() {
+    return deleteRoleById(selectedRoleId ?? undefined);
 }
 
-function roleTypeOptions(eventId, selectedType = ROLES.VIEWER) {
-    return [...Object.values(ROLES)]
-        .reverse()
-        .filter((role) => hasRoleAccess(eventRoles, ACTIONS.CREATE, eventId, role))
-        .map(
-            (role) =>
-                `<option value="${role}" ${role === selectedType ? 'selected' : ''}>${ROLE_MAP[role]}</option>`,
-        )
-        .join('');
-}
-
-function renderRoleInputs() {
-    document.querySelectorAll('.role-input-select').forEach((input) => {
-        const row = input.closest('tr');
-        const type = row?.querySelector('.role-type-input')?.value || ROLES.VIEWER;
-        input.innerHTML = roleInputOptions(input.value, type);
-    });
-}
-
-function renderRoleInputForRow(typeInput) {
-    const row = typeInput.closest('tr');
-    const inputSelect = row?.querySelector('.role-input-select');
-    if (!inputSelect) return;
-
-    inputSelect.innerHTML = roleInputOptions(inputSelect.value, typeInput.value);
-}
-
-function roleInputOptions(selectedInput = '*', roleType = ROLES.VIEWER) {
-    const options =
-        roleType === ROLES.ADMIN || roleType === ROLES.OWNER
-            ? [{ id: '*', name: '* (All)' }]
-            : inputOptions({ includeAll: true, eventId: getUrlParam('event') });
-
-    return options
-        .map(
-            (input) =>
-                `<option value="${escapeHtml(input.id)}" ${input.id === selectedInput ? 'selected' : ''}>${escapeHtml(input.name)}</option>`,
-        )
-        .join('');
-}
-
-function resetRoleInlineEdit() {
+export function showShareModal() {
     selectedRoleId = null;
-    renderRoleTable(getUrlParam('event'));
+    renderRoleTable();
+    $<HTMLDialogElement>('#share-modal').showModal();
 }
 
-function showShareModal() {
-    resetRoleInlineEdit();
-    document.querySelector('#share-modal').showModal();
-}
-
-function showHideRoles() {
-    showShareModal();
+export function resetRoleInlineEdit() {
+    selectedRoleId = null;
+    renderRoleTable();
 }

@@ -1,7 +1,9 @@
 // The heartbeat bunryu sends (see docs/refactor-plan.md, "Heartbeat contract"), and how
 // Key Vault turns the stored heartbeat into a status for each key.
 
-import { hashUrl, keyUrl } from './key-url.ts';
+import { hashUrl } from './link-hash.ts';
+import { backupUrl, mainUrl } from './platforms.ts';
+import type { Destination } from './platforms.ts';
 
 export const HEARTBEAT_VERSION = 1;
 export const MAX_OUTPUTS = 1000;
@@ -23,8 +25,8 @@ export interface HeartbeatOutput {
     sinceMs: number;
 }
 
-// The state of one beat: the signal arriving in one of bunryu's pipelines. It is matched
-// to a Key Vault beat (input) by the pipeline's name.
+// The state of one input: the signal arriving in one of bunryu's pipelines. It is matched
+// to a Key Vault input by the pipeline's name.
 export interface HeartbeatInput {
     pipeline: string;
     status: Status;
@@ -127,7 +129,7 @@ export function parseHeartbeat(body: unknown): Heartbeat {
     return { instance, sentAt: sentAt.toISOString(), outputs, inputs };
 }
 
-// ---- Status of a key ----
+// ---- Status of a destination ----
 
 export interface StatusRow extends HeartbeatOutput {
     instance: string;
@@ -137,46 +139,47 @@ export interface PipelineRow extends HeartbeatInput {
     instance: string;
 }
 
+// What bunryu reports for a destination, the worse of its main and backup stream. The
+// browser words it; it works nothing out.
 export interface KeyStatus {
-    status: Status;
+    // "not_configured": Key Vault has the link and bunryu has no output with it (yet).
+    state: Status | 'not_configured';
+    // Which of the two streams the status is about.
+    side: 'main' | 'backup';
     message: string;
     failures: number;
     stoppedAfterFailures: boolean;
     sinceMs: number;
     pipeline: string;
     output: string;
-    // bunryu runs this output in a pipeline whose name differs from the key's beat: the
-    // link was probably put in the wrong place.
+    // bunryu runs this output in a pipeline whose name differs from the destination's
+    // input: the link was probably put in the wrong place.
     inputMismatch: boolean;
 }
 
-// Shown when one URL is used by several outputs: a problem outranks a healthy output,
-// which outranks one that was stopped on purpose.
-const RANK: Record<Status, number> = { stopped: 0, running: 1, warning: 2, error: 3 };
+// Shown when one URL is used by several outputs, and when a destination has a main and a
+// backup: a problem outranks a healthy output, which outranks one that was stopped on purpose.
+const RANK: Record<Status | 'not_configured', number> = {
+    not_configured: -1,
+    stopped: 0,
+    running: 1,
+    warning: 2,
+    error: 3,
+};
 
-export function worstStatus(rows: StatusRow[]): KeyStatus | null {
-    let worst: StatusRow | null = null;
+function worstOf<T extends { status: Status }>(rows: T[]): T | null {
+    let worst: T | null = null;
     for (const row of rows) {
         if (!worst || RANK[row.status] > RANK[worst.status]) worst = row;
     }
-    if (!worst) return null;
-    return {
-        status: worst.status,
-        message: worst.message,
-        failures: worst.failures,
-        stoppedAfterFailures: worst.stoppedAfterFailures,
-        sinceMs: worst.sinceMs,
-        pipeline: worst.pipeline,
-        output: worst.output,
-        inputMismatch: false,
-    };
+    return worst;
 }
 
 export interface InputStatus {
     status: Status;
     message: string;
     sinceMs: number;
-    // The pipeline's own spelling, which can differ from the beat's in case or spacing.
+    // The pipeline's own spelling, which can differ from the input's in case or spacing.
     pipeline: string;
 }
 
@@ -184,23 +187,8 @@ export interface InputStatus {
 export function normalizeInputName(name: string): string {
     return String(name ?? '')
         .trim()
-        .replace(/s+/g, ' ')
+        .replace(/\s+/g, ' ')
         .toLowerCase();
-}
-
-function worstInput(rows: PipelineRow[]): InputStatus | null {
-    let worst: PipelineRow | null = null;
-    for (const row of rows) {
-        if (!worst || RANK[row.status] > RANK[worst.status]) worst = row;
-    }
-    return worst
-        ? {
-              status: worst.status,
-              message: worst.message,
-              sinceMs: worst.sinceMs,
-              pipeline: worst.pipeline,
-          }
-        : null;
 }
 
 export interface InstanceInfo {
@@ -210,23 +198,17 @@ export interface InstanceInfo {
 
 export interface StatusReport {
     // At least one bunryu has reported within FRESH_MS. When false nothing can be said
-    // about any key, so a key without a status is "unknown", not "not configured".
+    // about any destination: bunryu only runs during events, so silence is normal.
     online: boolean;
     instances: { instance: string; lastSeenAt: string; online: boolean }[];
-    keys: Record<string, { main: KeyStatus | null; backup: KeyStatus | null }>;
-    // The state of each beat (by input id) whose pipeline bunryu reports, or null.
+    // By destination id. null: the destination has no link to look for.
+    keys: Record<string, KeyStatus | null>;
+    // By input id. null: bunryu has no pipeline of that name.
     inputs: Record<string, InputStatus | null>;
 }
 
 export async function buildStatusReport(
-    keys: {
-        id: string;
-        input?: string;
-        server: string;
-        key: string;
-        server2: string;
-        key2: string;
-    }[],
+    keys: (Destination & { id: string; input?: string })[],
     rows: StatusRow[],
     instances: InstanceInfo[],
     hashSecret: string,
@@ -255,34 +237,74 @@ export async function buildStatusReport(
         if (list) list.push(row);
         else byPipeline.set(name, [row]);
     }
-    const inputName = new Map(inputs.map((l) => [l.id, normalizeInputName(l.name)]));
+    const inputName = new Map(inputs.map((i) => [i.id, normalizeInputName(i.name)]));
 
-    const statusOf = async (
-        server: string,
-        key: string,
-        input: string | undefined,
-    ): Promise<KeyStatus | null> => {
-        const url = keyUrl(server, key);
+    // The worst output bunryu runs for one address, or null when it runs none.
+    const statusOf = async (url: string, input?: string): Promise<KeyStatus | null> => {
         if (!url) return null;
-        const status = worstStatus(byHash.get(await hashUrl(hashSecret, url)) ?? []);
+        const worst = worstOf(byHash.get(await hashUrl(hashSecret, url)) ?? []);
+        if (!worst) return null;
         const expected = input === undefined ? undefined : inputName.get(input);
-        if (status && expected && status.pipeline) {
-            status.inputMismatch = normalizeInputName(status.pipeline) !== expected;
-        }
-        return status;
+        return {
+            state: worst.status,
+            side: 'main',
+            message: worst.message,
+            failures: worst.failures,
+            stoppedAfterFailures: worst.stoppedAfterFailures,
+            sinceMs: worst.sinceMs,
+            pipeline: worst.pipeline,
+            output: worst.output,
+            inputMismatch:
+                Boolean(expected && worst.pipeline) &&
+                normalizeInputName(worst.pipeline) !== expected,
+        };
     };
 
     const result: StatusReport['keys'] = {};
     for (const k of keys) {
-        result[k.id] = {
-            main: await statusOf(k.server, k.key, k.input),
-            backup: await statusOf(k.server2, k.key2, k.input),
-        };
+        const main = mainUrl(k);
+        if (!main) {
+            result[k.id] = null;
+            continue;
+        }
+        const mainStatus = await statusOf(main, k.input);
+        const backupStatus = await statusOf(backupUrl(k), k.input);
+        const candidates = [
+            mainStatus,
+            backupStatus ? { ...backupStatus, side: 'backup' as const } : null,
+        ]
+            .filter((s): s is KeyStatus => s !== null)
+            .map((s) => ({ ...s, status: s.state as Status }));
+        const worst = worstOf(candidates);
+        if (!worst) {
+            result[k.id] = {
+                state: 'not_configured',
+                side: 'main',
+                message: '',
+                failures: 0,
+                stoppedAfterFailures: false,
+                sinceMs: 0,
+                pipeline: '',
+                output: '',
+                inputMismatch: false,
+            };
+            continue;
+        }
+        const { status: _status, ...status } = worst;
+        result[k.id] = status;
     }
 
     const inputStatus: StatusReport['inputs'] = {};
     for (const input of inputs) {
-        inputStatus[input.id] = worstInput(byPipeline.get(normalizeInputName(input.name)) ?? []);
+        const worst = worstOf(byPipeline.get(normalizeInputName(input.name)) ?? []);
+        inputStatus[input.id] = worst
+            ? {
+                  status: worst.status,
+                  message: worst.message,
+                  sinceMs: worst.sinceMs,
+                  pipeline: worst.pipeline,
+              }
+            : null;
     }
 
     return {

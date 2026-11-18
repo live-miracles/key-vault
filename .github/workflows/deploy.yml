@@ -44,11 +44,11 @@ jobs:
             - name: Type check
               run: npm run typecheck
 
-            - name: Build CSS
-              run: npm run css
+            - name: Build the demo site
+              run: npm run build:demo
 
             - name: Build the site for Vercel
               env:
                   KEY_VAULT_SUPABASE_URL: https://ci-placeholder.supabase.co
                   KEY_VAULT_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder
-              run: npm run build:vercel
+              run: npm run build

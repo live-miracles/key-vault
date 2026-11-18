@@ -1,6 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import type { Data, EventItem, KeyItem, InputItem, RoleItem, Store } from './operations.ts';
+import type { Store } from './operations.ts';
 import type { PipelineRow, StatusRow } from './status.ts';
+import type { Data, EventRow, InputRow, KeyRow, RoleRow } from './types.ts';
 
 // The Store over Postgres, used by the `api` Edge Function with the service role. The
 // operations have already checked who may do what, so this only reads and writes.
@@ -25,22 +26,60 @@ async function fetchAll(
     }
 }
 
-// Oldest first. Ids are random, so the creation time orders rows; rows made in the same
-// instant (an import) fall back to the id read as a natural number: E2 before E10.
+// Oldest first. Ids are random, so the creation time orders rows.
 function byCreated(a: { created_at: string; id: string }, b: { created_at: string; id: string }) {
-    return (
-        Date.parse(a.created_at) - Date.parse(b.created_at) ||
-        a.id.localeCompare(b.id, 'en', { numeric: true })
-    );
+    return Date.parse(a.created_at) - Date.parse(b.created_at) || a.id.localeCompare(b.id);
 }
 
-const toRole = (r: any): RoleItem => ({
+const toRole = (r: any): RoleRow => ({
     id: r.id,
     event: r.event_id,
     email: String(r.email).toLowerCase(),
     type: r.type,
-    input: r.input,
+    input: r.input_id,
 });
+
+const toInput = (i: any): InputRow => ({
+    id: i.id,
+    event: i.event_id,
+    name: i.name,
+    position: i.sort_order,
+});
+
+const toKey = (k: any): KeyRow => ({
+    id: k.id,
+    event: k.event_id,
+    name: k.name,
+    input: k.input_id,
+    platform: k.platform,
+    streamKey: k.stream_key,
+    backupPlatform: k.backup_platform,
+    backupStreamKey: k.backup_stream_key,
+    link: k.link,
+    remarks: k.remarks,
+    updatedBy: k.updated_by,
+    updatedAction: k.updated_action,
+    updatedAt: k.updated_by ? new Date(k.updated_at).toISOString() : '',
+});
+
+const KEY_COLUMNS =
+    'id, event_id, name, input_id, platform, stream_key, backup_platform, backup_stream_key, link, remarks, created_at, updated_by, updated_action, updated_at';
+
+function keyColumns(key: Omit<KeyRow, 'id' | 'event'>) {
+    return {
+        name: key.name,
+        input_id: key.input,
+        platform: key.platform,
+        stream_key: key.streamKey,
+        backup_platform: key.backupPlatform,
+        backup_stream_key: key.backupStreamKey,
+        link: key.link,
+        remarks: key.remarks,
+        updated_by: key.updatedBy,
+        updated_action: key.updatedAction,
+        updated_at: key.updatedAt,
+    };
+}
 
 export function createSupabaseStore(db: SupabaseClient): Store {
     return {
@@ -52,7 +91,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                 fetchAll((from, to) =>
                     db
                         .from('roles')
-                        .select('id, event_id, email, type, input, created_at')
+                        .select('id, event_id, email, type, input_id, created_at')
                         .order('id')
                         .range(from, to),
                 ),
@@ -64,44 +103,18 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         .range(from, to),
                 ),
                 fetchAll((from, to) =>
-                    db
-                        .from('keys')
-                        .select(
-                            'id, event_id, name, input, server, key, server2, key2, link, color_override, remarks, created_at, updated_at, updated_by, updated_action',
-                        )
-                        .order('id')
-                        .range(from, to),
+                    db.from('keys').select(KEY_COLUMNS).order('id').range(from, to),
                 ),
             ]);
             return {
                 events: [...events]
                     .sort(byCreated)
-                    .map((e): EventItem => ({ id: e.id, name: e.name })),
+                    .map((e): EventRow => ({ id: e.id, name: e.name })),
                 roles: [...roles].sort(byCreated).map(toRole),
                 inputs: inputs
-                    .map((l): InputItem => ({
-                        id: l.id,
-                        event: l.event_id,
-                        name: l.name,
-                        order: String(l.sort_order),
-                    }))
-                    .sort((a, b) => Number(a.order) - Number(b.order) || a.id.localeCompare(b.id)),
-                keys: [...keys].sort(byCreated).map((k): KeyItem => ({
-                    id: k.id,
-                    event: k.event_id,
-                    name: k.name,
-                    input: k.input,
-                    server: k.server,
-                    key: k.key,
-                    server2: k.server2,
-                    key2: k.key2,
-                    link: k.link,
-                    color: k.color_override,
-                    remarks: k.remarks,
-                    updatedBy: k.updated_by,
-                    updatedAction: k.updated_action,
-                    updatedAt: k.updated_by ? k.updated_at : '',
-                })),
+                    .map(toInput)
+                    .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id)),
+                keys: [...keys].sort(byCreated).map(toKey),
             };
         },
 
@@ -160,7 +173,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         async createEvent(name, adminEmail) {
             const created = check(
                 await db.rpc('create_event', { p_name: name, p_admin_email: adminEmail }),
-            ) as { event: EventItem; adminRole: RoleItem | null };
+            ) as { event: EventRow; adminRole: RoleRow | null };
             return created;
         },
         async updateEvent(id, name) {
@@ -178,9 +191,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         event_id: role.event,
                         email: role.email,
                         type: role.type,
-                        input: role.input,
+                        input_id: role.input,
                     })
-                    .select('id, event_id, email, type, input')
+                    .select('id, event_id, email, type, input_id')
                     .single(),
             );
             return toRole(row);
@@ -189,7 +202,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             check(
                 await db
                     .from('roles')
-                    .update({ email: role.email, type: role.type, input: role.input })
+                    .update({ email: role.email, type: role.type, input_id: role.input })
                     .eq('id', id)
                     .select('id')
                     .single(),
@@ -202,7 +215,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         async createInput(event, name) {
             return check(
                 await db.rpc('create_input', { p_event_id: event, p_name: name }),
-            ) as InputItem;
+            ) as InputRow;
         },
         async updateInput(id, name) {
             check(await db.from('inputs').update({ name }).eq('id', id).select('id').single());
@@ -218,48 +231,14 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             const row = check(
                 await db
                     .from('keys')
-                    .insert({
-                        event_id: key.event,
-                        name: key.name,
-                        input: key.input,
-                        server: key.server,
-                        key: key.key,
-                        server2: key.server2,
-                        key2: key.key2,
-                        link: key.link,
-                        color_override: key.color,
-                        remarks: key.remarks,
-                        updated_by: key.updatedBy,
-                        updated_action: key.updatedAction,
-                        updated_at: key.updatedAt,
-                    })
+                    .insert({ event_id: key.event, ...keyColumns(key) })
                     .select('id')
                     .single(),
             );
             return { ...key, id: row.id };
         },
         async updateKey(id, key) {
-            check(
-                await db
-                    .from('keys')
-                    .update({
-                        name: key.name,
-                        input: key.input,
-                        server: key.server,
-                        key: key.key,
-                        server2: key.server2,
-                        key2: key.key2,
-                        link: key.link,
-                        color_override: key.color,
-                        remarks: key.remarks,
-                        updated_by: key.updatedBy,
-                        updated_action: key.updatedAction,
-                        updated_at: key.updatedAt,
-                    })
-                    .eq('id', id)
-                    .select('id')
-                    .single(),
-            );
+            check(await db.from('keys').update(keyColumns(key)).eq('id', id).select('id').single());
         },
         async deleteKey(id) {
             check(await db.from('keys').delete().eq('id', id).select('id').single());

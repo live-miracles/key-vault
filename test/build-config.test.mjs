@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { backendConfigFromEnv } from '../build-tools/frontend-bundle.mjs';
+import { backendConfigFromEnv } from '../build-tools/build.mjs';
 
 const env = {
     KEY_VAULT_SUPABASE_URL: 'https://abcdefgh.supabase.co/',

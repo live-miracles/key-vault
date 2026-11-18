@@ -67,8 +67,8 @@ try {
     const eventId = created.event.id;
     assert.match(eventId, uuid);
     assert.match(created.adminRole.id, uuid);
-    assert.equal(created.adminRole.type, '2');
-    assert.equal(created.adminRole.input, '*');
+    assert.equal(created.adminRole.type, 'admin');
+    assert.equal(created.adminRole.input, null);
     const bare = JSON.parse(psql(`select public.create_event('Event two', null)`));
     assert.notEqual(bare.event.id, eventId);
     assert.equal(bare.adminRole, null);
@@ -79,15 +79,15 @@ try {
     assert.match(english.id, uuid);
     assert.equal(english.event, eventId);
     assert.equal(english.name, 'English');
-    assert.equal(english.order, '1');
+    assert.equal(english.position, 1);
     const hindi = JSON.parse(psql(`select public.create_input('${eventId}', 'Hindi')`));
-    assert.equal(hindi.order, '2');
+    assert.equal(hindi.position, 2);
     const otherEnglish = JSON.parse(
         psql(`select public.create_input('${bare.event.id}', 'English')`),
     );
-    assert.equal(otherEnglish.order, '1');
+    assert.equal(otherEnglish.position, 1);
     psql(`select public.create_input('${eventId}', 'english')`, { fail: true });
-    psql(`select public.create_input('missing', 'Tamil')`, { fail: true });
+    psql(`select public.create_input(gen_random_uuid(), 'Tamil')`, { fail: true });
     psql(`select public.reorder_inputs('${eventId}', array['${hindi.id}', '${english.id}'])`);
     assert.equal(
         psql(
@@ -96,13 +96,8 @@ try {
         'Hindi,English',
     );
     assert.equal(psql(`select sort_order from public.inputs where id = '${otherEnglish.id}'`), '1');
-    // A row made before this change keeps its id, and the two kinds sit side by side.
-    psql(
-        `insert into public.inputs (id, event_id, name, sort_order) values ('L1', '${eventId}', 'Legacy', 3)`,
-    );
-
     // ---- keys ----
-    psql(`insert into public.keys (event_id, name, input, server, key)
+    psql(`insert into public.keys (event_id, name, input_id, platform, stream_key)
           values ('${eventId}', 'Main', '${english.id}', 'yt', 'abcd-1234')`);
     assert.match(psql(`select id from public.keys`), uuid);
     // Who last changed a destination: unknown ('') until the API records it, and only 'added'
@@ -111,20 +106,29 @@ try {
     psql(`update public.keys set updated_action = 'deleted'`, { fail: true });
     psql(`update public.keys set updated_by = 'a@example.test', updated_action = 'edited'`);
     assert.equal(psql(`select updated_action from public.keys`), 'edited');
+    // Only the platforms Key Vault knows.
     psql(
-        `insert into public.keys (event_id, name, input, server, key, color_override)
-          values ('${eventId}', 'Bad color', '${english.id}', 'yt', 'k', '9')`,
+        `insert into public.keys (event_id, name, input_id, platform, stream_key)
+          values ('${eventId}', 'Bad platform', '${english.id}', 'twitch', 'k')`,
         { fail: true },
     );
+    psql(
+        `insert into public.keys (event_id, name, input_id, platform, stream_key, backup_platform)
+          values ('${eventId}', 'Bad backup', '${english.id}', 'vc', 'k', 'twitch')`,
+        { fail: true },
+    );
+    // An input a destination or a role still uses cannot be deleted.
     psql(`delete from public.inputs where id = '${english.id}'`, { fail: true });
     psql(
-        `insert into public.roles (event_id, email, type) values ('missing', 'x@example.test', '1')`,
-        {
-            fail: true,
-        },
+        `insert into public.roles (event_id, email, type, input_id) values ('${eventId}', 'v@example.test', 'viewer', '${hindi.id}')`,
+    );
+    psql(`delete from public.inputs where id = '${hindi.id}'`, { fail: true });
+    psql(
+        `insert into public.roles (event_id, email, type) values (gen_random_uuid(), 'x@example.test', 'editor')`,
+        { fail: true },
     );
     psql(
-        `insert into public.roles (event_id, email, type) values ('${eventId}', 'x@example.test', '7')`,
+        `insert into public.roles (event_id, email, type) values ('${eventId}', 'x@example.test', 'boss')`,
         { fail: true },
     );
     // Emails compare without case.
@@ -133,7 +137,7 @@ try {
     psql(`delete from public.events where id = '${eventId}'`);
     assert.equal(psql(`select count(*) from public.keys`), '0');
     assert.equal(psql(`select count(*) from public.roles`), '0');
-    assert.equal(psql(`select string_agg(id, ',') from public.inputs`), otherEnglish.id);
+    assert.equal(psql(`select string_agg(id::text, ',') from public.inputs`), otherEnglish.id);
 
     // ---- heartbeat ----
     const hash = (c) => c.repeat(32);
@@ -202,7 +206,7 @@ try {
     assert.equal(
         psql(
             `select bool_and(relrowsecurity) from pg_class where relnamespace = 'public'::regnamespace
-             and relname in ('events','inputs','roles','keys','ingest_instances','stream_outputs')`,
+             and relname in ('events','inputs','roles','keys','ingest_instances','stream_outputs','stream_inputs')`,
         ),
         't',
     );

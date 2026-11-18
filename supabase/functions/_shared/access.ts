@@ -1,132 +1,84 @@
-// Role rules of Key Vault, ported from frontend/src/access.ts (which the browser still
-// uses to decide what to show). test/supabase-access.test.mjs runs both against the same
-// cases so they cannot drift apart. Only erasable TypeScript syntax is used here so the
-// tests can import this file with plain Node.
+// Who may do what in Key Vault. The server is the only place these rules live: it checks them
+// before every change, and it tells the browser the result (the `can` flags on what it sends),
+// so the screens only show or hide buttons and never work a rule out themselves.
+//
+// Roles are per event, except that an owner anywhere is an owner everywhere, and so is the
+// app owner (KEY_VAULT_OWNER_EMAILS). Viewers and editors can be limited to one input.
+//
+// Only erasable TypeScript syntax is used so Node, Deno and the bundler all read this as it is.
 
-export const ACTIONS = {
-    VIEW: 'view',
-    CREATE: 'create',
-    UPDATE: 'update',
-    DELETE: 'delete',
-} as const;
+import { ROLE_TYPES } from './types.ts';
+import type { EventCan, RoleRow, RoleType } from './types.ts';
 
-export const ROLES = {
-    VIEWER: '0',
-    EDITOR: '1',
-    ADMIN: '2',
-    OWNER: '3',
-} as const;
-
-export type Action = (typeof ACTIONS)[keyof typeof ACTIONS];
-
-export interface RoleLike {
-    event: string;
-    email: string;
-    type: string;
-    input: string;
+export interface Access {
+    canCreateEvent(): boolean;
+    canViewEvent(event: string): boolean;
+    // Rename or delete an event.
+    canChangeEvent(event: string): boolean;
+    // Add, rename, reorder and delete an event's inputs.
+    canManageInputs(event: string): boolean;
+    canViewRoles(event: string): boolean;
+    canAddRole(event: string, type: RoleType): boolean;
+    // Edit or remove someone's role of this type.
+    canChangeRole(event: string, type: RoleType): boolean;
+    canViewKey(event: string, input: string): boolean;
+    // Add, edit or delete a destination of this input; with no input, in any input.
+    canChangeKey(event: string, input: string | null): boolean;
+    // Read bunryu's technical detail on a destination's status.
+    canSeeTechnicalStatus(event: string): boolean;
+    // Everything the browser needs to know about an event.
+    describeEvent(event: string): EventCan;
 }
 
-export type EventRoles = Record<string, RoleLike[]>;
-
-export function getEventRoles(
+export function createAccess(
     email: string,
-    events: { id: string }[],
-    roles: RoleLike[],
-    isAppOwner = false,
-): EventRoles {
-    const userRoles = roles.filter((r) => r.email === email);
-    if (isAppOwner) {
-        userRoles.push({ event: '*', email, type: ROLES.OWNER, input: '*' });
-    }
-    const eventRoles: EventRoles = {};
-    for (const e of events) eventRoles[e.id] = [];
-    eventRoles['*'] = [];
-    for (const r of userRoles) {
-        if (r.type === ROLES.OWNER) {
-            for (const key of Object.keys(eventRoles)) eventRoles[key].push(r);
-        } else {
-            eventRoles[r.event]?.push(r);
-        }
-    }
-    for (const key of Object.keys(eventRoles)) {
-        if (eventRoles[key].length === 0) delete eventRoles[key];
-    }
-    return eventRoles;
-}
-
-export function hasEventAccess(
-    eventRoles: EventRoles,
-    action: Action,
-    eventId: string | null = null,
-): boolean {
-    const isOwner = Boolean(eventRoles['*']);
-    const hasAdmin = Object.values(eventRoles).some((roles) =>
-        roles.some((role) => role.type === ROLES.ADMIN),
-    );
-
-    if (!eventRoles[eventId as string]) {
-        return action === ACTIONS.CREATE && (isOwner || hasAdmin);
-    }
-
-    if (action === ACTIONS.VIEW) return true;
-    return isOwner;
-}
-
-// The inputs of an event are managed by that event's admins, and by owners.
-export function hasInputAccess(eventRoles: EventRoles, eventId: string): boolean {
-    return Boolean(
-        eventRoles[eventId]?.some((r) => r.type === ROLES.OWNER || r.type === ROLES.ADMIN),
-    );
-}
-
-export function hasRoleAccess(
-    eventRoles: EventRoles,
-    action: Action,
-    eventId: string,
-    type: string | null = null,
-): boolean {
-    if (!eventRoles[eventId]) return false;
-
-    const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
-    const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
-    const isEditor = isAdmin || eventRoles[eventId].some((r) => r.type === ROLES.EDITOR);
-
-    if (action === ACTIONS.VIEW) return isEditor;
-
-    if (type === ROLES.OWNER) return isOwner;
-    if (type === ROLES.ADMIN) return action === ACTIONS.CREATE ? isAdmin : isOwner;
-
-    return isAdmin;
-}
-
-export function hasKeyAccess(
-    eventRoles: EventRoles,
-    action: Action,
-    eventId: string,
-    input: string | null = null,
-): boolean {
-    if (!eventRoles[eventId]) return false;
-
-    const isOwner = eventRoles[eventId].some((r) => r.type === ROLES.OWNER);
-    const isAdmin = isOwner || eventRoles[eventId].some((r) => r.type === ROLES.ADMIN);
-    const isEditor =
-        isAdmin ||
-        eventRoles[eventId].some(
+    isAppOwner: boolean,
+    roles: Pick<RoleRow, 'event' | 'email' | 'type' | 'input'>[],
+): Access {
+    const mine = roles.filter((r) => r.email === email);
+    const isOwner = isAppOwner || mine.some((r) => r.type === 'owner');
+    const hasAdminRole = (event: string) =>
+        mine.some((r) => r.event === event && r.type === 'admin');
+    const hasRole = (event: string, type: RoleType, input: string | null) =>
+        mine.some(
             (r) =>
-                r.type === ROLES.EDITOR && (r.input === '*' || r.input === input || input === null),
-        );
-    const isViewer =
-        isEditor ||
-        eventRoles[eventId].some(
-            (r) => r.type === ROLES.VIEWER && (r.input === '*' || r.input === input),
+                r.event === event &&
+                r.type === type &&
+                (r.input === null || input === null || r.input === input),
         );
 
-    if (action === ACTIONS.VIEW) return isViewer;
-    return isEditor;
-}
+    const canViewEvent = (event: string) => isOwner || mine.some((r) => r.event === event);
+    const isAdmin = (event: string) => isOwner || hasAdminRole(event);
+    const isEditor = (event: string) =>
+        isAdmin(event) || mine.some((r) => r.event === event && r.type === 'editor');
 
-export function hasKeyColorAccess(eventRoles: EventRoles, eventId: string): boolean {
-    if (!eventRoles[eventId]) return false;
-
-    return eventRoles[eventId].some((r) => r.type === ROLES.OWNER || r.type === ROLES.ADMIN);
+    const access: Access = {
+        canCreateEvent: () => isOwner || mine.some((r) => r.type === 'admin'),
+        canViewEvent,
+        canChangeEvent: (event) => isOwner && canViewEvent(event),
+        canManageInputs: (event) => isAdmin(event),
+        canViewRoles: (event) => isEditor(event),
+        canAddRole(event, type) {
+            if (!canViewEvent(event)) return false;
+            return type === 'owner' ? isOwner : isAdmin(event);
+        },
+        canChangeRole(event, type) {
+            if (!canViewEvent(event)) return false;
+            return type === 'owner' || type === 'admin' ? isOwner : isAdmin(event);
+        },
+        canViewKey: (event, input) =>
+            isAdmin(event) || hasRole(event, 'editor', input) || hasRole(event, 'viewer', input),
+        canChangeKey: (event, input) => isAdmin(event) || hasRole(event, 'editor', input),
+        canSeeTechnicalStatus: (event) => isAdmin(event),
+        describeEvent: (event) => ({
+            rename: access.canChangeEvent(event),
+            delete: access.canChangeEvent(event),
+            manageInputs: access.canManageInputs(event),
+            viewRoles: access.canViewRoles(event),
+            addRoleTypes: ROLE_TYPES.filter((type) => access.canAddRole(event, type)),
+            addKeys: access.canChangeKey(event, null),
+            seeTechnicalStatus: access.canSeeTechnicalStatus(event),
+        }),
+    };
+    return access;
 }

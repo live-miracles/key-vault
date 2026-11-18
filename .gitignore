@@ -1,12 +1,9 @@
 dist/
 node_modules/
 .npm-cache/
-site/
-output.css
 frontend/output.css
 
 .migration/
 supabase/.temp/
 supabase/.branches/
 .env.local
-web/

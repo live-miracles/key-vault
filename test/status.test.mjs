@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { hashUrl, keyUrl } from '../supabase/functions/_shared/key-url.ts';
+import { hashUrl } from '../supabase/functions/_shared/link-hash.ts';
+import { streamUrl } from '../supabase/functions/_shared/platforms.ts';
 import {
     buildStatusReport,
     FRESH_MS,
+    normalizeInputName,
     parseHeartbeat,
-    worstStatus,
 } from '../supabase/functions/_shared/status.ts';
 
 const SECRET = 'test-secret';
@@ -96,29 +97,19 @@ const row = (status, extra = {}) => ({
     ...extra,
 });
 
-test('worstStatus prefers error, then warning, running and stopped', () => {
-    assert.equal(worstStatus([]), null);
-    assert.equal(worstStatus([row('stopped'), row('running')]).status, 'running');
-    assert.equal(worstStatus([row('running'), row('warning')]).status, 'warning');
-    assert.equal(worstStatus([row('warning'), row('error'), row('running')]).status, 'error');
+const dest = (id, extra = {}) => ({
+    id,
+    platform: 'yt',
+    streamKey: 'abcd-1234',
+    backupPlatform: '',
+    backupStreamKey: '',
+    ...extra,
 });
 
-test('buildStatusReport matches keys by hash, main and backup separately', async () => {
-    const mainHash = await hashUrl(SECRET, keyUrl('yt', 'abcd-1234'));
-    const backupHash = await hashUrl(
-        SECRET,
-        keyUrl('rtmp://b.rtmp.youtube.com/live2?backup=1/', 'abcd-1234'),
-    );
-    const keys = [
-        {
-            id: 'K1',
-            server: 'yt',
-            key: 'abcd-1234',
-            server2: 'rtmp://b.rtmp.youtube.com/live2?backup=1/',
-            key2: 'abcd-1234',
-        },
-        { id: 'K2', server: 'yt', key: 'unknown-key', server2: '', key2: '' },
-    ];
+test('buildStatusReport takes the worse of main and backup, and says which', async () => {
+    const mainHash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const backupHash = await hashUrl(SECRET, 'rtmp://b.rtmp.youtube.com/live2?backup=1/abcd-1234');
+    const keys = [dest('K1'), dest('K2', { streamKey: 'unknown-key' })];
     const rows = [
         row('running', { hash: mainHash }),
         row('error', { hash: backupHash, message: 'refused', stoppedAfterFailures: true }),
@@ -128,16 +119,61 @@ test('buildStatusReport matches keys by hash, main and backup separately', async
     const report = await buildStatusReport(keys, rows, instances, SECRET, NOW);
 
     assert.equal(report.online, true);
-    assert.equal(report.keys.K1.main.status, 'running');
-    assert.equal(report.keys.K1.backup.status, 'error');
-    assert.equal(report.keys.K1.backup.stoppedAfterFailures, true);
-    assert.equal(report.keys.K2.main, null);
-    assert.equal(report.keys.K2.backup, null);
+    assert.equal(report.keys.K1.state, 'error');
+    assert.equal(report.keys.K1.side, 'backup');
+    assert.equal(report.keys.K1.stoppedAfterFailures, true);
+    // bunryu has no output with this link: not set up.
+    assert.equal(report.keys.K2.state, 'not_configured');
+});
+
+test('a healthy main stream outranks a stopped backup, and a destination with no link has no status', async () => {
+    const mainHash = await hashUrl(SECRET, streamUrl('vc', 'abcd-1234'));
+    const backupHash = await hashUrl(SECRET, streamUrl('rtmp', 'rtmp://x.test/live/key'));
+    const keys = [
+        dest('K1', {
+            platform: 'vc',
+            backupPlatform: 'rtmp',
+            backupStreamKey: 'rtmp://x.test/live/key',
+        }),
+        dest('K2', { streamKey: '' }),
+    ];
+    const report = await buildStatusReport(
+        keys,
+        [row('running', { hash: mainHash }), row('stopped', { hash: backupHash })],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }],
+        SECRET,
+        NOW,
+    );
+    assert.equal(report.keys.K1.state, 'running');
+    assert.equal(report.keys.K1.side, 'main');
+    assert.equal(report.keys.K2, null);
+});
+
+test('one link used by several outputs shows the worst', async () => {
+    const hash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const report = await buildStatusReport(
+        [dest('K1')],
+        [
+            row('warning', { hash }),
+            row('error', { hash, instance: 'prod' }),
+            row('running', { hash }),
+        ],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }],
+        SECRET,
+        NOW,
+    );
+    assert.equal(report.keys.K1.state, 'error');
+});
+
+test('names are compared ignoring case and runs of spaces, not the letter s', () => {
+    assert.equal(normalizeInputName('  Hindi   Live '), 'hindi live');
+    assert.equal(normalizeInputName('Hindi Live'), normalizeInputName('hindi  live'));
+    assert.equal(normalizeInputName('Mississippi'), 'mississippi');
 });
 
 test('a bunryu that stopped reporting is offline and its rows are ignored', async () => {
-    const hash = await hashUrl(SECRET, keyUrl('yt', 'abcd-1234'));
-    const keys = [{ id: 'K1', server: 'yt', key: 'abcd-1234', server2: '', key2: '' }];
+    const hash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const keys = [dest('K1')];
     const stale = new Date(NOW - FRESH_MS - 1000).toISOString();
 
     const report = await buildStatusReport(
@@ -150,12 +186,13 @@ test('a bunryu that stopped reporting is offline and its rows are ignored', asyn
 
     assert.equal(report.online, false);
     assert.equal(report.instances[0].online, false);
-    assert.equal(report.keys.K1.main, null);
+    // Nothing is claimed from a bunryu that went quiet.
+    assert.equal(report.keys.K1.state, 'not_configured');
 });
 
 test('with two instances only the live one counts', async () => {
-    const hash = await hashUrl(SECRET, keyUrl('yt', 'abcd-1234'));
-    const keys = [{ id: 'K1', server: 'yt', key: 'abcd-1234', server2: '', key2: '' }];
+    const hash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const keys = [dest('K1')];
     const report = await buildStatusReport(
         keys,
         [row('error', { hash, instance: 'dev' }), row('running', { hash, instance: 'prod' })],
@@ -166,7 +203,7 @@ test('with two instances only the live one counts', async () => {
         SECRET,
         NOW,
     );
-    assert.equal(report.keys.K1.main.status, 'running');
+    assert.equal(report.keys.K1.state, 'running');
 });
 
 // ---- inputs ----
@@ -239,16 +276,13 @@ test('an input is matched to a pipeline by name, ignoring case and spaces', asyn
 });
 
 test('an output running in another pipeline than its input is marked', async () => {
-    const mainHash = await hashUrl(SECRET, keyUrl('yt', 'abcd-1234'));
-    const keys = [
-        { id: 'K1', input: 'L1', server: 'yt', key: 'abcd-1234', server2: '', key2: '' },
-        { id: 'K2', input: 'L9', server: 'yt', key: 'other', server2: '', key2: '' },
-    ];
+    const mainHash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const keys = [dest('K1', { input: 'L1' }), dest('K2', { input: 'L9', streamKey: 'other' })];
     const inputs = [
         { id: 'L1', name: 'Hindi' },
         { id: 'L9', name: 'Tamil' },
     ];
-    const otherHash = await hashUrl(SECRET, keyUrl('yt', 'other'));
+    const otherHash = await hashUrl(SECRET, streamUrl('yt', 'other'));
     const instances = [{ instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() }];
 
     const report = await buildStatusReport(
@@ -264,9 +298,9 @@ test('an output running in another pipeline than its input is marked', async () 
         inputs,
     );
     // The link of a Hindi stream runs in the Tamil pipeline: probably put in the wrong place.
-    assert.equal(report.keys.K1.main.inputMismatch, true);
+    assert.equal(report.keys.K1.inputMismatch, true);
     // Same name apart from case and spaces: fine.
-    assert.equal(report.keys.K2.main.inputMismatch, false);
+    assert.equal(report.keys.K2.inputMismatch, false);
 
     // Nothing is claimed when the input or the pipeline is unknown.
     const unknown = await buildStatusReport(
@@ -278,7 +312,7 @@ test('an output running in another pipeline than its input is marked', async () 
         [],
         inputs,
     );
-    assert.equal(unknown.keys.K1.main.inputMismatch, false);
+    assert.equal(unknown.keys.K1.inputMismatch, false);
     const noInputs = await buildStatusReport(
         keys,
         [row('running', { hash: mainHash, pipeline: 'Tamil' })],
@@ -286,7 +320,7 @@ test('an output running in another pipeline than its input is marked', async () 
         SECRET,
         NOW,
     );
-    assert.equal(noInputs.keys.K1.main.inputMismatch, false);
+    assert.equal(noInputs.keys.K1.inputMismatch, false);
 });
 
 test('inputs of a bunryu that went quiet are ignored', async () => {

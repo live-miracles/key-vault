@@ -145,8 +145,9 @@ test('what the user may do is sent with each item, so the browser works nothing 
     assert.equal(asAdmin.events[0].can.manageInputs, true);
     assert.equal(asAdmin.events[0].can.seeTechnicalStatus, false);
     assert.deepEqual(asAdmin.events[0].can.addRoleTypes, ['viewer', 'editor', 'admin']);
-    assert.equal(asAdmin.events[0].can.delete, false);
-    assert.equal(asAdmin.roles.find((r) => r.type === 'admin').canChange, false);
+    assert.equal(asAdmin.events[0].can.rename, true);
+    assert.equal(asAdmin.events[0].can.delete, true);
+    assert.equal(asAdmin.roles.find((r) => r.type === 'admin').canChange, true);
     assert.equal(asAdmin.roles.find((r) => r.type === 'editor').canChange, true);
 
     const asOwner = await ops.getAllData(store, owner);
@@ -154,7 +155,7 @@ test('what the user may do is sent with each item, so the browser works nothing 
     assert.equal(asOwner.events[0].can.delete, true);
 });
 
-test('events: admins create, only owners edit and delete', async () => {
+test('events: admins create, edit and delete their own; editors and strangers cannot', async () => {
     const store = seed();
 
     assert.equal(await refused(ops.addEvent(store, stranger, { name: 'X' })), 'denied');
@@ -169,15 +170,25 @@ test('events: admins create, only owners edit and delete', async () => {
     const byOwner = await ops.addEvent(store, owner, { name: 'Owner event' });
     assert.equal(byOwner.adminRole, undefined);
 
-    assert.equal(await refused(ops.editEvent(store, admin, { id: E1, name: 'x' })), 'denied');
-    assert.deepEqual(await ops.editEvent(store, owner, { id: E1, name: 'ok' }), {
+    // Not an admin: an editor can see the event but not change it, a stranger cannot see it.
+    assert.equal(await refused(ops.editEvent(store, editor, { id: E1, name: 'x' })), 'denied');
+    assert.equal(await refused(ops.deleteEvent(store, editor, { id: E1 })), 'denied');
+    assert.equal(await refused(ops.deleteEvent(store, stranger, { id: E1 })), 'not_found');
+
+    // An admin of one event has no say over another.
+    assert.equal(await refused(ops.editEvent(store, admin, { id: E2, name: 'x' })), 'not_found');
+    assert.equal(await refused(ops.deleteEvent(store, admin, { id: E2 })), 'not_found');
+    assert.deepEqual(await ops.editEvent(store, owner, { id: E2, name: 'by owner' }), {
+        id: E2,
+        name: 'by owner',
+    });
+
+    assert.deepEqual(await ops.editEvent(store, admin, { id: E1, name: 'ok' }), {
         id: E1,
         name: 'ok',
     });
-    assert.equal(await refused(ops.deleteEvent(store, admin, { id: E1 })), 'denied');
-    assert.equal(await refused(ops.deleteEvent(store, stranger, { id: E1 })), 'not_found');
 
-    await ops.deleteEvent(store, owner, { id: E1 });
+    await ops.deleteEvent(store, admin, { id: E1 });
     assert.equal(
         store.state.keys.some((k) => k.event === E1),
         false,
@@ -188,6 +199,32 @@ test('events: admins create, only owners edit and delete', async () => {
     );
     assert.equal(
         store.state.inputs.some((i) => i.event === E1),
+        false,
+    );
+});
+
+test('roles: an admin removes other admins, but not an owner', async () => {
+    const store = seed();
+    const role = (email, type) => ({ event: E1, email, type, input: null });
+
+    const otherAdmin = await ops.addRole(store, owner, role('admin2@example.test', 'admin'));
+    const anOwner = await ops.addRole(store, owner, role('owner2@example.test', 'owner'));
+    assert.equal(otherAdmin.canChange, true);
+
+    assert.equal(await refused(ops.deleteRole(store, admin, { id: anOwner.id })), 'denied');
+    assert.equal(
+        await refused(
+            ops.editRole(store, admin, {
+                id: otherAdmin.id,
+                ...role('admin2@example.test', 'owner'),
+            }),
+        ),
+        'denied',
+    );
+
+    await ops.deleteRole(store, admin, { id: otherAdmin.id });
+    assert.equal(
+        store.state.roles.some((r) => r.email === 'admin2@example.test'),
         false,
     );
 });

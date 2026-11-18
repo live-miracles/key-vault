@@ -93,8 +93,8 @@ their free plans.
 
 ## Roles
 
-- **Owner**: can edit or delete events and assign event admins. An owner anywhere is an owner everywhere.
-- **Admin**: manages an event's inputs and can add viewers, editors and other admins.
+- **Owner**: can do everything in every event, including adding, changing and removing owners. An owner anywhere is an owner everywhere.
+- **Admin**: can create events, rename or delete the events they administer, and manage their inputs. Can add, change and remove viewers, editors and other admins.
 - **Editor**: can add and edit destinations, and can be limited to one input.
 - **Viewer**: can only view destinations, and can be limited to one input.
 

@@ -38,8 +38,22 @@ export function compareRoles(
     return a.email.localeCompare(b.email);
 }
 
+// What each role can do, in a line, shown while one is being chosen. These describe the rules in
+// docs/1-user-guide.md ("Who can do what"); the server enforces them (see ADR 0003).
+const ROLE_HINTS: Record<RoleType, string> = {
+    viewer: 'Sees destinations and their status. Can be limited to one input.',
+    editor: 'Adds, edits and deletes destinations. Can be limited to one input.',
+    admin: 'Everything an editor can, and creates events, renames or deletes its events, and manages inputs. Adds, changes and removes editors, viewers and admins. Sees every input.',
+    owner: 'Everything, in every event, including adding, changing and removing owners.',
+};
+
+function roleHint(type: string): string {
+    return ROLE_HINTS[type as RoleType] ?? '';
+}
+
 function roleInputLabel(input: string | null): string {
-    return input === null ? 'All' : inputLabelHtml(app.data, input);
+    if (input === null) return 'All inputs';
+    return `<span class="text-ink-subtle">Only</span> ${inputLabelHtml(app.data, input)}`;
 }
 
 // The role types the open event lets this person give, highest first.
@@ -54,11 +68,14 @@ function roleTypeOptions(selectedType: string): string {
         .join('');
 }
 
-// Admins and owners see every input, so their only choice is All.
+// Admins and owners see every input, so there is nothing to choose and the field is hidden.
+function seesEveryInput(roleType: string): boolean {
+    return roleType === 'admin' || roleType === 'owner';
+}
+
 function roleInputOptions(selectedInput: string | null, roleType: string): string {
-    const everything = roleType === 'admin' || roleType === 'owner';
-    const inputs = everything ? [] : inputsOf(app.data, eventId());
-    return [{ id: '', name: 'All' }, ...inputs]
+    const inputs = seesEveryInput(roleType) ? [] : inputsOf(app.data, eventId());
+    return [{ id: '', name: 'All inputs' }, ...inputs]
         .map(
             (input) =>
                 `<option value="${escapeHtml(input.id)}" ${input.id === (selectedInput ?? '') ? 'selected' : ''}>${escapeHtml(input.name)}</option>`,
@@ -66,38 +83,71 @@ function roleInputOptions(selectedInput: string | null, roleType: string): strin
         .join('');
 }
 
+// The panel for adding someone or changing a role: labelled fields, a line on what the chosen
+// role can do, and the buttons. A new person is `id: ''`.
 function renderRoleEditRow(role: {
     id: string;
     email: string;
     type: string;
     input: string | null;
 }) {
+    const adding = role.id === '';
     return `
-        <tr class="text-center" data-role-id="${escapeHtml(role.id)}" data-editing="true">
-            <th class="w-100" style="padding: 5px;">
-                <input type="email" class="input input-sm role-email-input w-full" value="${escapeHtml(role.email)}" placeholder="email@example.com" maxlength="100" />
-            </th>
-            <td class="w-30" style="padding: 5px;">
-                <select class="select select-sm role-type-input w-full" data-action="render-role-input">
-                    ${roleTypeOptions(role.type)}
-                </select>
-            </td>
-            <td class="w-50" style="padding: 5px;">
-                <select class="select select-sm role-input-select w-full">
-                    ${roleInputOptions(role.input, role.type)}
-                </select>
-            </td>
-            <td style="padding: 5px;">
-                <div class="flex justify-center gap-1">
-                    <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Save" aria-label="Save role" data-action="save-role-inline">
-                        ${iconSvg('check')}
-                    </button>
-                    <button type="button" class="btn btn-ghost btn-square btn-xs" title="Cancel" aria-label="Cancel role edit" data-action="cancel-role-inline">
-                        ${iconSvg('x')}
-                    </button>
-                </div>
-            </td>
-        </tr>
+        <li class="role-edit" data-role-id="${escapeHtml(role.id)}" data-editing="true">
+            <div class="role-edit-grid">
+                <label class="fieldset">
+                    <span class="fieldset-legend">Email</span>
+                    <input type="email" class="input role-email-input w-full" value="${escapeHtml(role.email)}" placeholder="name@example.org" maxlength="100" autocomplete="off" />
+                </label>
+                <label class="fieldset">
+                    <span class="fieldset-legend">Role</span>
+                    <select class="select role-type-input w-full" data-action="render-role-input">
+                        ${roleTypeOptions(role.type)}
+                    </select>
+                </label>
+                <label class="fieldset role-input-field ${seesEveryInput(role.type) ? 'hidden' : ''}">
+                    <span class="fieldset-legend">Can see</span>
+                    <select class="select role-input-select w-full">
+                        ${roleInputOptions(role.input, role.type)}
+                    </select>
+                </label>
+            </div>
+            <p class="role-hint" aria-live="polite">${escapeHtml(roleHint(role.type))}</p>
+            <p class="role-error hidden" role="alert"></p>
+            <div class="role-edit-actions">
+                <button type="button" class="btn btn-sm" data-action="cancel-role-inline">Cancel</button>
+                <button type="button" class="btn btn-sm btn-accent" data-action="save-role-inline">${adding ? 'Add person' : 'Save'}</button>
+            </div>
+        </li>
+    `;
+}
+
+function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {
+    const you = isCurrentUser ? ' <span class="role-you">(you)</span>' : '';
+    const actions = r.pending
+        ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
+        : r.canChange
+          ? `
+                <button type="button" class="btn btn-ghost btn-square btn-sm text-accent" title="Change role" aria-label="Change ${escapeHtml(r.email)}'s role" data-action="edit-role-by-id">
+                    ${iconSvg('pen')}
+                </button>
+                <button type="button" class="btn btn-ghost btn-square btn-sm text-error" title="Remove" aria-label="Remove ${escapeHtml(r.email)}" data-action="delete-role-by-id">
+                    ${iconSvg('trash')}
+                </button>
+            `
+          : '';
+    return `
+        <li class="role-row" data-role-id="${escapeHtml(r.id)}">
+            <span class="role-avatar" aria-hidden="true">${escapeHtml(r.email.charAt(0))}</span>
+            <div class="role-body">
+                <span class="role-email" title="${escapeHtml(r.email)}">${escapeHtml(r.email)}${you}</span>
+                <span class="role-meta">
+                    <span class="role-pill role-pill-${escapeHtml(r.type)}">${escapeHtml(ROLE_LABELS[r.type])}</span>
+                    <span>${roleInputLabel(r.input)}</span>
+                </span>
+            </div>
+            <div class="role-actions">${actions}</div>
+        </li>
     `;
 }
 
@@ -106,44 +156,22 @@ export function renderRoleTable() {
     const { data } = app;
     const roles = data.roles.filter((r) => r.event === id).sort((a, b) => compareRoles(a, b));
 
-    const rows = roles.map((r) => {
-        if (selectedRoleId === r.id) return renderRoleEditRow(r);
+    const rows = roles.map((r) =>
+        selectedRoleId === r.id
+            ? renderRoleEditRow(r)
+            : renderRoleRow(r, r.email.toLowerCase() === data.userEmail.toLowerCase()),
+    );
 
-        const isCurrentUser = r.email.toLowerCase() === data.userEmail.toLowerCase();
-        const emailLabel = `${escapeHtml(r.email)}${isCurrentUser ? ' <span class="text-base-content/60 font-normal">(you)</span>' : ''}`;
-        const actions = r.pending
-            ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
-            : r.canChange
-              ? `
-                        <div class="flex justify-center gap-1">
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent" title="Edit" aria-label="Edit role" data-action="edit-role-by-id">
-                                ${iconSvg('pen')}
-                            </button>
-                            <button type="button" class="btn btn-ghost btn-square btn-xs text-error" title="Delete" aria-label="Delete role" data-action="delete-role-by-id">
-                                ${iconSvg('trash')}
-                            </button>
-                        </div>
-                    `
-              : '';
-        return `
-            <tr class="hover:bg-base-300 text-center" data-role-id="${escapeHtml(r.id)}">
-                <th class="w-100" style="padding: 5px;">
-                    <span>${emailLabel}</span>
-                </th>
-                <td class="w-30" style="padding: 5px;">${escapeHtml(ROLE_LABELS[r.type])}</td>
-                <td class="w-50" style="padding: 5px;">${roleInputLabel(r.input)}</td>
-                <td style="padding: 5px;">${actions}</td>
-            </tr>
-        `;
-    });
-
+    // A new person goes first, where it can be seen without scrolling.
     if (selectedRoleId === '') {
-        rows.push(renderRoleEditRow({ id: '', email: '', type: 'viewer', input: null }));
+        rows.unshift(renderRoleEditRow({ id: '', email: '', type: 'viewer', input: null }));
     }
+    if (rows.length === 0) rows.push('<li class="role-empty">No one has access yet.</li>');
     $('#role-rows').innerHTML = rows.join('');
+    if (selectedRoleId === '') $('#role-table').scrollTop = 0;
 
     // Right-click on a row opens its menu.
-    for (const row of $$('#role-rows tr[data-role-id]:not([data-editing])')) {
+    for (const row of $$('#role-rows [data-role-id]:not([data-editing])')) {
         row.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             const role = app.data.roles.find((r) => r.id === row.dataset.roleId);
@@ -151,6 +179,19 @@ export function renderRoleTable() {
             else $('#role-context-menu').classList.add('hidden');
         });
     }
+
+    // Enter in the email box saves, as it would in a form.
+    $<HTMLInputElement>('#role-rows [data-editing] .role-email-input')?.addEventListener(
+        'keydown',
+        (e) => {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const save = $<HTMLElement>(
+                '#role-rows [data-editing] [data-action="save-role-inline"]',
+            );
+            if (save) void saveRoleInline(save);
+        },
+    );
 }
 
 export function hideRoleContextMenu() {
@@ -174,7 +215,7 @@ function showRoleContextMenu(event: MouseEvent, roleId: string) {
 }
 
 function focusEditingRow() {
-    $<HTMLInputElement>('#role-rows tr[data-editing] .role-email-input')?.focus();
+    $<HTMLInputElement>('#role-rows [data-editing] .role-email-input')?.focus();
 }
 
 export function addRoleBtn() {
@@ -201,29 +242,44 @@ export function cancelRoleInlineEdit() {
     renderRoleTable();
 }
 
-// Choosing another role type changes which inputs it can be limited to.
+// Choosing another role type changes which inputs it can be limited to, and what it says it can do.
 export function renderRoleInputForRow(typeSelect: HTMLSelectElement) {
-    const inputSelect = typeSelect
-        .closest('tr')
-        ?.querySelector<HTMLSelectElement>('.role-input-select');
+    const panel = typeSelect.closest<HTMLElement>('[data-role-id]');
+    const inputSelect = panel?.querySelector<HTMLSelectElement>('.role-input-select');
     if (inputSelect)
         inputSelect.innerHTML = roleInputOptions(inputSelect.value || null, typeSelect.value);
+    panel
+        ?.querySelector('.role-input-field')
+        ?.classList.toggle('hidden', seesEveryInput(typeSelect.value));
+    const hint = panel?.querySelector('.role-hint');
+    if (hint) hint.textContent = roleHint(typeSelect.value);
 }
 
 export async function saveRoleInline(button: HTMLElement) {
-    const row = button.closest('tr') as HTMLTableRowElement;
+    const row = button.closest<HTMLElement>('[data-role-id]');
+    if (!row) return;
     const id = row.dataset.roleId ?? '';
     const emailInput = row.querySelector('.role-email-input') as HTMLInputElement;
     const email = emailInput.value.trim();
     const type = (row.querySelector('.role-type-input') as HTMLSelectElement).value as RoleType;
     const chosenInput = (row.querySelector('.role-input-select') as HTMLSelectElement).value;
-    const input = type === 'admin' || type === 'owner' ? null : chosenInput || null;
+    const input = seesEveryInput(type) ? null : chosenInput || null;
 
+    const error = row.querySelector<HTMLElement>('.role-error');
     if (email === '' || !emailInput.checkValidity()) {
         emailInput.classList.add('input-error');
+        if (error) {
+            error.textContent =
+                email === ''
+                    ? 'Enter an email address.'
+                    : 'That does not look like an email address.';
+            error.classList.remove('hidden');
+        }
+        emailInput.focus();
         return;
     }
     emailInput.classList.remove('input-error');
+    error?.classList.add('hidden');
 
     const event = id === '' ? eventId() : app.data.roles.find((r) => r.id === id)?.event;
     if (!event) return;

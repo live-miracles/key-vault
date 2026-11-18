@@ -353,6 +353,149 @@
         margin-top: 1.5rem;
     }
 
+    /* ----- Share dialog: one row per person ----- */
+    .role-list {
+        display: grid;
+        gap: 0.5rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .role-row,
+    .role-edit {
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-field);
+        background: var(--color-base-200);
+    }
+    .role-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+        transition: background-color 120ms ease;
+    }
+    .role-row:hover {
+        background: var(--color-surface-3);
+    }
+    .role-empty {
+        padding: 1.5rem 0;
+        text-align: center;
+        color: var(--color-ink-subtle);
+        font-size: 0.875rem;
+    }
+    /* The first letter of the email in a soft accent circle. */
+    .role-avatar {
+        display: grid;
+        flex: none;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 9999px;
+        background: color-mix(in oklab, var(--color-accent) 16%, var(--color-base-200));
+        color: var(--color-accent);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .role-body {
+        display: grid;
+        flex: 1;
+        gap: 0.125rem;
+        min-width: 0;
+    }
+    .role-email {
+        overflow: hidden;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .role-you {
+        color: var(--color-ink-subtle);
+        font-weight: 400;
+    }
+    .role-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.125rem 0.5rem;
+        color: var(--color-ink-muted);
+        font-size: 0.8125rem;
+    }
+    .role-actions {
+        display: flex;
+        flex: none;
+        align-items: center;
+        gap: 0.125rem;
+    }
+    /* Owner and admin are in the accent, editor is plain, viewer is only outlined. */
+    .role-pill {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid transparent;
+        border-radius: 9999px;
+        background: var(--color-base-300);
+        padding: 0 0.5rem;
+        color: var(--color-ink-muted);
+        font-size: 0.75rem;
+        font-weight: 500;
+        line-height: 1.25rem;
+    }
+    .role-pill-owner {
+        background: color-mix(in oklab, var(--color-accent) 28%, var(--color-base-200));
+        color: var(--color-accent);
+    }
+    .role-pill-admin {
+        background: color-mix(in oklab, var(--color-accent) 14%, var(--color-base-200));
+        color: var(--color-accent);
+    }
+    .role-pill-viewer {
+        border-color: var(--color-hairline-strong);
+        background: transparent;
+    }
+    /* The panel for adding a person or changing a role. */
+    .role-edit {
+        display: grid;
+        gap: 0.75rem;
+        border-color: color-mix(in oklab, var(--color-primary) 60%, var(--color-base-300));
+        padding: 0.75rem;
+    }
+    .role-edit-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+    .role-hint {
+        margin: 0;
+        color: var(--color-ink-subtle);
+        font-size: 0.8125rem;
+    }
+    .role-error {
+        margin: 0;
+        color: var(--color-error);
+        font-size: 0.8125rem;
+    }
+    .role-edit-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    @media (min-width: 641px) {
+        /* Email and the role's reach line up as columns on a wide screen. */
+        .role-body {
+            grid-template-columns: minmax(0, 1fr) 15rem;
+            align-items: center;
+            gap: 1rem;
+        }
+        .role-edit-grid {
+            grid-template-columns: minmax(0, 1fr) 8rem 11rem;
+        }
+        /* Owner and admin have no input to choose: the email takes the room. */
+        .role-edit-grid:has(.role-input-field.hidden) {
+            grid-template-columns: minmax(0, 1fr) 8rem;
+        }
+    }
+
     /* ----- Messages, cards, links ----- */
     .alert {
         display: flex;
@@ -832,7 +975,8 @@
 .dest-grid {
     display: grid;
     gap: 0.5rem;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
+    /* 21rem is the least a card needs to show its links and all its buttons on one line. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
     align-items: start;
 }
 .dest-section + .dest-section {
@@ -1143,9 +1287,11 @@
     @apply min-w-0 flex-1;
 }
 /* The bottom row: Main and Backup as words with a copy button each, a Watch button, and the
-   card's buttons at the right end. It stays on one line so the buttons never drop below. */
+   card's buttons at the right end. It is one line whenever the card is wide enough (the grid
+   keeps cards at least 21rem); on a very narrow screen the buttons wrap under the links, to the
+   right, instead of running out of the card. */
 .dest-card-links {
-    @apply border-base-300/70 flex items-center gap-x-2 border-t pt-1.5;
+    @apply border-base-300/70 flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-1.5;
 }
 .dest-link {
     @apply inline-flex items-center;

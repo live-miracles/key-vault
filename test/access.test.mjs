@@ -33,12 +33,21 @@ test('someone with no role sees nothing and can do nothing', () => {
     assert.equal(access.canAddRole('e1', 'viewer'), false);
 });
 
-test('an admin of any event can create events, but only owners rename or delete them', () => {
+test('an admin of any event can create events, and rename or delete the ones they administer', () => {
     const access = createAccess(ME, false, [role('e1', ME, 'admin')]);
     assert.equal(access.canCreateEvent(), true);
     assert.equal(access.canViewEvent('e1'), true);
-    assert.equal(access.canChangeEvent('e1'), false);
+    assert.equal(access.canChangeEvent('e1'), true);
     assert.equal(access.canViewEvent('e2'), false);
+    assert.equal(access.canChangeEvent('e2'), false);
+});
+
+test('editors and viewers cannot rename or delete an event', () => {
+    for (const type of ['viewer', 'editor']) {
+        const access = createAccess(ME, false, [role('e1', ME, type)]);
+        assert.equal(access.canChangeEvent('e1'), false);
+        assert.equal(access.canCreateEvent(), false);
+    }
 });
 
 test("an event's admins manage its inputs, and nobody else does", () => {
@@ -50,19 +59,22 @@ test("an event's admins manage its inputs, and nobody else does", () => {
     }
 });
 
-test('admins manage non-owner roles, and only owners add or change admins and owners', () => {
+test('admins manage every role but owner, and only owners manage owners', () => {
     const admin = createAccess(ME, false, [role('e1', ME, 'admin')]);
     assert.equal(admin.canAddRole('e1', 'viewer'), true);
     assert.equal(admin.canAddRole('e1', 'editor'), true);
     assert.equal(admin.canAddRole('e1', 'admin'), true);
     assert.equal(admin.canAddRole('e1', 'owner'), false);
     assert.equal(admin.canChangeRole('e1', 'editor'), true);
-    assert.equal(admin.canChangeRole('e1', 'admin'), false);
+    assert.equal(admin.canChangeRole('e1', 'admin'), true);
     assert.equal(admin.canChangeRole('e1', 'owner'), false);
+    // Only in the event they administer.
+    assert.equal(admin.canChangeRole('e2', 'viewer'), false);
 
     const owner = createAccess(ME, false, [role('e1', ME, 'owner')]);
     assert.equal(owner.canAddRole('e1', 'owner'), true);
     assert.equal(owner.canChangeRole('e1', 'admin'), true);
+    assert.equal(owner.canChangeRole('e1', 'owner'), true);
 
     const editor = createAccess(ME, false, [role('e1', ME, 'editor')]);
     assert.equal(editor.canViewRoles('e1'), true);
@@ -104,8 +116,8 @@ test('technical status detail is for owners only', () => {
 test('what the browser is told about an event follows the same rules', () => {
     const can = createAccess(ME, false, [role('e1', ME, 'admin')]).describeEvent('e1');
     assert.deepEqual(can, {
-        rename: false,
-        delete: false,
+        rename: true,
+        delete: true,
         manageInputs: true,
         viewRoles: true,
         addRoleTypes: ['viewer', 'editor', 'admin'],

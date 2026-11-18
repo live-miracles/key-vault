@@ -102,10 +102,9 @@ function handleClick(event: MouseEvent) {
     const target =
         event.target instanceof Element ? event.target.closest<HTMLElement>('[data-action]') : null;
     if (!target) return;
-    const row = target.closest<HTMLElement>('tr');
     const keyId = target.closest<HTMLElement>('[data-key-id]')?.dataset.keyId;
     const inputId = target.closest<HTMLElement>('[data-input-id]')?.dataset.inputId;
-    const roleId = row?.dataset.roleId;
+    const roleId = target.closest<HTMLElement>('[data-role-id]')?.dataset.roleId;
     const clearSearch = () => {
         setDestinationSearch('', renderAll);
         $('#destination-search')?.focus();

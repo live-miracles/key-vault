@@ -52,20 +52,18 @@ export function createAccess(
     const isEditor = (event: string) =>
         isAdmin(event) || mine.some((r) => r.event === event && r.type === 'editor');
 
+    // Admins manage everyone but owners; only owners manage owners.
+    const canManageRole = (event: string, type: RoleType) =>
+        canViewEvent(event) && (type === 'owner' ? isOwner : isAdmin(event));
+
     const access: Access = {
         canCreateEvent: () => isOwner || mine.some((r) => r.type === 'admin'),
         canViewEvent,
-        canChangeEvent: (event) => isOwner && canViewEvent(event),
+        canChangeEvent: (event) => isAdmin(event),
         canManageInputs: (event) => isAdmin(event),
         canViewRoles: (event) => isEditor(event),
-        canAddRole(event, type) {
-            if (!canViewEvent(event)) return false;
-            return type === 'owner' ? isOwner : isAdmin(event);
-        },
-        canChangeRole(event, type) {
-            if (!canViewEvent(event)) return false;
-            return type === 'owner' || type === 'admin' ? isOwner : isAdmin(event);
-        },
+        canAddRole: canManageRole,
+        canChangeRole: canManageRole,
         canViewKey: (event, input) =>
             isAdmin(event) || hasRole(event, 'editor', input) || hasRole(event, 'viewer', input),
         canChangeKey: (event, input) => isAdmin(event) || hasRole(event, 'editor', input),

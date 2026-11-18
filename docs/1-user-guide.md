@@ -65,12 +65,12 @@ Beside a red card there is a small copy button. It copies the technical details 
 
 ## Who can do what
 
-| Role       | Can                                                                          |
-| ---------- | ---------------------------------------------------------------------------- |
-| **Viewer** | See destinations and their status. Can be limited to one input.              |
-| **Editor** | Add, edit and delete destinations. Can be limited to one input.              |
-| **Admin**  | Everything an editor can, and manage an event's inputs and who has access.   |
-| **Owner**  | Everything, in every event, including creating, editing and deleting events. |
+| Role       | Can                                                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Viewer** | See destinations and their status. Can be limited to one input.                                                                                          |
+| **Editor** | Add, edit and delete destinations. Can be limited to one input.                                                                                          |
+| **Admin**  | Everything an editor can, and create events, rename or delete their events, and manage their inputs. Add, change and remove editors, viewers and admins. |
+| **Owner**  | Everything, in every event, including adding, changing and removing owners.                                                                              |
 
 If a button you expect is missing, you do not have that role for this event: ask an admin to change it under **Share**.
 

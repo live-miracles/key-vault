@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { describeBunryu, formatWhen } from '../frontend/src/format.ts';
+import { describeBunryu, formatWhen, listInstances } from '../frontend/src/format.ts';
 import { escapeHtml, safeUrl } from '../frontend/src/html.ts';
 import { newTempId } from '../frontend/src/store.ts';
 
@@ -63,4 +63,28 @@ test('formats when something happened, with the year only when it is not this on
     assert.match(formatWhen('2026-11-17T15:42:00', now), /17/);
     assert.doesNotMatch(formatWhen('2026-11-17T15:42:00', now), /2026/);
     assert.match(formatWhen('2025-03-02T09:05:00', now), /2025/);
+});
+
+test('counts the connected bunryu and lists them, connected ones first', () => {
+    const now = Date.parse('2026-11-15T12:00:00Z');
+    const at = (ms) => new Date(now - ms).toISOString();
+    const report = {
+        online: true,
+        instances: [
+            { instance: 'Old', lastSeenAt: at(2 * 3600000), online: false },
+            { instance: 'Standby', lastSeenAt: at(90000), online: true },
+            { instance: 'Main', lastSeenAt: at(20000), online: true },
+        ],
+    };
+    assert.equal(describeBunryu(report, now).text, '2 bunryu connected');
+    assert.equal(
+        describeBunryu({ ...report, instances: report.instances.slice(0, 2) }, now).text,
+        'bunryu connected',
+    );
+    assert.deepEqual(listInstances(report, now), [
+        { name: 'Main', online: true, seen: 'just now' },
+        { name: 'Standby', online: true, seen: '1 min ago' },
+        { name: 'Old', online: false, seen: '2 h ago' },
+    ]);
+    assert.deepEqual(listInstances(undefined, now), []);
 });

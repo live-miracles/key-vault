@@ -4,7 +4,7 @@
 import type { Backend } from './api-client.ts';
 import { app } from './app.ts';
 import { $, copyTextValue, showErrorAlert } from './dom.ts';
-import { describeBunryu } from './format.ts';
+import { describeBunryu, listInstances } from './format.ts';
 import { escapeHtml, iconSvg } from './html.ts';
 
 export function renderBunryuStatus() {
@@ -19,6 +19,26 @@ export function renderBunryuStatus() {
     $('#bunryu-status-text').textContent = text;
     $('#bunryu-dot').className =
         'h-2 w-2 rounded-full ' + (state === 'online' ? 'bg-success' : 'bg-base-content/30');
+    renderInstances();
+}
+
+// Which bunryu servers have reported, by the Server Name typed in bunryu. Redrawn with every
+// status report, so it stays current while the dialog is open.
+function renderInstances() {
+    const list = listInstances(app.status);
+    const connected = list.filter((i) => i.online).length;
+    $('#bunryu-instances-heading').textContent = `Connected bunryu (${connected})`;
+    $('#bunryu-instances').innerHTML = list.length
+        ? list
+              .map(
+                  (i) => `<li class="flex items-center gap-2 py-0.5">
+                      <span class="h-2 w-2 shrink-0 rounded-full ${i.online ? 'bg-success' : 'bg-base-content/30'}"></span>
+                      <span class="font-medium break-all">${escapeHtml(i.name)}</span>
+                      <span class="text-base-content/60 ml-auto shrink-0">${i.online ? 'connected' : `last seen ${escapeHtml(i.seen)}`}</span>
+                  </li>`,
+              )
+              .join('')
+        : '<li class="text-base-content/60">No bunryu has reported yet.</li>';
 }
 
 // The settings are fetched when the dialog opens and dropped when it closes, so the secrets are

@@ -82,7 +82,7 @@ export function parseHeartbeat(body: unknown): Heartbeat {
         throw new Error(`Unsupported heartbeat version: ${String(beat.version)}.`);
     }
     // bunryu's Server Name, a display label (its default is "Bunryu"), so it is taken as
-    // typed. It only tells servers apart and is never shown or used in a query.
+    // typed. It tells servers apart and is listed for app owners; it is never used in a query.
     const instance = String(beat.instance ?? '').trim();
     if (!instance || instance.length > MAX_INSTANCE_LENGTH || CONTROL_CHARACTERS.test(instance)) {
         throw new Error(

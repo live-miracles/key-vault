@@ -40,9 +40,11 @@ export function describeBunryu(
 ): BunryuState {
     if (!report) return { state: 'unknown', text: '', title: '' };
     if (report.online) {
+        // One bunryu is the usual case; a standby running beside it is counted.
+        const count = (report.instances || []).filter((i) => i.online).length;
         return {
             state: 'online',
-            text: 'bunryu connected',
+            text: count > 1 ? `${count} bunryu connected` : 'bunryu connected',
             title: 'bunryu is reporting stream status',
         };
     }
@@ -62,4 +64,27 @@ export function describeBunryu(
         text: `bunryu last seen ${formatAgo(nowMs - lastSeen)}`,
         title: `Last report: ${new Date(lastSeen).toLocaleString()}`,
     };
+}
+
+export interface InstanceLine {
+    name: string;
+    online: boolean;
+    // "just now", "5 min ago": when it last reported.
+    seen: string;
+}
+
+// The bunryu servers that have reported, for the dialog behind the corner: connected ones
+// first, then the most recently seen.
+export function listInstances(
+    report: Pick<StatusReport, 'instances'> | null | undefined,
+    nowMs = Date.now(),
+): InstanceLine[] {
+    return (report?.instances || [])
+        .map((i) => ({ ...i, at: new Date(i.lastSeenAt).getTime() }))
+        .sort((a, b) => Number(b.online) - Number(a.online) || b.at - a.at)
+        .map((i) => ({
+            name: i.instance,
+            online: i.online,
+            seen: Number.isNaN(i.at) ? '' : formatAgo(nowMs - i.at),
+        }));
 }

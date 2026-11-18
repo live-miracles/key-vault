@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+    inputDotHtml,
     inputLabelHtml,
     keyNoteTextHtml,
     keyStatusPillHtml,
@@ -10,6 +11,7 @@ import {
     renderLastEdit,
     statusPillsHtml,
 } from '../frontend/src/cards.ts';
+import { summarizeKeyStatuses } from '../frontend/src/overview.ts';
 
 test('a card says who last added or edited the destination, when that is known', () => {
     const at = '2026-11-17T15:42:00';
@@ -179,4 +181,19 @@ test('pills count destinations by state, and a missing input is flagged', () => 
     assert.match(keyStatusPillHtml(null, true), /Saving/);
     assert.equal(keyStatusPillHtml(null), '');
     assert.equal(keyNoteTextHtml({ state: 'running', label: 'Live', text: '', copy: '' }), '');
+});
+
+test('destinations of an input that is off count as unreported, not as errors', () => {
+    const now = Date.parse('2026-11-16T10:00:00Z');
+    const off = { status: 'error', message: '', sinceMs: now - 11 * 60000, pipeline: 'Hindi' };
+    const report = {
+        online: true,
+        instances: [],
+        keys: { k1: { state: 'error', inputMismatch: false } },
+        inputs: { i1: off },
+    };
+    const summary = summarizeKeyStatuses([{ id: 'k1', input: 'i1' }], report, now);
+    assert.equal(summary.error, 0);
+    assert.equal(summary.unreported, 1);
+    assert.match(inputDotHtml('i1', report, now), /input-dot-stopped/);
 });

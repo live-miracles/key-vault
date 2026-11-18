@@ -7,6 +7,7 @@ import {
     getInputStatus,
     getKeyDisplay,
     reportedStatus,
+    INPUT_OFF_AFTER_MS,
 } from '../frontend/src/status-wording.ts';
 
 // What the server sends for a destination (see supabase/functions/_shared/status.ts).
@@ -197,4 +198,62 @@ test('the input banner only appears for an input in trouble, and only while bunr
     assert.equal(banner('error', false), null);
     assert.equal(describeInputBanner('L1', 'Hindi', report({})), null);
     assert.equal(getInputStatus('L1', report({}, { inputs: { L1: null } })), null);
+});
+
+const OFF = {
+    status: 'error',
+    message: '',
+    sinceMs: NOW - INPUT_OFF_AFTER_MS - 1,
+    pipeline: 'Hindi',
+};
+
+test('an input with no signal for a long time is off, so its destinations are "not started yet"', () => {
+    for (const state of ['error', 'warning', 'stopped']) {
+        const idle = report(
+            { K1: status(state, { message: 'Connection refused' }) },
+            { inputs: { L1: OFF } },
+        );
+        const note = describeKeyNote(key(), idle, NOW, 'Hindi');
+        assert.equal(note.label, 'Not started yet', state);
+        assert.equal(note.state, 'none', state);
+        assert.doesNotMatch(note.text, /not arriving|Gave up|stream key/i, state);
+        assert.equal(getKeyDisplay(key(), idle, NOW).tint, '', state);
+    }
+    // A stream that is live is never called not started.
+    const live = report({ K1: status('running') }, { inputs: { L1: OFF } });
+    assert.equal(describeKeyNote(key(), live, NOW, 'Hindi').label, 'Live');
+    // The input shows as idle and raises no banner.
+    assert.equal(getInputStatus('L1', report({}, { inputs: { L1: OFF } }), NOW).status, 'stopped');
+    assert.equal(
+        describeInputBanner('L1', 'Hindi', report({}, { inputs: { L1: OFF } }), NOW),
+        null,
+    );
+    // An input bunryu itself calls stopped counts the same.
+    const stoppedInput = report({ K1: status('error') }, { inputs: { L1: inputState('stopped') } });
+    assert.equal(describeKeyNote(key(), stoppedInput, NOW, 'Hindi').label, 'Not started yet');
+});
+
+test('an input that has only just lost its signal is still an alarm', () => {
+    const recent = { ...OFF, sinceMs: NOW - 2 * 60000 };
+    const lost = report(
+        { K1: status('error', { message: 'Connection refused' }) },
+        { inputs: { L1: recent } },
+    );
+    assert.equal(getInputStatus('L1', lost, NOW).status, 'error');
+    assert.equal(describeInputBanner('L1', 'Hindi', lost, NOW).label, 'Not arriving');
+    const note = describeKeyNote(key(), lost, NOW, 'Hindi');
+    assert.equal(note.label, 'Problem');
+    assert.match(note.text, /not arriving/);
+    assert.equal(getKeyDisplay(key(), lost, NOW).tint, 'tint-error');
+    // A report that does not say since when is not taken as a long silence.
+    const unknown = report({ K1: status('error') }, { inputs: { L1: { ...OFF, sinceMs: 0 } } });
+    assert.equal(describeKeyNote(key(), unknown, NOW, 'Hindi').label, 'Problem');
+});
+
+test('a link under the wrong input is still said, even when the input is off', () => {
+    const wrong = report(
+        { K1: status('error', { pipeline: 'Tamil', inputMismatch: true }) },
+        { inputs: { L1: OFF } },
+    );
+    assert.equal(describeKeyNote(key(), wrong, NOW, 'Hindi').label, 'Problem');
 });

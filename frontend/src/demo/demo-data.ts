@@ -178,12 +178,12 @@ export async function buildDemoState(
         sinceMs: nowMs - 30 * MINUTE,
     });
 
-    const pipeline = (name: string, status: Status, message = '') => ({
+    const pipeline = (name: string, status: Status, message = '', minutesAgo = 100) => ({
         instance: 'demo',
         pipeline: name,
         status,
         message,
-        sinceMs: nowMs - 100 * MINUTE,
+        sinceMs: nowMs - minutesAgo * MINUTE,
     });
 
     return {
@@ -203,7 +203,8 @@ export async function buildDemoState(
             pipelines: [
                 pipeline('English', 'running'),
                 pipeline('Hindi', 'running'),
-                pipeline('Tamil', 'error', 'No signal'),
+                // Lost a few minutes ago: still an alarm. (After 10 minutes it is read as off.)
+                pipeline('Tamil', 'error', 'No signal', 3),
                 pipeline('German', 'running'),
             ],
             instances: [{ instance: 'demo', lastSeenAt: new Date(nowMs).toISOString() }],

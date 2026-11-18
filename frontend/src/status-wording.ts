@@ -56,12 +56,18 @@ export function describeKeyStatus(status: KeyStatus): string {
 // The tint of a destination's card and bunryu's technical hover text. Nothing for a destination
 // bunryu does not report on.
 export function getKeyDisplay(
-    key: { id: string },
+    key: { id: string; input?: string },
     report: StatusReport | null | undefined,
+    nowMs = Date.now(),
 ): { tint: string; title: string } {
     const status = reportedStatus(report, key.id);
     if (!status) return { tint: '', title: '' };
-    return { tint: STATUS_TINT[status.state] || '', title: describeKeyStatus(status) };
+    // A destination that has not started because its input is off is not a problem, so it is
+    // not painted as one. Owners and admins still get bunryu's report on hover.
+    const tint = isNotStarted(status, getInputStatus(key.input ?? '', report, nowMs))
+        ? ''
+        : STATUS_TINT[status.state] || '';
+    return { tint, title: describeKeyStatus(status) };
 }
 
 // ===== The status note under a destination's name =====
@@ -155,7 +161,15 @@ export function describeKeyNote(
         };
     }
 
-    const input = getInputStatus(key.input, report);
+    const input = getInputStatus(key.input, report, nowMs);
+    if (isNotStarted(status, input)) {
+        return {
+            state: 'none',
+            label: 'Not started yet',
+            text: 'This destination starts sending once its input is live.',
+            copy: '',
+        };
+    }
     const inputLabel = inputName ? `“${inputName}”` : 'this input';
     const label = NOTE_LABELS[status.state] || status.state;
     // The link runs in a pipeline of another name than this destination's input, so it was
@@ -217,14 +231,37 @@ export const INPUT_LABELS: Record<string, string> = {
     stopped: 'Idle',
 };
 
+// How long an input may have had no signal before it counts as off rather than as just lost.
+// bunryu says "error" for any pipeline that is meant to be live and gets nothing, and keeps
+// saying it after the team has stopped everything, so a long silence is read as "off".
+export const INPUT_OFF_AFTER_MS = 10 * 60 * 1000;
+
 // What bunryu reports about an input, found by the input's name, or null: nothing is claimed
-// without a fresh report, or for an input bunryu has no pipeline of that name for.
+// without a fresh report, or for an input bunryu has no pipeline of that name for. An input
+// with no signal for INPUT_OFF_AFTER_MS is returned as "stopped" (Idle): it is off, not failing.
+// A report that does not say since when is never taken as a long silence.
 export function getInputStatus(
     inputId: string,
     report: StatusReport | null | undefined,
+    nowMs = Date.now(),
 ): InputStatus | null {
     if (!report?.online) return null;
-    return report.inputs?.[inputId] || null;
+    const input = report.inputs?.[inputId];
+    if (!input) return null;
+    if (
+        input.status === 'error' &&
+        input.sinceMs > 0 &&
+        nowMs - input.sinceMs >= INPUT_OFF_AFTER_MS
+    ) {
+        return { ...input, status: 'stopped' };
+    }
+    return input;
+}
+
+// A destination that is not live while its input is off has simply not started: there is
+// nothing to fix, so it is not shown as an error. A link under the wrong input is still said.
+export function isNotStarted(status: KeyStatus, input: InputStatus | null): boolean {
+    return input?.status === 'stopped' && status.state !== 'running' && !status.inputMismatch;
 }
 
 export interface InputBanner {
@@ -238,8 +275,9 @@ export function describeInputBanner(
     inputId: string,
     name: string,
     report: StatusReport | null | undefined,
+    nowMs = Date.now(),
 ): InputBanner | null {
-    const input = getInputStatus(inputId, report);
+    const input = getInputStatus(inputId, report, nowMs);
     if (!input || (input.status !== 'error' && input.status !== 'warning')) return null;
     const text =
         input.status === 'error'

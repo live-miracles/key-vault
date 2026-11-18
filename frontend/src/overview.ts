@@ -4,6 +4,7 @@
 import type { StatusReport } from '../../supabase/functions/_shared/status.ts';
 import { inputsOf } from './model.ts';
 import type { LoadedData } from './model.ts';
+import { getInputStatus, isNotStarted } from './status-wording.ts';
 
 export const STATUS_ORDER = ['error', 'warning', 'running', 'stopped'] as const;
 
@@ -19,10 +20,12 @@ export interface StatusSummary {
     unreported: number;
 }
 
-// How many of `keys` are in each state. A destination bunryu does not report on is "unreported".
+// How many of `keys` are in each state. A destination bunryu does not report on, or that has
+// not started because its input is off, is "unreported".
 export function summarizeKeyStatuses(
-    keys: { id: string }[],
+    keys: { id: string; input?: string }[],
     report: StatusReport | null | undefined,
+    nowMs = Date.now(),
 ): StatusSummary {
     const summary: StatusSummary = {
         total: 0,
@@ -34,9 +37,14 @@ export function summarizeKeyStatuses(
     };
     for (const key of keys) {
         summary.total++;
-        const state = report?.keys?.[key.id]?.state;
-        if (state && state !== 'not_configured') summary[state]++;
-        else summary.unreported++;
+        const status = report?.keys?.[key.id];
+        if (
+            status &&
+            status.state !== 'not_configured' &&
+            !isNotStarted(status, getInputStatus(key.input ?? '', report, nowMs))
+        ) {
+            summary[status.state]++;
+        } else summary.unreported++;
     }
     return summary;
 }

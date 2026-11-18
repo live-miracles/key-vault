@@ -137,8 +137,12 @@ export function statusPillsHtml(summary: StatusSummary): string {
 }
 
 // A small coloured dot before an input's name: whether its signal is arriving.
-export function inputDotHtml(inputId: string, report: StatusReport | null): string {
-    const input = getInputStatus(inputId, report);
+export function inputDotHtml(
+    inputId: string,
+    report: StatusReport | null,
+    nowMs = Date.now(),
+): string {
+    const input = getInputStatus(inputId, report, nowMs);
     if (!input) return '';
     const label = `Input: ${INPUT_LABELS[input.status] || input.status}`;
     return `<span class="input-dot input-dot-${input.status}" title="${escapeHtml(label)}" role="img" aria-label="${escapeHtml(label)}"></span>`;
@@ -161,7 +165,9 @@ export function inputBannerInnerHtml(info: { state: string; label: string; text:
 
 // The words for an input in trouble, or null while it is fine or bunryu is not reporting.
 export function bannerFor(ctx: CardContext, inputId: string) {
-    return inputId ? describeInputBanner(inputId, inputName(ctx.data, inputId), ctx.report) : null;
+    return inputId
+        ? describeInputBanner(inputId, inputName(ctx.data, inputId), ctx.report, ctx.nowMs)
+        : null;
 }
 
 // ===== A card =====
@@ -170,7 +176,7 @@ export function bannerFor(ctx: CardContext, inputId: string) {
 // means, then one row with the links and the edit buttons.
 export function renderCard(key: KeyItem, eventKeys: KeyItem[], ctx: CardContext): string {
     const { data, report, nowMs } = ctx;
-    const { tint, title: technicalTitle } = getKeyDisplay(key, report);
+    const { tint, title: technicalTitle } = getKeyDisplay(key, report, nowMs);
     const isPending = Boolean(key.pending);
     const note = isPending ? null : describeKeyNote(key, report, nowMs, inputName(data, key.input));
     // Hovering gives owners and admins bunryu's own report; everyone else the note.
@@ -276,9 +282,9 @@ export function renderDestinationList(
             return `
         <section class="dest-section" data-input-id="${escapeHtml(input)}">
             <h3 class="dest-section-head">
-                ${inputDotHtml(input, ctx.report)}
+                ${inputDotHtml(input, ctx.report, ctx.nowMs)}
                 <span class="dest-section-name">${inputLabelHtml(ctx.data, input)}</span>
-                <span class="dest-section-pills">${statusPillsHtml(summarizeKeyStatuses(inputKeys, ctx.report))}</span>
+                <span class="dest-section-pills">${statusPillsHtml(summarizeKeyStatuses(inputKeys, ctx.report, ctx.nowMs))}</span>
                 <span class="dest-section-count">${inputCards.length}</span>
             </h3>
             ${banner}

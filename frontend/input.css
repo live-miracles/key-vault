@@ -1032,7 +1032,7 @@
 .platform-logo-ig {
     background: linear-gradient(45deg, #f09433, #e6683c 30%, #dc2743 55%, #cc2366 75%, #bc1888);
 }
-/* Copy name, info, edit and delete: at the right end of the links row. */
+/* Info, edit and delete: at the right end of the links row, never on a line of their own. */
 .dest-card-tools {
     @apply ml-auto flex shrink-0 items-center gap-0.5;
 }
@@ -1054,10 +1054,10 @@
 .dest-card-note-text {
     @apply min-w-0 flex-1;
 }
-/* The bottom row: the status, Main and Backup as words with a copy button each, a Watch button,
-   and the card's buttons at the right end. It wraps on a narrow card rather than overflows. */
+/* The bottom row: Main and Backup as words with a copy button each, a Watch button, and the
+   card's buttons at the right end. It stays on one line so the buttons never drop below. */
 .dest-card-links {
-    @apply border-base-300/70 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5;
+    @apply border-base-300/70 flex items-center gap-x-2 border-t pt-1.5;
 }
 .dest-link {
     @apply inline-flex items-center;

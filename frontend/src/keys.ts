@@ -303,21 +303,21 @@ function renderKeyTable(eventId = null) {
         const nameCopyButton = isPending
             ? ''
             : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the name" aria-label="Copy the name" data-action="copy-text" data-copy-value="${escapeHtml(k.name)}">${iconSvg('copy')}</button>`;
-        // A card: the name alone on top so it has the whole width, then what the status means,
-        // then one row with the status, the links and the buttons.
+        // A card: the platform, the status, the name and its copy button on top, then what the
+        // status means, then one row with the links and the edit buttons.
         const card = `
                 <article class="dest-card ${color.bgCss}" data-key-id="${keyIdAttr}" title="${escapeHtml(statusTitle)}">
                     <div class="dest-card-head">
                         ${platformLogoHtml(k.server)}
+                        ${pillHtml}
                         <h4 class="dest-card-name" title="${escapeHtml(k.name)}">${escapeHtml(k.name || '(unnamed)')}</h4>
+                        ${nameCopyButton}
                     </div>
                     ${noteTextHtml}
                     ${clashes.map(renderClashWarning).join('')}
                     <div class="dest-card-links">
-                        ${pillHtml}
                         ${linksHtml}
                         <div class="dest-card-tools">
-                            ${nameCopyButton}
                             ${renderLastEdit(k)}
                             ${actions}
                         </div>

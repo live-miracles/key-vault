@@ -1,12 +1,14 @@
 # Setting up Key Vault
 
+For the people who deploy Key Vault for their team. Editors who only add destinations need the [user guide](1-user-guide.md) instead.
+
 Do it in this order; each step says how to tell it worked. You need: owner access to a Supabase project, a Google Cloud project for the OAuth client, a Vercel account, admin access to this GitHub repository, and shell access to the machine running bunryu.
 
 ## 1. Create the Supabase project
 
 1. Create a project. Note the project ref (the `abcdefgh` in `https://abcdefgh.supabase.co`).
 2. When Supabase offers to connect the project to GitHub, **skip it**. The **Deploy Supabase** workflow already applies the migrations and deploys the functions; the integration would overlap with it and does not deploy functions with the flags `ingest` needs.
-3. Generate one random secret: `openssl rand -hex 32`. Keep it in a password manager; you paste it into Supabase in step 4. See `docs/bunryu-contract.md` for what is derived from it.
+3. Generate one random secret: `openssl rand -hex 32`. Keep it in a password manager; you paste it into Supabase in step 4. See [The bunryu link](5-bunryu-contract.md#secrets) for what is derived from it.
 
 The order below avoids a loop: the database and functions need no site URL, the site needs only the Supabase URL and key, and the secrets and sign-in settings need the site URL, so they come last.
 
@@ -75,6 +77,10 @@ Check, within two minutes:
 - Stop bunryu: after about three minutes the statuses clear and the header says "bunryu last seen N min ago" (there is no warning: bunryu is only on during events).
 
 If a destination you know is configured shows nothing, the address differs between the two systems (a trailing path, a different server, a changed key). Compare them; the hash is of the whole address.
+
+## 6. Install it as an app (optional)
+
+Key Vault is a progressive web app, so once the site is on HTTPS Chrome and Edge offer to install it, with no store or extra build step. See [Install Key Vault as an app](2-install-as-app.md) for how your team does it and what to check if the install button is missing.
 
 ## Backups
 

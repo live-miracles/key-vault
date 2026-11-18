@@ -1,42 +1,73 @@
 # Key Vault
 
-A safer way to store and manage stream keys for big events.
+[![Build and deploy](https://github.com/live-miracles/key-vault/actions/workflows/deploy.yml/badge.svg)](https://github.com/live-miracles/key-vault/actions/workflows/deploy.yml)
 
-The media team adds every destination for an event (YouTube, Instagram, Facebook, TV channels and
-other third parties) through a guided form that cleans up and checks what they paste. The streaming
-server, bunryu, is configured from these links and reports each output's live status back, so every
-destination shows whether it is set up, whether it is running, and what to try when it is not.
-`CONTEXT.md` has the background and the terms.
+**Add every stream destination for a live event, and see in plain words whether each one is working.**
 
-You can:
+Key Vault is a web app for media teams who send a live stream to many places at once: YouTube,
+Facebook, Instagram, TV channels and other third parties. It replaces the shared spreadsheet of stream
+keys with a guided form that stops wrong links, and it shows the live status of every destination, so
+nobody has to ask "is it going out?" in a chat.
 
-- Create events, each with its own inputs.
-- Add destinations (platform, stream key, optional backup) for an input.
-- Give people a role to restrict which destinations each of them can see or change.
+![Key Vault showing an event's destinations: Live, Unstable, Problem and Not set up yet, each with what to try.](docs/images/dashboard.webp)
 
-It runs on Vercel and Supabase.
+## Why it exists
 
-## Project structure
+Stream keys used to travel in a Google Sheet. Then a key went into the address box (or the other way
+round), the backup column held the main link, and nobody knew a link was wrong until the stream failed
+on air. When a channel said it was not receiving anything, the media team could not see which output
+was down, or why.
 
-```text
-├── frontend/
-│   ├── src/             # Browser code: ES modules, one entry (main.ts)
-│   │   ├── demo/        # The demo's seed data and its in-browser backend
-│   │   └── *.ts         # Pure modules (status wording, search, cards, model) and the screens
-│   ├── index.html       # HTML shell
-│   └── input.css        # Tailwind CSS source and the theme
-├── supabase/
-│   ├── migrations/      # The database schema
-│   └── functions/
-│       ├── api/         # One Edge Function: POST /api/<operation>
-│       ├── ingest/      # Where bunryu reports its heartbeats
-│       └── _shared/     # The rules, shared with the browser where it makes sense:
-│                        #   platforms.ts (where a destination can go), access.ts (who may do what),
-│                        #   operations.ts (the operations, over a Store), status.ts, types.ts
-├── build-tools/         # build.mjs (esbuild, demo and real modes) and dev.mjs (dev server)
-├── docs/                # setup.md, bunryu-contract.md, adr/ (decisions)
-└── test/                # Unit tests; migrations-db-check.mjs needs Docker
+- **Wrong links cannot be saved.** The form asks only for what each platform needs, cuts a pasted full
+  address down to the key, and checks the result. The server checks again, so nothing that skips the
+  form can store a bad link.
+- **Every destination shows its real state.** The streaming server, [bunryu](https://github.com/live-miracles/bunryu),
+  reports each output once a minute. A card shows **Live**, **Unstable**, **Problem**, **Not sending** or
+  **Not set up yet**. Nobody sets a colour by hand.
+- **It says what to try.** A red card says, in plain words, what is probably wrong ("The platform did
+  not accept the stream key. Get a fresh key from the platform and update it here.") and who to tell.
+  When the input is not arriving, it says so, and nobody wastes time chasing the platform.
+- **Changes are visible.** A replaced link stays **Not set up yet** until the streaming server has it,
+  and each card records who last changed it and when.
+- **Access follows the work.** People are owners, admins, editors or viewers, and editors and viewers
+  can be limited to a single input, such as one language. The server decides what each person may do.
+- **Installs like an app.** Chrome, Edge and phones can add it to the desktop or home screen.
+
+## Try it
+
+Run the demo on your own machine. It uses made-up events and statuses, so it needs no account:
+
+```bash
+git clone https://github.com/live-miracles/key-vault.git
+cd key-vault
+npm install
+npm run dev        # http://localhost:2837
 ```
+
+Use **Add destination** to see the guided form. Everything the demo does runs the same operations as
+the real server.
+
+![The guided form for adding a destination: pick a platform, then follow the steps for finding its stream key.](docs/images/add-destination.webp)
+
+## Install it as an app
+
+Open the site in Chrome or Edge and click the install icon in the address bar. Key Vault then opens in
+its own window, with its own icon, like any other app. Phones can use **Install app** or **Add to Home
+Screen**. See [Install Key Vault as an app](docs/2-install-as-app.md). It always shows live data, so it
+is not an offline tool.
+
+## Documentation
+
+| If you...                               | Read                                                |
+| --------------------------------------- | --------------------------------------------------- |
+| add destinations and check their status | [User guide](docs/1-user-guide.md)                  |
+| run Key Vault for your team             | [Setting up Key Vault](docs/3-setup.md)             |
+| connect a bunryu server                 | [The bunryu link](docs/5-bunryu-contract.md)        |
+| change the code                         | [Development](docs/4-development.md)                |
+| want the background and the terms       | [CONTEXT.md](CONTEXT.md) and [DESIGN.md](DESIGN.md) |
+
+The same pages are published with the other Live Miracles projects at
+[live-miracles.github.io/projects/key-vault](https://live-miracles.github.io/projects/key-vault/).
 
 ## How it fits together
 
@@ -47,62 +78,37 @@ bunryu ──every minute──► Edge Function `ingest` → Postgres
 ```
 
 The browser never reads the database directly: every table has row-level security with no policy.
-Every call goes to the `api` function, which decides what the signed-in user may do
-(`supabase/functions/_shared/access.ts`), checks the destination against the platform rules
-(`platforms.ts`, the same module the form uses) and only then uses the service role. The data it
-returns says what the user may do with each item, so the screens hold no rules of their own.
+Every call goes to the `api` function, which decides what the signed-in user may do, checks the
+destination against the platform rules (the same module the form uses) and only then uses the service
+role. The data it returns says what the user may do with each item, so the screens hold no rules of
+their own.
 
-bunryu reports the status of each output once a minute. It sends a hash of each destination address,
-never the address. Key Vault hashes its own main and backup addresses and matches them, so a
-destination shows as running, warning, error or configured-but-stopped without anyone setting a
-colour. See `docs/bunryu-contract.md`.
+bunryu sends a hash of each destination address, never the address. Key Vault hashes its own main and
+backup addresses and matches them, so a destination shows as running, warning, error or
+configured-but-stopped without anyone setting a colour. Stream keys never go to bunryu's heartbeat or
+into a URL. The details are in [The bunryu link](docs/5-bunryu-contract.md).
 
-The demo site runs the same operations in the browser against an in-memory store, with sample data
-and statuses.
-
-## Local development
-
-```bash
-npm install
-npm run dev
-```
-
-This serves the demo at `http://localhost:2837` with live reload (set `PORT` to use another port).
-
-```bash
-npm test              # unit tests, no database needed
-npm run typecheck     # frontend and server
-npm run format:check
-npm run test:db       # applies the migration to a throwaway Postgres in Docker
-```
-
-To build the real site locally, set the project URL and the **publishable** key (never a secret key;
-the build refuses one) and run `npm run build`; the result is in `dist/`. `npm run build:demo` builds
-the demo instead.
-
-```bash
-KEY_VAULT_SUPABASE_URL=https://<project-ref>.supabase.co KEY_VAULT_SUPABASE_PUBLISHABLE_KEY=<publishable key> npm run build
-```
-
-## Setting up Supabase and Vercel
-
-The step-by-step order, with checks and fixes for the usual errors, is in `docs/setup.md`. In short:
-
-1. Create a Supabase project. Under Authentication → Providers enable Google, and set the Site URL
-   and a Redirect URL to the site's address (the default sends sign-in back to `http://localhost:3000`).
-2. Set the function secrets `KEY_VAULT_APP_ORIGIN`, `KEY_VAULT_OWNER_EMAILS` and `KEY_VAULT_SECRET`
-   (what each is: `docs/bunryu-contract.md`).
-3. Add the repository secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_PROJECT_REF`;
-   `.github/workflows/deploy-supabase.yml` then applies the migration and deploys both functions on
-   every change under `supabase/`.
-4. Import the repository in Vercel and set `KEY_VAULT_SUPABASE_URL` and
-   `KEY_VAULT_SUPABASE_PUBLISHABLE_KEY`; `vercel.json` does the rest.
+It runs on **Vercel** (the site) and **Supabase** (sign-in, database and two Edge Functions), and fits
+their free plans.
 
 ## Roles
 
-- Owner: can edit or delete events and assign event admins. An owner anywhere is an owner everywhere.
-- Admin: manages an event's inputs and can add viewers, editors and other admins.
-- Editor: can add and edit destinations, and can be limited to one input.
-- Viewer: can only view destinations, and can be limited to one input.
+- **Owner**: can edit or delete events and assign event admins. An owner anywhere is an owner everywhere.
+- **Admin**: manages an event's inputs and can add viewers, editors and other admins.
+- **Editor**: can add and edit destinations, and can be limited to one input.
+- **Viewer**: can only view destinations, and can be limited to one input.
 
 Anyone listed in `KEY_VAULT_OWNER_EMAILS` is an owner without a role.
+
+## Part of Live Miracles
+
+Key Vault is one of the tools the Live Miracles team builds to run large live events, alongside
+[bunryu](https://github.com/live-miracles/bunryu) (the restreaming server it reports on),
+[Live Gallery](https://github.com/live-miracles/live-gallery) and
+[vMix Master](https://github.com/live-miracles/vmix-master). See all of them at
+[live-miracles.github.io](https://live-miracles.github.io/).
+
+## Contributing and license
+
+Issues and ideas are welcome in [GitHub Issues](https://github.com/live-miracles/key-vault/issues). See
+[Development](docs/4-development.md) to run the checks. Released under the [MIT License](LICENSE).

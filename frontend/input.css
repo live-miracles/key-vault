@@ -48,6 +48,58 @@
         color-scheme: dark;
         --wave-fill: #010102;
         --wave-line: #1f2331;
+        --backdrop: rgb(0 0 0 / 0.65);
+        --shadow-dialog: 0 24px 64px rgb(0 0 0 / 0.55);
+        /* How much status color is mixed into a card (soft: running, warning, configured;
+           strong: error) and into a count pill. Light mode is gentler, because its status
+           colors are already darker and the text on them must stay readable. */
+        --tint-soft: 12%;
+        --tint-strong: 22%;
+        --pill-soft: 22%;
+        --pill-strong: 26%;
+    }
+
+    /* The light theme: the same names with light values (see DESIGN.md, "Light theme"). Dark is
+       the default; theme.ts sets data-theme="light" on <html> when a person picks it. Every
+       component reads these variables, so nothing else needs to know which theme is on. The
+       status colors and the accent are darker than in dark mode so that text in them still
+       reads on white. */
+    :root[data-theme='light'] {
+        color-scheme: light;
+        --color-base-100: #f4f5f7;
+        --color-base-200: #ffffff;
+        --color-base-300: #e3e5ea;
+        --color-base-content: #16181d;
+
+        --color-surface-2: #ffffff;
+        --color-surface-3: #eceef2;
+        --color-hairline-strong: #cdd1d9;
+        --color-ink-muted: #3f4450;
+        --color-ink-subtle: #5f6573;
+
+        --color-primary: #5e6ad2;
+        --color-primary-hover: #4a56bd;
+        --color-primary-content: #ffffff;
+        --color-accent: #4a56bd;
+        --color-accent-content: #ffffff;
+        --color-info: #5e6ad2;
+        --color-info-content: #ffffff;
+
+        --color-success: #17794d;
+        --color-success-content: #ffffff;
+        --color-warning: #9a5b06;
+        --color-warning-content: #ffffff;
+        --color-error: #c9303e;
+        --color-error-content: #ffffff;
+
+        --wave-fill: #f4f5f7;
+        --wave-line: #e1e4ee;
+        --backdrop: rgb(16 18 26 / 0.4);
+        --shadow-dialog: 0 24px 64px rgb(16 18 26 / 0.18);
+        --tint-soft: 9%;
+        --tint-strong: 12%;
+        --pill-soft: 16%;
+        --pill-strong: 18%;
     }
 
     html {
@@ -164,7 +216,7 @@
         color: var(--color-error-content);
     }
     .btn-error:hover {
-        background: color-mix(in oklab, var(--color-error) 85%, white);
+        background: color-mix(in oklab, var(--color-error) 85%, var(--color-error-content));
     }
 
     /* ----- Form fields ----- */
@@ -218,6 +270,10 @@
     .select-sm {
         padding-right: 1.75rem;
     }
+    /* The arrow is an image, so it cannot read the text color: it has its own light version. */
+    :root[data-theme='light'] .select {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f6573' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
 
     .fieldset {
         display: grid;
@@ -260,7 +316,7 @@
         display: none;
     }
     .modal::backdrop {
-        background: rgb(0 0 0 / 0.65);
+        background: var(--backdrop);
     }
     .modal-box,
     .modal-backdrop {
@@ -277,7 +333,7 @@
         border-radius: var(--radius-box);
         background: var(--color-surface-2);
         padding: 1.5rem;
-        box-shadow: 0 24px 64px rgb(0 0 0 / 0.55);
+        box-shadow: var(--shadow-dialog);
     }
     .modal-backdrop {
         z-index: 0;
@@ -807,16 +863,32 @@
         @apply border-base-300 bg-base-200 flex flex-col gap-1 rounded-lg border px-2.5 py-2 shadow-sm;
     }
     .tint-running {
-        background-color: color-mix(in oklab, var(--color-success) 12%, var(--color-base-200));
+        background-color: color-mix(
+            in oklab,
+            var(--color-success) var(--tint-soft),
+            var(--color-base-200)
+        );
     }
     .tint-warning {
-        background-color: color-mix(in oklab, var(--color-warning) 12%, var(--color-base-200));
+        background-color: color-mix(
+            in oklab,
+            var(--color-warning) var(--tint-soft),
+            var(--color-base-200)
+        );
     }
     .tint-error {
-        background-color: color-mix(in oklab, var(--color-error) 22%, var(--color-base-200));
+        background-color: color-mix(
+            in oklab,
+            var(--color-error) var(--tint-strong),
+            var(--color-base-200)
+        );
     }
     .tint-configured {
-        background-color: color-mix(in oklab, var(--color-accent) 12%, var(--color-base-200));
+        background-color: color-mix(
+            in oklab,
+            var(--color-accent) var(--tint-soft),
+            var(--color-base-200)
+        );
     }
 }
 
@@ -912,19 +984,35 @@
     @apply inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-xs leading-5 font-medium tabular-nums;
 }
 .status-running {
-    background-color: color-mix(in oklab, var(--color-success) 22%, var(--color-base-200));
+    background-color: color-mix(
+        in oklab,
+        var(--color-success) var(--pill-soft),
+        var(--color-base-200)
+    );
     color: var(--color-success);
 }
 .status-warning {
-    background-color: color-mix(in oklab, var(--color-warning) 22%, var(--color-base-200));
+    background-color: color-mix(
+        in oklab,
+        var(--color-warning) var(--pill-soft),
+        var(--color-base-200)
+    );
     color: var(--color-warning);
 }
 .status-error {
-    background-color: color-mix(in oklab, var(--color-error) 26%, var(--color-base-200));
+    background-color: color-mix(
+        in oklab,
+        var(--color-error) var(--pill-strong),
+        var(--color-base-200)
+    );
     color: var(--color-error);
 }
 .status-stopped {
-    background-color: color-mix(in oklab, var(--color-accent) 22%, var(--color-base-200));
+    background-color: color-mix(
+        in oklab,
+        var(--color-accent) var(--pill-soft),
+        var(--color-base-200)
+    );
     color: var(--color-accent);
 }
 .status-none {
@@ -1088,6 +1176,11 @@
 }
 .app-controls {
     @apply flex items-center gap-2;
+}
+/* The theme button shows the sun in dark mode (press for light) and the moon in light mode. */
+:root[data-theme='light'] .theme-icon-to-light,
+:root:not([data-theme='light']) .theme-icon-to-dark {
+    display: none;
 }
 .profile-menu {
     @apply bg-surface-2 border-hairline-strong absolute right-0 z-60 hidden w-56 flex-col gap-1 rounded-lg border p-3 shadow-lg;

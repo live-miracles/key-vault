@@ -36,6 +36,26 @@ Status (the color of a key row and card, from bunryu's heartbeat):
 
 Tints are **opaque** (mixed over `base-200`), so the waves can never show through a row. Only bunryu's report colors a row; there is no manual color.
 
+## Light theme
+
+Dark is the default. A sun / moon button in the app controls (`#theme-btn`, beside Refresh) switches to light and back, and the last choice is kept in `localStorage` under `key-vault-theme` (`theme.ts`). The theme is the `data-theme` attribute on `<html>`; a few lines in the page `<head>` apply a saved "light" before the first paint so it never flashes dark. A person who has never chosen gets dark, whatever the operating system prefers. `theme.ts` also keeps `<meta name="theme-color">` in step (the manifest stays dark, since it is read before any choice).
+
+Linear ships no light theme, so the values are Key Vault's own, in the same family: a cool near-white canvas, white surfaces, hairlines in cool grey, and the same indigo. They are overrides of the same token names under `:root[data-theme='light']` in `frontend/input.css`, so no template knows which theme is on. Rules:
+
+| Token                          | Light                         | Note                                                                                         |
+| ------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| `base-100` / `base-200`        | `#f4f5f7` / `#ffffff`         | Canvas / surfaces (cards, dialogs, inputs)                                                   |
+| `surface-3`                    | `#eceef2`                     | Hover and selected                                                                           |
+| `base-300` / `hairline-strong` | `#e3e5ea` / `#cdd1d9`         | Hairlines / control borders                                                                  |
+| `base-content`                 | `#16181d`                     | Text                                                                                         |
+| `ink-muted` / `ink-subtle`     | `#3f4450` / `#5f6573`         | Secondary text, column headers (both pass 4.5:1 on white)                                    |
+| `primary` / `accent`           | `#5e6ad2` / `#4a56bd`         | Buttons (white text) / accent text and icons, darker than in dark mode so they read on white |
+| `success` `warning` `error`    | `#17794d` `#9a5b06` `#c9303e` | Darker than in dark mode, so status text reads on a tinted card                              |
+
+- Status tints stay **opaque** and are gentler (`--tint-soft`, `--tint-strong`, `--pill-soft`, `--pill-strong` hold the percentages per theme), so the red note on a red card keeps its contrast.
+- The waves stay a watermark: `--wave-fill` is the canvas, `--wave-line` only slightly darker.
+- Anything that is an image or a shadow cannot read a text color, so it has a variable (`--backdrop`, `--shadow-dialog`) or a light twin (the select's arrow). New components must use tokens, never a hex value, to work in both themes. Platform brand tiles (YouTube red, Facebook blue) are the same in both.
+
 ## Shape and type
 
 - Radii: 6 px menu items and tabs, 8 px controls (`--radius-field`), 12 px cards and dialogs (`--radius-box`).

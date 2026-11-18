@@ -59,6 +59,7 @@ import {
 } from './roles.ts';
 import { registerServiceWorker } from './pwa.ts';
 import { onRouteChange, route } from './route.ts';
+import { initTheme, toggleTheme } from './theme.ts';
 
 // Set at build time: the demo runs the server's operations in the page; the real site calls the
 // Edge Function after Google sign-in.
@@ -141,6 +142,7 @@ function handleClick(event: MouseEvent) {
         'toggle-bunryu-secrets': () => toggleBunryuSecrets(),
         'copy-bunryu-value': () => copyBunryuValue(target.dataset.field),
         'refresh-data': () => refreshDataBtn(),
+        'toggle-theme': () => toggleTheme(),
         'toggle-profile-menu': () => toggleProfileMenu(),
         'sign-in': () => signInHandler(),
         'sign-out': () => signOutHandler(),
@@ -166,6 +168,7 @@ const startBackend = () => (__KEY_VAULT_MODE__ === 'demo' ? startDemo() : startR
 
 async function start() {
     hydrateIcons();
+    initTheme();
     initControls();
     initKeyForm();
     initBunryuModal();

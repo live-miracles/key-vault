@@ -8,6 +8,16 @@
       name="description"
       content="Add every stream destination for an event through a guided form, and see in plain words whether each one is live and what to try if it is not." />
     <meta name="theme-color" content="#010102" />
+    <script>
+      // Dark by default; a saved "light" is applied before the first paint so it never flashes dark.
+      // Same key and values as src/theme.ts.
+      try {
+        if (localStorage.getItem('key-vault-theme') === 'light') {
+          document.documentElement.dataset.theme = 'light';
+          document.querySelector('meta[name="theme-color"]').content = '#f4f5f7';
+        }
+      } catch (e) {}
+    </script>
     <meta name="application-name" content="Key Vault" />
     <meta name="apple-mobile-web-app-title" content="Key Vault" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -743,6 +753,16 @@
                 disabled>
                 <span id="bunryu-dot" class="h-2 w-2 rounded-full"></span>
                 <span id="bunryu-status-text" class="max-sm:hidden"></span>
+              </button>
+              <button
+                type="button"
+                id="theme-btn"
+                title="Switch to light mode"
+                aria-label="Switch to light mode"
+                class="btn btn-ghost btn-square btn-xs text-accent"
+                data-action="toggle-theme">
+                <span data-icon="sun" class="theme-icon-to-light h-4 w-4"></span>
+                <span data-icon="moon" class="theme-icon-to-dark h-4 w-4"></span>
               </button>
               <button
                 type="button"

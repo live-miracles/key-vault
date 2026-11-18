@@ -15,3 +15,4 @@ import './actions.test.mjs';
 import './demo.test.mjs';
 import './build-config.test.mjs';
 import './pwa.test.mjs';
+import './theme.test.mjs';

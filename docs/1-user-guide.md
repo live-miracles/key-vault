@@ -10,6 +10,7 @@ For the media team: how to add a stream destination and tell whether it is worki
 - **Inputs** (on the left) are the feeds of that event, such as English or Hindi. Click one to see only its destinations, or click **All**. A dot beside each says whether its signal is arriving.
 - **Destinations** are the cards: every place an input goes live, such as a YouTube channel, a Facebook page or a TV channel.
 - **Search** at the top finds a destination by name, input, platform or note. Paste a stream key into it to find who is using that key.
+- **Dark or light.** Key Vault opens dark. The sun or moon button at the bottom right switches to light (handy in a bright room) and back. It remembers your choice on that device.
 
 ## Add a destination
 

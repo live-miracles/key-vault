@@ -24,7 +24,7 @@ To remove it, uninstall it like any other app, or open the app's window menu (â‹
 
 ## What it does, and what it does not
 
-- It opens in its own window, with the Key Vault icon and a dark title bar that matches the page.
+- It opens in its own window, with the Key Vault icon and a title bar that matches the page (dark by default).
 - It opens quickly, because the page's code is kept on your device between visits.
 - It is **not an offline tool.** Destinations and their status are fetched live every time, and are never stored on your device. Without a connection the window opens but cannot load events, and shows an error. This is on purpose: a stale "Live" is worse than no answer.
 - Updates need nothing from you. The newest version is fetched the next time you open it online.

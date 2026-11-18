@@ -415,79 +415,79 @@ const testEmail3 = 'test3@mail.com';
 
 const testEvents = [
     {
-        id: 'E1',
+        id: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Event 1',
     },
     {
-        id: 'E2',
+        id: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         name: 'Event 2',
     },
     {
-        id: 'E3',
+        id: '75d6090e-ff3a-4516-9c0b-2c4e68719a64',
         name: 'Event 3',
     },
 ];
 
 const testRoles = [
     {
-        id: 'R1',
-        event: 'E1',
+        id: 'de6fd494-e7b0-4d15-8c5d-1623c3125b13',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         email: testEmail1,
         type: ROLES.ADMIN,
         input: '*',
     },
     {
-        id: 'R2',
+        id: '73c121da-17cc-4b89-a651-ea71824dd48e',
         event: '*',
         email: testEmail2,
         type: ROLES.OWNER,
         input: '*',
     },
     {
-        id: 'R3',
-        event: 'E2',
+        id: '1507f82d-6a35-4f7c-a9a9-6e638b116b67',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         email: testEmail3,
         type: ROLES.VIEWER,
-        input: 'L4',
+        input: '57d84efd-e87c-4554-9d7b-8f8446a90519',
     },
     {
-        id: 'R4',
-        event: 'E2',
+        id: '4b472b8f-0bf5-4357-ae38-058a9c4d1eba',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         email: testEmail1,
         type: ROLES.EDITOR,
-        input: 'L5',
+        input: '9da3b8ce-7393-4bda-8447-9efc006b917f',
     },
 ];
 
 // Each event has its own inputs, in its own order.
 const testInputs = [
     {
-        id: 'L1',
-        event: 'E1',
+        id: '544f7c08-2631-42b4-8ba7-0fb286f8051f',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'English',
         order: '1',
     },
     {
-        id: 'L2',
-        event: 'E1',
+        id: '83d83dc9-3846-417c-b15c-6486dd154488',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'German',
         order: '2',
     },
     {
-        id: 'L3',
-        event: 'E1',
+        id: 'ccc11d97-0871-4e22-a96b-e433ed0e4177',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Hindi',
         order: '3',
     },
     {
-        id: 'L4',
-        event: 'E2',
+        id: '57d84efd-e87c-4554-9d7b-8f8446a90519',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         name: 'English',
         order: '1',
     },
     {
-        id: 'L5',
-        event: 'E2',
+        id: '9da3b8ce-7393-4bda-8447-9efc006b917f',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         name: 'German',
         order: '2',
     },
@@ -496,10 +496,10 @@ const testInputs = [
 const testKeys = [
     {
         row: 1,
-        id: 'K1',
-        event: 'E1',
+        id: 'e09de1b9-4aee-47f9-b9e1-d319b8e4e4bc',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Channel 1',
-        input: 'L1',
+        input: '544f7c08-2631-42b4-8ba7-0fb286f8051f',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -513,10 +513,10 @@ const testKeys = [
     },
     {
         row: 2,
-        id: 'K2',
-        event: 'E1',
+        id: '45f53112-cccb-4d3c-865f-9192bc5abd60',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Very Long Platform Name Channel Demo',
-        input: 'L2',
+        input: '83d83dc9-3846-417c-b15c-6486dd154488',
         server: 'fb',
         key: 'FB-abc-123-abc-123-abc-123',
         server2: 'fb',
@@ -527,10 +527,10 @@ const testKeys = [
     },
     {
         row: 3,
-        id: 'K3',
-        event: 'E1',
+        id: '300ba1c7-3597-4cde-832a-14e885ca829c',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Channel 3',
-        input: 'L1',
+        input: '544f7c08-2631-42b4-8ba7-0fb286f8051f',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -544,10 +544,10 @@ const testKeys = [
     },
     {
         row: 4,
-        id: 'K4',
-        event: 'E2',
+        id: 'fb8b9138-76da-4022-8987-e4c99e7e4e8b',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         name: 'Channel 4',
-        input: 'L4',
+        input: '57d84efd-e87c-4554-9d7b-8f8446a90519',
         server: 'yt',
         key: 'abc-123-abc-123-abc-123',
         server2: '',
@@ -558,10 +558,10 @@ const testKeys = [
     },
     {
         row: 5,
-        id: 'K5',
-        event: 'E1',
+        id: '354e9d2b-f773-488c-8139-62c8cd5bb2e6',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Channel 5',
-        input: 'L1',
+        input: '544f7c08-2631-42b4-8ba7-0fb286f8051f',
         server: 'rtmp',
         key: 'rtmp://123.123.123.123/live/abc-123-abc-123-abc-123',
         server2: '',
@@ -572,10 +572,10 @@ const testKeys = [
     },
     {
         row: 6,
-        id: 'K6',
-        event: 'E2',
+        id: '1d9be01b-6cb1-4bf8-95e3-656673af1d8c',
+        event: '99b2736f-41f3-4e57-8074-fdb87cb01463',
         name: 'Channel 6',
-        input: 'L5',
+        input: '9da3b8ce-7393-4bda-8447-9efc006b917f',
         server: 'yt',
         key: 'abc-123-abc-123-abc-456',
         server2: '',
@@ -586,10 +586,10 @@ const testKeys = [
     },
     {
         row: 8,
-        id: 'K8',
-        event: 'E1',
+        id: '65caf455-9f34-45a9-8240-b3818a5a4880',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Instagram Demo',
-        input: 'L3',
+        input: 'ccc11d97-0871-4e22-a96b-e433ed0e4177',
         server: 'ig',
         key: 'IG-abc-123-abc-123?s_prp=demo',
         server2: '',
@@ -600,10 +600,10 @@ const testKeys = [
     },
     {
         row: 9,
-        id: 'K9',
-        event: 'E1',
+        id: '22384057-2994-4f93-90c7-14fb311127cc',
+        event: '3797ce47-a7be-453f-9c15-9afefcdfcfc3',
         name: 'Custom SRT Demo',
-        input: 'L3',
+        input: 'ccc11d97-0871-4e22-a96b-e433ed0e4177',
         server: 'srt',
         key: 'srt://stream.example.com:10000?mode=caller&latency=240000&passphrase=demo-passphrase&pbkeylen=16&streamid=%23%21%3A%3Ar%3Dlive%2Fdemo%2Cm%3Dpublish',
         server2: '',
@@ -633,8 +633,8 @@ function getStatusMock() {
             online: true,
             instances: [{ instance: 'demo', lastSeenAt: new Date().toISOString(), online: true }],
             keys: {
-                K1: { main: status('running'), backup: null },
-                K2: {
+                'e09de1b9-4aee-47f9-b9e1-d319b8e4e4bc': { main: status('running'), backup: null },
+                '45f53112-cccb-4d3c-865f-9192bc5abd60': {
                     main: status('error', {
                         message: 'Connection refused by the destination.',
                         failures: 5,
@@ -642,44 +642,44 @@ function getStatusMock() {
                     }),
                     backup: null,
                 },
-                K3: {
+                '300ba1c7-3597-4cde-832a-14e885ca829c': {
                     main: status('warning', {
                         message: 'Output is falling behind live.',
                     }),
                     backup: null,
                 },
                 // Runs in a pipeline of another name than its input: put in the wrong place.
-                K4: {
+                'fb8b9138-76da-4022-8987-e4c99e7e4e8b': {
                     main: status('stopped', { pipeline: 'Tamil', inputMismatch: true }),
                     backup: null,
                 },
             },
             inputs: {
-                L1: {
+                '544f7c08-2631-42b4-8ba7-0fb286f8051f': {
                     status: 'running',
                     message: '',
                     sinceMs: Date.now() - 3600000,
                     pipeline: 'English',
                 },
-                L2: {
+                '83d83dc9-3846-417c-b15c-6486dd154488': {
                     status: 'error',
                     message: 'No signal',
                     sinceMs: Date.now() - 120000,
                     pipeline: 'German',
                 },
-                L3: {
+                'ccc11d97-0871-4e22-a96b-e433ed0e4177': {
                     status: 'warning',
                     message: 'Low bitrate',
                     sinceMs: Date.now() - 600000,
                     pipeline: 'Hindi',
                 },
-                L4: {
+                '57d84efd-e87c-4554-9d7b-8f8446a90519': {
                     status: 'running',
                     message: '',
                     sinceMs: Date.now() - 3600000,
                     pipeline: 'English',
                 },
-                L5: {
+                '9da3b8ce-7393-4bda-8447-9efc006b917f': {
                     status: 'running',
                     message: '',
                     sinceMs: Date.now() - 3600000,

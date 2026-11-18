@@ -638,7 +638,6 @@ async function addKeyBtn(inputId = getUrlParam('input') || shownInputId) {
     document.querySelector('#key-id-input').value = '';
     document.querySelector('#key-event-input').value = eventId;
     document.querySelector('#key-name-input').value = '';
-    suggestedStreamName = '';
     keyGuideExpanded = true;
     document.querySelector('#key-modal-title').innerText = 'Add a destination';
     document.querySelector('#save-key-btn').innerText = 'Save destination';
@@ -690,7 +689,6 @@ function editKeyRow() {
     document.querySelector('#key-id-input').value = key.id;
     document.querySelector('#key-event-input').value = key.event;
     document.querySelector('#key-name-input').value = key.name;
-    suggestedStreamName = '';
     // Someone editing a key already knows where it came from: keep the guide folded away.
     keyGuideExpanded = false;
     document.querySelector('#key-modal-title').innerText = 'Edit destination';
@@ -1610,10 +1608,6 @@ const BACKUP_NOTES = {
     ig: 'Instagram has no backup stream. Leave this empty: there is nothing to fill in.',
 };
 
-// What the Name box is filled with when someone picks a platform and has typed nothing yet.
-const SUGGESTED_NAMES = { yt: 'YouTube', fb: 'Facebook', ig: 'Instagram', vc: 'VdoCipher' };
-
-let suggestedStreamName = '';
 let keyGuideExpanded = true;
 
 // Takes a pasted stream key and makes it what the form stores. People often copy the whole
@@ -1714,14 +1708,6 @@ function syncPlatformPicker(server) {
     renderKeyGuide(server);
 }
 
-function suggestStreamName(server) {
-    if (document.querySelector('#key-id-input').value) return;
-    const nameInput = document.querySelector('#key-name-input');
-    if (nameInput.value.trim() !== '' && nameInput.value !== suggestedStreamName) return;
-    suggestedStreamName = SUGGESTED_NAMES[server] || '';
-    nameInput.value = suggestedStreamName;
-}
-
 function pickPlatform(server) {
     if (!Object.prototype.hasOwnProperty.call(SERVERS, server) || !server) return;
     const select = document.querySelector('#key-server-input');
@@ -1737,7 +1723,6 @@ function pickPlatform(server) {
     clearKeyErrors();
     renderServerInput(server);
     applyBackupServerLock();
-    suggestStreamName(server);
     updateSaveKeyBtn();
 
     const next = document.querySelector(
@@ -1771,7 +1756,6 @@ function handleStreamKeyInput(suffix = '') {
     if (!suffix && cleaned.server !== select.value) {
         renderServerInput(cleaned.server);
         applyBackupServerLock();
-        suggestStreamName(cleaned.server);
     }
     input.value = cleaned.key;
     if (cleaned.serverUrl) {

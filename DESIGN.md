@@ -87,7 +87,7 @@ A guided form in four steps, numbered by CSS counters so a hidden step never lea
 
 1. **Where are you streaming to?** Big platform tiles (`platform-tile`), not a dropdown. The hidden `#key-server-input` select still holds the value, so the save and validation code is unchanged.
 2. **Get your stream key.** Shown once a platform is chosen: a folded-away numbered guide for finding the key on that platform (`PLATFORM_GUIDES` in `keys.ts`), then the key box with a Paste button. A pasted full address is cut down to the key (`cleanStreamKeyInput`).
-3. **Name this stream.** Input, name (suggested from the platform), watch link, notes.
+3. **Name this stream.** Input, name (left empty on purpose, so the editor has to type one and it is never left as a generic "YouTube"), watch link, notes.
 4. **Backup** (optional, folded away). A note above it says what each platform does, because the backup was a common confusion: YouTube's backup uses the same key with a different server (added for you, nothing to fill in); Facebook's uses the same server with a different key (the box is shown); Instagram has none (nothing to fill in). The box is hidden for YouTube and Instagram.
 
 Errors (`getStreamKeyProblem` and the checks in `saveKeyFormBtn`) say what to do, mark the field, and scroll to it. The platform guides name each platform's screens loosely and tell people they may look different, because those screens change; recheck the wording now and then.

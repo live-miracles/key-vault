@@ -22,7 +22,7 @@ npm run test:db       # applies the migration to a throwaway Postgres in Docker
 
 CI (`.github/workflows/deploy.yml`) runs the first three, builds both the demo and the real site, and fails on any of them. Run `npm run format` before you commit.
 
-Run `npm test` with a Node.js that can load `.ts` files (22.18 or newer, or the official build). Some Linux distributions ship a Node without TypeScript support, and the tests fail on the first import.
+Use Node 26, the version in `.nvmrc` (CI reads the same file). With [fnm](https://github.com/Schniz/fnm), run `fnm use` in the repository, or `fnm install` the first time. Tests need a Node that can load `.ts` files; some Linux distributions ship a Node without TypeScript support, and the tests fail on the first import.
 
 ## Build the real site
 

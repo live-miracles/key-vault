@@ -3,6 +3,9 @@
     "description": "Key Vault: manage event stream keys with role-based access, on Supabase and Vercel.",
     "private": true,
     "type": "module",
+    "engines": {
+        "node": ">=26"
+    },
     "scripts": {
         "dev": "node build-tools/dev.mjs",
         "build": "node build-tools/build.mjs real",

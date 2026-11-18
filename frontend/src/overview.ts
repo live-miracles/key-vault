@@ -1,11 +1,13 @@
 // @ts-nocheck
 
-// The input list beside an event's destinations, and the strip above them that sums up its
-// inputs and destinations. Both read what bunryu reports.
+// The input list beside an event's destinations. It reads what bunryu reports.
 
 const STATUS_ORDER = ['error', 'warning', 'running', 'stopped'];
 
-// The input the event view is showing, so adding a destination can start on it.
+// The first item of the input list: every destination of the event, whatever its input.
+const ALL_INPUTS = 'all';
+
+// The input the event view is showing, so adding a destination can start on it. Empty under All.
 let shownInputId = '';
 
 // How many of `keys` are in each state. A key bunryu does not report on is "unreported".
@@ -28,28 +30,11 @@ function listEventInputs(eventId, keys) {
     return own.concat(strays);
 }
 
-// The input to show: the wanted one when it is in the list, otherwise the preferred one (for
-// example the first with a problem), otherwise the first. An event with no inputs has none ('').
-function resolveInputFilter(inputIds, wanted, preferred = '') {
-    if (wanted && inputIds.includes(wanted)) return wanted;
-    if (preferred && inputIds.includes(preferred)) return preferred;
-    return inputIds[0] || '';
-}
-
-// The first input with a stream in trouble: errors before warnings, else none.
-function firstInputWithProblem(inputIds, keys, report) {
-    const summaries = inputIds.map((id) => ({
-        id,
-        summary: summarizeKeyStatuses(
-            keys.filter((key) => key.input === id),
-            report,
-        ),
-    }));
-    for (const status of ['error', 'warning']) {
-        const found = summaries.find(({ summary }) => summary[status] > 0);
-        if (found) return found.id;
-    }
-    return '';
+// What to show: the wanted input when it is in the list, otherwise All. An event with no
+// inputs has nothing to choose ('').
+function resolveInputFilter(inputIds, wanted) {
+    if (inputIds.length === 0) return '';
+    return wanted && inputIds.includes(wanted) ? wanted : ALL_INPUTS;
 }
 
 function statusPillsHtml(summary) {
@@ -74,20 +59,8 @@ function inputDotHtml(inputId) {
 // nobody else's.
 function renderInputPanel(eventId, eventKeys) {
     const inputIds = listEventInputs(eventId, eventKeys);
-    const selected = resolveInputFilter(
-        inputIds,
-        getUrlParam('input'),
-        firstInputWithProblem(inputIds, eventKeys, keyStatus),
-    );
-    shownInputId = selected;
-    // Keep the choice in the address, so a status change later cannot move the view. Not before
-    // bunryu has reported: the first with a problem is not known yet, and the report is coming.
-    // Replaces, so Back is unharmed.
-    if (selected && keyStatus.online && getUrlParam('input') !== selected) {
-        const url = new URL(window.location);
-        url.searchParams.set('input', selected);
-        window.history.replaceState({}, '', url);
-    }
+    const selected = resolveInputFilter(inputIds, getUrlParam('input'));
+    shownInputId = selected === ALL_INPUTS ? '' : selected;
     const canManage = hasInputAccess(eventRoles, eventId);
     document.querySelector('#add-input-btn').classList.toggle('hidden', !canManage);
 
@@ -119,14 +92,29 @@ function renderInputPanel(eventId, eventKeys) {
                 ${tools}
             </div>`;
     };
-    document.querySelector('#input-list').innerHTML = inputIds
-        .map((input) =>
-            row(
-                input,
-                eventKeys.filter((key) => key.input === input),
-            ),
-        )
-        .join('');
+    // All comes first and counts every destination of the event. It has no tools: it is not an
+    // input, so it cannot be renamed, deleted or moved.
+    const allRow = () => {
+        const active = selected === ALL_INPUTS;
+        return `
+            <div class="lang-row ${active ? 'lang-row-active' : ''}">
+                <button type="button" class="lang-item ${active ? 'lang-item-active' : ''}" data-action="select-input" data-input="${ALL_INPUTS}" aria-pressed="${active}">
+                    <span class="lang-item-name">All</span>
+                    <span class="lang-item-pills">${statusPillsHtml(summarizeKeyStatuses(eventKeys, keyStatus))}</span>
+                    <span class="lang-item-count">${eventKeys.length}</span>
+                </button>
+            </div>`;
+    };
+    document.querySelector('#input-list').innerHTML =
+        (inputIds.length ? allRow() : '') +
+        inputIds
+            .map((input) =>
+                row(
+                    input,
+                    eventKeys.filter((key) => key.input === input),
+                ),
+            )
+            .join('');
 
     document.querySelectorAll('#input-list .lang-row[draggable="true"]').forEach((el) => {
         el.addEventListener('dragstart', dragInputStart);
@@ -138,40 +126,6 @@ function renderInputPanel(eventId, eventKeys) {
 }
 
 function selectInput(input) {
-    setUrlParam('input', input || null);
+    setUrlParam('input', input && input !== ALL_INPUTS ? input : null);
     renderKeyTable(getUrlParam('event'));
-}
-
-// The strip above an event: how many of its inputs are receiving, unstable, not arriving or
-// idle, then the same for its destinations. Only states that have something in them are shown.
-function summaryGroupHtml(title, total, counts, labels) {
-    const pills = STATUS_ORDER.filter((status) => counts[status] > 0)
-        .map(
-            (status) =>
-                `<span class="status-pill status-${status}">${counts[status]} ${escapeHtml(labels[status])}</span>`,
-        )
-        .join('');
-    return `<div class="summary-group"><span class="summary-title">${escapeHtml(title)}</span><span class="summary-total">${total}</span>${pills}</div>`;
-}
-
-function renderEventSummary(inputIds, eventKeys) {
-    const el = document.querySelector('#event-summary');
-    el.classList.toggle('hidden', inputIds.length === 0);
-    if (inputIds.length === 0) {
-        el.innerHTML = '';
-        return;
-    }
-    const inputCounts = { running: 0, warning: 0, error: 0, stopped: 0 };
-    for (const id of inputIds) {
-        const status = getInputStatus(id, keyStatus)?.status;
-        if (status in inputCounts) inputCounts[status]++;
-    }
-    el.innerHTML =
-        summaryGroupHtml('Inputs', inputIds.length, inputCounts, INPUT_LABELS) +
-        summaryGroupHtml(
-            'Destinations',
-            eventKeys.length,
-            summarizeKeyStatuses(eventKeys, keyStatus),
-            NOTE_LABELS,
-        );
 }

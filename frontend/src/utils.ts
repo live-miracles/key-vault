@@ -10,6 +10,20 @@ function formatAgo(ms) {
     return `${Math.floor(hours / 24)} d ago`;
 }
 
+// "18 Nov, 3:42 pm", with the year only when it is not this one. '' for a time that is not one.
+function formatWhen(iso, nowMs = Date.now()) {
+    const date = new Date(iso);
+    if (!iso || Number.isNaN(date.getTime())) return '';
+    const sameYear = date.getFullYear() === new Date(nowMs).getFullYear();
+    return date.toLocaleString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        ...(sameYear ? {} : { year: 'numeric' }),
+        hour: 'numeric',
+        minute: '2-digit',
+    });
+}
+
 // What the header says about bunryu. bunryu only runs during events, so being offline is
 // normal: the text is informational, never a warning.
 function describeBunryu(report, nowMs = Date.now()) {
@@ -86,6 +100,7 @@ const ICON_PATHS = {
     grip: '<circle cx="9" cy="5" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="19" r="1" />',
     home: '<path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /><path d="M10 21v-6h4v6" />',
     x: '<path d="M18 6 6 18" /><path d="m6 6 12 12" />',
+    search: '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />',
     eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />',
     'eye-off':
         '<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path d="m2 2 20 20" />',

@@ -209,3 +209,80 @@ test('explains what is wrong with a stream key in plain words', () => {
     assert.match(problem('ig', 'IG-1-2'), /s_prp/);
     assert.equal(problem('ig', 'IG-1-2?s_prp=abc'), '');
 });
+
+test('finds destinations by name, platform, input, notes or watch link', () => {
+    const runtime = loadKeys();
+    const matches = runtime.get('matchesDestinationSearch');
+    const key = {
+        name: 'Hindi Main',
+        server: 'yt',
+        key: 'abcd-1234',
+        remarks: 'Studio feed',
+        link: 'https://example.test/watch/hindi',
+    };
+
+    assert.equal(matches(key, ''), true);
+    assert.equal(matches(key, '   '), true);
+    assert.equal(matches(key, 'hindi'), true);
+    assert.equal(matches(key, 'HINDI main'), true);
+    assert.equal(matches(key, 'youtube'), true);
+    assert.equal(matches(key, 'studio'), true);
+    assert.equal(matches(key, 'watch/hindi'), true);
+    assert.equal(matches(key, 'tamil', 'Tamil'), true);
+    assert.equal(matches(key, 'youtube tamil', 'Tamil'), true);
+    assert.equal(matches(key, 'facebook'), false);
+    assert.equal(matches(key, 'hindi tamil'), false);
+});
+
+test('finds a destination by its stream key or address, main or backup', () => {
+    const runtime = loadKeys();
+    const matches = runtime.get('matchesDestinationSearch');
+    const facebook = {
+        name: 'Main',
+        server: 'fb',
+        key: 'abcd-1234-efgh',
+        server2: 'rtmp',
+        key2: 'rtmp://backup.example.test/live/zzz-777',
+    };
+
+    assert.equal(matches(facebook, 'abcd-1234-efgh'), true);
+    assert.equal(matches(facebook, '1234'), true);
+    assert.equal(matches(facebook, 'zzz-777'), true);
+    assert.equal(matches(facebook, 'live-api-s.facebook.com'), true);
+    assert.equal(matches(facebook, 'backup.example.test'), true);
+    assert.equal(matches(facebook, 'not-a-key'), false);
+
+    // A YouTube main gets YouTube's own backup server, with the same key.
+    const youtube = { name: 'Main', server: 'yt', key: 'yt-key-42' };
+    assert.equal(matches(youtube, 'yt-key-42'), true);
+    assert.equal(matches(youtube, 'a.rtmp.youtube.com'), true);
+    assert.equal(matches(youtube, 'b.rtmp.youtube.com'), true);
+    assert.equal(matches(youtube, 'facebook'), false);
+});
+
+test('a card says who last added or edited the destination, when that is known', () => {
+    const runtime = loadKeys();
+    const render = runtime.get('renderLastEdit');
+    const at = '2026-11-17T15:42:00';
+
+    const edited = render({
+        updatedBy: 'ann@example.test',
+        updatedAction: 'edited',
+        updatedAt: at,
+    });
+    assert.match(edited, />Edited</);
+    assert.match(edited, /ann@example\.test · /);
+    assert.match(
+        render({ updatedBy: 'ann@example.test', updatedAction: 'added', updatedAt: at }),
+        />Added</,
+    );
+
+    // Made before this was recorded, or still being saved: nothing to say.
+    assert.equal(render({ updatedBy: '', updatedAction: '', updatedAt: '' }), '');
+    assert.equal(render({ name: 'Pending' }), '');
+    // An email is text, never markup.
+    assert.doesNotMatch(
+        render({ updatedBy: '<b>x</b>@example.test', updatedAction: 'edited', updatedAt: at }),
+        /<b>/,
+    );
+});

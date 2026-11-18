@@ -75,3 +75,14 @@ test('describes whether bunryu is connected or when it was last seen', () => {
         'bunryu last seen 10 min ago',
     );
 });
+
+test('formats when something happened, with the year only when it is not this one', () => {
+    const formatWhen = loadUtils().get('formatWhen');
+    const now = Date.parse('2026-11-18T12:00:00');
+
+    assert.equal(formatWhen('', now), '');
+    assert.equal(formatWhen('not a time', now), '');
+    assert.match(formatWhen('2026-11-17T15:42:00', now), /17/);
+    assert.doesNotMatch(formatWhen('2026-11-17T15:42:00', now), /2026/);
+    assert.match(formatWhen('2025-03-02T09:05:00', now), /2025/);
+});

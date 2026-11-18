@@ -50,6 +50,11 @@ export interface KeyItem {
     link: string;
     color: string;
     remarks: string;
+    // Who last added or edited it, what they did ('added' or 'edited'), and when (ISO time).
+    // Empty for a destination made before this was recorded.
+    updatedBy: string;
+    updatedAction: string;
+    updatedAt: string;
 }
 export interface Data {
     events: EventItem[];
@@ -459,7 +464,19 @@ export async function deleteInput(store: Store, ctx: Context, payload: unknown) 
 
 const COLOR_DENIED = 'Only owners or admins can edit key colors.';
 
-function cleanKey(payload: any): Omit<KeyItem, 'id'> & { id?: string } {
+// What the browser may set: never who edited it or when, the server records that itself.
+type KeyFields = Omit<KeyItem, 'id' | 'updatedBy' | 'updatedAction' | 'updatedAt'>;
+
+// Who did what and when, from the signed-in email and the server's clock.
+function lastEdit(ctx: Context, action: 'added' | 'edited') {
+    return {
+        updatedBy: ctx.email,
+        updatedAction: action,
+        updatedAt: new Date(ctx.nowMs).toISOString(),
+    };
+}
+
+function cleanKey(payload: any): KeyFields & { id?: string } {
     return {
         id: payload.id,
         event: str(payload.event),
@@ -475,7 +492,7 @@ function cleanKey(payload: any): Omit<KeyItem, 'id'> & { id?: string } {
     };
 }
 
-function keyTooLong(key: Omit<KeyItem, 'id'>) {
+function keyTooLong(key: KeyFields) {
     return tooLong([
         ['Name', key.name, MAX_NAME],
         ['Server', key.server, MAX_TEXT],
@@ -512,7 +529,7 @@ export async function addKey(store: Store, ctx: Context, payload: any) {
     }
 
     const { id: _ignored, ...fields } = key;
-    return ok(await store.createKey(fields));
+    return ok(await store.createKey({ ...fields, ...lastEdit(ctx, 'added') }));
 }
 
 export async function editKey(store: Store, ctx: Context, payload: any) {
@@ -555,8 +572,9 @@ export async function editKey(store: Store, ctx: Context, payload: any) {
     }
 
     const { id: _id, event: _event, ...fields } = key;
-    await store.updateKey(old.id, fields);
-    return ok({ ...key, id: old.id });
+    const edit = lastEdit(ctx, 'edited');
+    await store.updateKey(old.id, { ...fields, ...edit });
+    return ok({ ...key, ...edit, id: old.id });
 }
 
 export async function deleteKey(store: Store, ctx: Context, id: unknown) {

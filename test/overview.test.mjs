@@ -69,77 +69,14 @@ test('a stream pointing at an input the event does not have is still listed, las
     assert.deepEqual(plain(listEventInputs('E1', keys)), ['L1', 'L2', 'L3', 'L9']);
 });
 
-test('an input is always chosen: the wanted one, else the preferred, else the first', () => {
+test('the list opens on All unless the wanted input is in it', () => {
     const ids = ['L1', 'L2'];
     assert.equal(resolveInputFilter(ids, 'L2'), 'L2');
-    assert.equal(resolveInputFilter(ids, 'L3'), 'L1');
-    assert.equal(resolveInputFilter(ids, null), 'L1');
-    assert.equal(resolveInputFilter(ids, null, 'L2'), 'L2');
-    assert.equal(resolveInputFilter(ids, 'L1', 'L2'), 'L1');
-    assert.equal(resolveInputFilter(ids, null, 'L9'), 'L1');
+    assert.equal(resolveInputFilter(ids, null), 'all');
+    assert.equal(resolveInputFilter(ids, 'all'), 'all');
+    // An input that was deleted, or belongs to another event, falls back to All.
+    assert.equal(resolveInputFilter(ids, 'L3'), 'all');
     // An event with no inputs has nothing to choose.
     assert.equal(resolveInputFilter([], 'L1'), '');
-});
-
-test('the first input with a problem is preferred, errors before warnings', () => {
-    const firstInputWithProblem = runtime.get('firstInputWithProblem');
-    const keys = [
-        { id: 'K1', input: 'L1' },
-        { id: 'K2', input: 'L2' },
-        { id: 'K3', input: 'L3' },
-    ];
-    const ids = ['L1', 'L2', 'L3'];
-    const running = { main: state('running'), backup: null };
-    // Nothing wrong: no preference.
-    assert.equal(firstInputWithProblem(ids, keys, report({ K1: running, K2: running })), '');
-    // A warning is a problem, but an error anywhere comes first.
-    assert.equal(
-        firstInputWithProblem(
-            ids,
-            keys,
-            report({ K1: running, K2: { main: state('warning'), backup: null } }),
-        ),
-        'L2',
-    );
-    assert.equal(
-        firstInputWithProblem(
-            ids,
-            keys,
-            report({
-                K1: { main: state('warning'), backup: null },
-                K3: { main: state('error'), backup: null },
-            }),
-        ),
-        'L3',
-    );
-});
-
-test('the event strip counts inputs and destinations by state', () => {
-    const els = { classes: new Set(), html: '' };
-    runtime.set('document', {
-        querySelector: () => ({
-            classList: {
-                toggle: (name, on) => (on ? els.classes.add(name) : els.classes.delete(name)),
-            },
-            set innerHTML(value) {
-                els.html = value;
-            },
-        }),
-    });
-    runtime.set('keyStatus', {
-        online: true,
-        instances: [],
-        inputs: { L1: state('running'), L2: state('error'), L3: state('stopped') },
-        keys: { K1: { main: state('running'), backup: null } },
-    });
-    runtime.get('renderEventSummary')(['L1', 'L2', 'L3'], [{ id: 'K1' }, { id: 'K2' }]);
-    assert.equal(els.classes.has('hidden'), false);
-    assert.match(els.html, />Inputs<\/span><span class="summary-total">3</);
-    assert.match(els.html, /status-error">1 Not arriving</);
-    assert.match(els.html, /status-running">1 Receiving</);
-    assert.match(els.html, /status-stopped">1 Idle</);
-    assert.match(els.html, /status-running">1 Live</);
-    // An event with no inputs shows no strip.
-    runtime.get('renderEventSummary')([], []);
-    assert.equal(els.classes.has('hidden'), true);
+    assert.equal(resolveInputFilter([], null), '');
 });

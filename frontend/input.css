@@ -945,6 +945,38 @@
     border-color: color-mix(in oklab, var(--color-warning) 60%, var(--color-base-300));
 }
 
+/* The search box above the destination cards. A search looks through the whole event, and the
+   line under the box says how many it found. */
+.dest-search {
+    @apply mb-2;
+}
+.dest-search.hidden {
+    display: none;
+}
+.dest-search-field {
+    @apply bg-base-200 border-hairline-strong rounded-field text-ink-subtle flex h-9 items-center gap-2 border px-2.5;
+}
+.dest-search-field:focus-within {
+    @apply border-primary;
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 30%, transparent);
+}
+.dest-search-icon {
+    @apply shrink-0;
+}
+.dest-search-input {
+    @apply text-base-content min-w-0 flex-1 bg-transparent text-sm outline-none;
+}
+.dest-search-input::placeholder {
+    color: var(--color-ink-subtle);
+}
+/* The browser's own clear cross would double ours. */
+.dest-search-input::-webkit-search-cancel-button {
+    display: none;
+}
+.dest-search-status {
+    @apply text-ink-subtle px-1 pt-1 text-xs empty:hidden;
+}
+
 /* One destination card: status first, then name and actions, what the status means, links. */
 .dest-card {
     transition: border-color 120ms ease;
@@ -1008,20 +1040,6 @@
 }
 .dest-card-value > .flex > :first-child {
     @apply min-w-0 truncate;
-}
-
-/* The strip above an event: its inputs and destinations, counted by state. */
-.event-summary {
-    @apply flex flex-wrap items-center gap-x-5 gap-y-1 pt-3 text-sm;
-}
-.summary-group {
-    @apply flex flex-wrap items-center gap-1.5;
-}
-.summary-title {
-    @apply text-ink-muted font-semibold;
-}
-.summary-total {
-    @apply text-base-content mr-0.5 font-semibold tabular-nums;
 }
 
 @media (max-width: 640px) {

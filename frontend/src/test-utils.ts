@@ -305,6 +305,11 @@ function deleteInputMock(id) {
     return { success: true, data: true };
 }
 
+// The demo's signed-in user, as the server records it on a real add or edit.
+function mockLastEdit(action) {
+    return { updatedBy: testEmail2, updatedAction: action, updatedAt: new Date().toISOString() };
+}
+
 function addKeyMock(key) {
     if (!key) {
         return {
@@ -316,6 +321,7 @@ function addKeyMock(key) {
 
     etagMock += 1;
     key.id = newMockId();
+    Object.assign(key, mockLastEdit('added'));
     testKeys.push(key);
     key.row = testKeys.length + 1;
 
@@ -344,7 +350,7 @@ function editKeyMock(key) {
     }
 
     etagMock += 1;
-    Object.assign(old, key);
+    Object.assign(old, key, mockLastEdit('edited'));
 
     return { success: true, data: old };
 }
@@ -501,6 +507,9 @@ const testKeys = [
         color: '',
         link: '',
         remarks: 'Some random information about the key',
+        updatedBy: testEmail1,
+        updatedAction: 'edited',
+        updatedAt: new Date(Date.now() - 26 * 3600000).toISOString(),
     },
     {
         row: 2,
@@ -529,6 +538,9 @@ const testKeys = [
         color: '6',
         link: '',
         remarks: '',
+        updatedBy: testEmail2,
+        updatedAction: 'added',
+        updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
     },
     {
         row: 4,

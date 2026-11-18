@@ -175,7 +175,63 @@ function getSrtSettings(suffix = '') {
     };
 }
 
+// What is typed in the search box above the destinations, and the event it was typed for.
+let destinationSearch = '';
+let destinationSearchEvent = null;
+
+// Whether a destination matches what was typed. Every word must be found somewhere in what
+// the destination holds: name, input, notes, watch link, the platform and stream key of the main
+// and the backup, and their full addresses. So pasting a stream key finds who uses it.
+function matchesDestinationSearch(key, query, inputName = '') {
+    const words = String(query ?? '')
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+    if (words.length === 0) return true;
+    const text = [
+        key.name,
+        inputName,
+        key.remarks,
+        key.link,
+        SERVERS[key.server]?.name,
+        key.key,
+        getKeyMainUrl(key),
+        SERVERS[key.server2]?.name,
+        key.key2,
+        getKeyBackupUrl(key),
+    ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+    return words.every((word) => text.includes(word));
+}
+
+// Shows the search box only when there is something to search, and says what it found.
+function renderDestinationSearch(total, shown) {
+    const box = document.querySelector('#destination-search-box');
+    const input = document.querySelector('#destination-search');
+    box.classList.toggle('hidden', total === 0);
+    if (input.value !== destinationSearch) input.value = destinationSearch;
+    document
+        .querySelector('#destination-search-clear')
+        .classList.toggle('hidden', !destinationSearch);
+    const status = document.querySelector('#destination-search-status');
+    status.textContent = destinationSearch.trim()
+        ? `${shown} of ${total} destination${total === 1 ? '' : 's'} in all inputs`
+        : '';
+}
+
+function setDestinationSearch(value) {
+    destinationSearch = String(value ?? '');
+    renderKeyTable(getUrlParam('event'));
+}
+
 function renderKeyTable(eventId = null) {
+    // A search belongs to the event it was typed in.
+    if (destinationSearchEvent !== eventId) {
+        destinationSearchEvent = eventId;
+        destinationSearch = '';
+    }
     const eventKeys = config.keys
         .filter((k) => k.event === eventId)
         .sort((a, b) => {
@@ -186,9 +242,20 @@ function renderKeyTable(eventId = null) {
     // The left panel picks an input; the table shows only that input's keys. Duplicate
     // URLs are still checked against the whole event, so a clash is never hidden by a filter.
     const input = renderInputPanel(eventId, eventKeys);
-    renderInputBanner(input);
-    renderEventSummary(listEventInputs(eventId, eventKeys), eventKeys);
-    const keys = input ? eventKeys.filter((k) => k.input === input) : eventKeys;
+    const searching = destinationSearch.trim() !== '';
+    // A search looks through the whole event, so a destination is found without first knowing
+    // which input it is in.
+    // Under All or a search the cards come from several inputs, so each says which one it is in.
+    const mixed = searching || input === ALL_INPUTS;
+    renderInputBanner(mixed ? '' : input);
+    const keys = searching
+        ? eventKeys.filter((k) =>
+              matchesDestinationSearch(k, destinationSearch, getInputName(k.input)),
+          )
+        : input && input !== ALL_INPUTS
+          ? eventKeys.filter((k) => k.input === input)
+          : eventKeys;
+    renderDestinationSearch(eventKeys.length, keys.length);
     const allUrls = eventKeys.flatMap((key) =>
         [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
     );
@@ -269,20 +336,30 @@ function renderKeyTable(eventId = null) {
                     </div>
                     ${noteTextHtml}
                     <div class="dest-card-fields">
+                        ${mixed ? renderKeyField('Input', inputLabelHtml(k.input)) : ''}
                         ${renderKeyField('Main', mainUrlCell)}
                         ${renderKeyField('Backup', backupUrlCell)}
                         ${renderKeyField('Watch link', webLinkCell)}
                         ${renderKeyField('Notes', escapeHtml(k.remarks || ''))}
+                        ${renderLastEdit(k)}
                     </div>
                 </article>`;
         return card;
     });
 
+    // A search with no match is not an empty input: say so, and do not offer to add one.
+    const noMatch = searching && keys.length === 0;
     renderKeysEmptyState(
-        keys.length === 0,
+        keys.length === 0 && !noMatch,
         hasKeyAccess(eventRoles, ACTIONS.CREATE, eventId),
         eventId,
     );
+    document.querySelector('#keys-no-match').classList.toggle('hidden', !noMatch);
+    if (noMatch) {
+        document.querySelector('#key-cards').classList.add('hidden');
+        document.querySelector('#keys-no-match-text').textContent =
+            `Nothing matches “${destinationSearch.trim()}”. Try part of the name, the platform, the input or the stream key.`;
+    }
 
     document.querySelector('#key-cards').innerHTML = renderedKeys.join('');
 
@@ -354,6 +431,19 @@ function platformLogoHtml(server) {
     const logo = PLATFORM_LOGOS[server];
     if (!logo) return '';
     return `<span class="platform-logo platform-logo-${escapeHtml(server)}" title="${escapeHtml(logo.name)}" role="img" aria-label="${escapeHtml(logo.name)}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">${logo.svg}</svg></span>`;
+}
+
+// Who last added or edited a destination, and when. Nothing for one made before this was
+// recorded, or one still being saved.
+function renderLastEdit(key) {
+    const when = key.updatedBy ? formatWhen(key.updatedAt) : '';
+    if (!when) return '';
+    const label = key.updatedAction === 'added' ? 'Added' : 'Edited';
+    const text = `${key.updatedBy} · ${when}`;
+    return renderKeyField(
+        label,
+        `<span title="${escapeHtml(`${label} by ${key.updatedBy}, ${when}`)}">${escapeHtml(text)}</span>`,
+    );
 }
 
 function renderKeyField(label, content) {
@@ -522,8 +612,25 @@ async function addKeyBtn(inputId = getUrlParam('input') || shownInputId) {
     document.querySelector('#key-link-input').value = '';
     document.querySelector('#key-remarks-input').value = '';
     clearKeyErrors();
+    keyFormBaseline = null;
+    updateSaveKeyBtn();
 
     document.querySelector('#key-modal').showModal();
+}
+
+// When editing, Save stays off until something differs from what the dialog opened with
+// (changing a field back turns it off again). Adding has no baseline, so Save is always on.
+let keyFormBaseline = null;
+
+function readKeyFormState() {
+    return [...document.querySelectorAll('#key-modal input, #key-modal select')]
+        .map((field) => `${field.id}=${String(field.value).trim()}`)
+        .join('\n');
+}
+
+function updateSaveKeyBtn() {
+    document.querySelector('#save-key-btn').disabled =
+        keyFormBaseline !== null && readKeyFormState() === keyFormBaseline;
 }
 
 function editKeyRow() {
@@ -555,6 +662,8 @@ function editKeyRow() {
     document.querySelector('#backup-details').open = Boolean(key.key2);
 
     clearKeyErrors();
+    keyFormBaseline = readKeyFormState();
+    updateSaveKeyBtn();
 
     document.getElementById('key-modal').showModal();
 }
@@ -1558,6 +1667,7 @@ function pickPlatform(server) {
     renderServerInput(server);
     applyBackupServerLock();
     suggestStreamName(server);
+    updateSaveKeyBtn();
 
     const next = document.querySelector(
         server === 'srt'

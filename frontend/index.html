@@ -627,7 +627,6 @@
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-3" id="key-table">
-        <div id="event-summary" class="event-summary hidden" role="status" aria-label="Summary of this event"></div>
         <div class="event-layout">
           <aside class="event-side">
             <section class="event-card" aria-label="This event">
@@ -684,6 +683,30 @@
             </section>
           </aside>
           <div class="event-main">
+            <div id="destination-search-box" class="dest-search hidden">
+              <label class="dest-search-field">
+                <span data-icon="search" class="dest-search-icon h-4 w-4" aria-hidden="true"></span>
+                <input
+                  type="search"
+                  id="destination-search"
+                  class="dest-search-input"
+                  placeholder="Search destinations"
+                  aria-label="Search destinations"
+                  maxlength="50"
+                  autocomplete="off"
+                  spellcheck="false" />
+                <button
+                  type="button"
+                  id="destination-search-clear"
+                  class="btn btn-ghost btn-square btn-xs hidden"
+                  data-action="clear-destination-search"
+                  title="Clear search"
+                  aria-label="Clear search">
+                  <span data-icon="x" class="h-4 w-4"></span>
+                </button>
+              </label>
+              <p id="destination-search-status" class="dest-search-status" role="status"></p>
+            </div>
             <div id="input-banner" class="input-banner hidden" role="status"></div>
             <div id="keys-empty" class="keys-empty hidden">
               <h3 id="keys-empty-title" class="text-lg font-semibold">No destinations here yet</h3>
@@ -692,6 +715,11 @@
                 <span data-icon="plus" class="h-4 w-4"></span>
                 <span id="keys-empty-add-label">Add your first destination</span>
               </button>
+            </div>
+            <div id="keys-no-match" class="keys-empty hidden">
+              <h3 class="text-lg font-semibold">No destinations found</h3>
+              <p id="keys-no-match-text" class="text-ink-muted max-w-md text-sm"></p>
+              <button type="button" class="btn btn-sm mt-2" data-action="clear-destination-search">Clear search</button>
             </div>
             <div id="key-cards" aria-live="polite"><span class="loading loading-dots loading-xs"></span></div>
           </div>

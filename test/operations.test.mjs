@@ -420,3 +420,53 @@ test('only the listed operations are callable', () => {
         'reorderInputs',
     ]);
 });
+
+test('a destination records who last added or edited it, and when', async () => {
+    const store = seed();
+    const input = {
+        event: 'E1',
+        name: 'New',
+        input: 'L1',
+        server: 'yt',
+        key: 'abcd-9999',
+    };
+    const at = new Date(NOW).toISOString();
+
+    // Added: the signed-in email, never one the browser sends.
+    const added = await ops.addKey(store, editor, {
+        ...input,
+        updatedBy: 'someone-else@example.test',
+        updatedAt: '2000-01-01T00:00:00.000Z',
+    });
+    assert.equal(added.data.updatedBy, 'editor@example.test');
+    assert.equal(added.data.updatedAction, 'added');
+    assert.equal(added.data.updatedAt, at);
+    const stored = store.state.keys.find((k) => k.id === added.data.id);
+    assert.equal(stored.updatedBy, 'editor@example.test');
+
+    // Edited later by an admin: the last edit replaces the add.
+    const later = { ...admin, nowMs: NOW + 3600000 };
+    const edited = await ops.editKey(store, later, { ...added.data, name: 'Renamed' });
+    assert.equal(edited.success, true);
+    assert.equal(edited.data.updatedBy, 'admin@example.test');
+    assert.equal(edited.data.updatedAction, 'edited');
+    assert.equal(edited.data.updatedAt, new Date(NOW + 3600000).toISOString());
+    const after = store.state.keys.find((k) => k.id === added.data.id);
+    assert.equal(after.updatedBy, 'admin@example.test');
+    assert.equal(after.name, 'Renamed');
+
+    // A refused edit changes nothing.
+    const refused = await ops.editKey(store, viewer, { ...added.data, name: 'Nope' });
+    assert.equal(refused.success, false);
+    assert.equal(
+        store.state.keys.find((k) => k.id === added.data.id).updatedBy,
+        'admin@example.test',
+    );
+
+    // A viewer who may see the destination is told who last changed it.
+    const seen = await ops.getAllData(store, admin);
+    assert.equal(
+        seen.data.keys.find((k) => k.id === added.data.id).updatedBy,
+        'admin@example.test',
+    );
+});

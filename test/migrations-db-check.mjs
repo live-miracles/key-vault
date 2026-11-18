@@ -105,6 +105,12 @@ try {
     psql(`insert into public.keys (event_id, name, input, server, key)
           values ('${eventId}', 'Main', '${english.id}', 'yt', 'abcd-1234')`);
     assert.match(psql(`select id from public.keys`), uuid);
+    // Who last changed a destination: unknown ('') until the API records it, and only 'added'
+    // or 'edited' once it does.
+    assert.equal(psql(`select updated_by || '|' || updated_action from public.keys`), '|');
+    psql(`update public.keys set updated_action = 'deleted'`, { fail: true });
+    psql(`update public.keys set updated_by = 'a@example.test', updated_action = 'edited'`);
+    assert.equal(psql(`select updated_action from public.keys`), 'edited');
     psql(
         `insert into public.keys (event_id, name, input, server, key, color_override)
           values ('${eventId}', 'Bad color', '${english.id}', 'yt', 'k', '9')`,

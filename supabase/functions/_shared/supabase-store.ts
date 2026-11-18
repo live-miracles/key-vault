@@ -67,7 +67,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                     db
                         .from('keys')
                         .select(
-                            'id, event_id, name, input, server, key, server2, key2, link, color_override, remarks, created_at',
+                            'id, event_id, name, input, server, key, server2, key2, link, color_override, remarks, created_at, updated_at, updated_by, updated_action',
                         )
                         .order('id')
                         .range(from, to),
@@ -98,6 +98,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                     link: k.link,
                     color: k.color_override,
                     remarks: k.remarks,
+                    updatedBy: k.updated_by,
+                    updatedAction: k.updated_action,
+                    updatedAt: k.updated_by ? k.updated_at : '',
                 })),
             };
         },
@@ -226,6 +229,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         link: key.link,
                         color_override: key.color,
                         remarks: key.remarks,
+                        updated_by: key.updatedBy,
+                        updated_action: key.updatedAction,
+                        updated_at: key.updatedAt,
                     })
                     .select('id')
                     .single(),
@@ -246,7 +252,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         link: key.link,
                         color_override: key.color,
                         remarks: key.remarks,
-                        updated_at: new Date().toISOString(),
+                        updated_by: key.updatedBy,
+                        updated_action: key.updatedAction,
+                        updated_at: key.updatedAt,
                     })
                     .eq('id', id)
                     .select('id')

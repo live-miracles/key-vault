@@ -270,6 +270,16 @@ let eventRoles = {};
         .querySelector('#stream-key2-input')
         .addEventListener('input', () => handleStreamKeyInput('2'));
 
+    // ===== Destination search =====
+    const searchBox = document.querySelector('#destination-search');
+    searchBox.addEventListener('input', () => setDestinationSearch(searchBox.value));
+    searchBox.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && searchBox.value) {
+            event.preventDefault();
+            setDestinationSearch('');
+        }
+    });
+
     // Fixing a field clears its red border, and the message once nothing is left to fix.
     const onKeyFieldEdited = (event) => {
         const field = event.target;
@@ -282,6 +292,9 @@ let eventRoles = {};
     };
     document.querySelector('#key-modal').addEventListener('input', onKeyFieldEdited);
     document.querySelector('#key-modal').addEventListener('change', onKeyFieldEdited);
+    // Editing: Save is on only while something differs from what the dialog opened with.
+    document.querySelector('#key-modal').addEventListener('input', updateSaveKeyBtn);
+    document.querySelector('#key-modal').addEventListener('change', updateSaveKeyBtn);
 })();
 
 // Keep the frontend bundle scoped: the HTML uses data-action attributes and
@@ -329,6 +342,10 @@ document.addEventListener('click', (event) => {
         'copy-text': () => copyTextValue(target.dataset.copyValue),
         'copy-selected-key-url': () => copySelectedKeyUrl(target.dataset.actionType),
         'select-input': () => selectInput(target.dataset.input),
+        'clear-destination-search': () => {
+            setDestinationSearch('');
+            document.querySelector('#destination-search')?.focus();
+        },
     };
 
     const handler = actions[action];

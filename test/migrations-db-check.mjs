@@ -192,7 +192,15 @@ try {
     });
     assert.equal(psql(`select count(*) from public.stream_outputs where instance = 'prod'`), '1');
     psql(beat([output('a', 'bogus')]), { fail: true });
-    psql(`select public.ingest_heartbeat('Bad Name', now(), '[]'::jsonb)`, { fail: true });
+    // bunryu's Server Name is a free-form label ("Bunryu" is its default), so it is kept as typed.
+    psql(`select public.ingest_heartbeat('Prod Server', now(), '[]'::jsonb)`);
+    assert.equal(
+        psql(`select count(*) from public.ingest_instances where instance = 'Prod Server'`),
+        '1',
+    );
+    psql(`delete from public.ingest_instances where instance = 'Prod Server'`);
+    psql(`select public.ingest_heartbeat('', now(), '[]'::jsonb)`, { fail: true });
+    psql(`select public.ingest_heartbeat('${'a'.repeat(81)}', now(), '[]'::jsonb)`, { fail: true });
 
     // An instance silent for a month is dropped by the next beat of anyone.
     psql(

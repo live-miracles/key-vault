@@ -44,10 +44,12 @@ Sent by bunryu every 60 s, and immediately on a status change (rate-limited to o
 }
 ```
 
+- `instance` is bunryu's Server Name as typed (its default is "Bunryu"): 1-80 characters, no control characters, and distinct per server. Any name bunryu accepts is accepted here.
 - `status` is one of `running`, `warning`, `error`, `stopped`. A stop after repeated failures is `error` with `stoppedAfterFailures: true`; a stop the operator chose is plain `stopped`. bunryu decides the status.
 - **`message` is redacted by bunryu.** Its logs contain destination URLs and stream keys, so the reporter strips `rtmp(s)://` and `srt://` URLs and `key=`/`passphrase=` values and truncates to 300 characters. Key Vault replaces any URL that still got through before it stores the message.
 - **Advice is written in Key Vault, not sent by bunryu.** bunryu's own hints are for the streaming team and name hosts, ports and FFmpeg. Key Vault matches the redacted `message` against a short list of known errors and answers in the media team's words. An unknown message gets one generic line, and the heartbeat needs no extra field.
 - **`inputs` is optional** and says whether each pipeline's signal is arriving, with the same four statuses: `running` the signal arrives normally, `warning` it arrives with an alert (low bitrate, packet loss), `error` the pipeline is meant to be live but nothing arrives, `stopped` the pipeline is off or not expected. An older bunryu sends none.
+- **One unusable entry does not fail the report.** An output with a malformed `hash` or an unknown `status`, or an input with a blank `pipeline` or an unknown `status`, is left out and the rest is stored. `ingest` answers `{ ok, stored, skipped }` and logs what it left out (Supabase function logs). A wrong `version`, an invalid `sentAt`, an `outputs` or `inputs` that is not a list, or more than 1000 entries still refuses the whole report with HTTP 400. Long names and messages are cut, not refused.
 - Only the latest heartbeat of each bunryu is kept (`ingest_heartbeat()` replaces an instance's rows in one transaction). An instance silent for 30 days is deleted.
 
 ## Matching

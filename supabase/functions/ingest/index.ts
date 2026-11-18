@@ -53,6 +53,13 @@ Deno.serve(async (request) => {
         );
     }
 
+    // bunryu does not read the answer, so this log is where a bad entry is noticed.
+    if (heartbeat.skipped.length) {
+        console.warn(
+            `Skipped ${heartbeat.skipped.length} unusable entries from "${heartbeat.instance}": ${heartbeat.skipped.slice(0, 10).join('; ')}`,
+        );
+    }
+
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
     const { data, error } = await admin.rpc('ingest_heartbeat', {
         p_instance: heartbeat.instance,
@@ -64,5 +71,5 @@ Deno.serve(async (request) => {
         console.error('ingest_heartbeat failed:', error.message);
         return respond({ error: 'The heartbeat could not be stored.' }, 500);
     }
-    return respond({ ok: true, stored: data });
+    return respond({ ok: true, stored: data, skipped: heartbeat.skipped.length });
 });

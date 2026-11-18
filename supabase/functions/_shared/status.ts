@@ -8,6 +8,10 @@ import type { Destination } from './platforms.ts';
 export const HEARTBEAT_VERSION = 1;
 export const MAX_OUTPUTS = 1000;
 export const MAX_MESSAGE_LENGTH = 300;
+// bunryu's own limit on a server name, so any name it accepts is accepted here.
+export const MAX_INSTANCE_LENGTH = 80;
+// deno-lint-ignore no-control-regex
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 // bunryu sends every 60 s; after three missed beats it counts as offline.
 export const FRESH_MS = 3 * 60 * 1000;
 
@@ -40,6 +44,9 @@ export interface Heartbeat {
     outputs: HeartbeatOutput[];
     // Optional: an older bunryu sends none.
     inputs: HeartbeatInput[];
+    // Entries that were left out because they could not be used, each with the reason
+    // (for example "outputs[3].hash is invalid"). The rest of the report is still kept.
+    skipped: string[];
 }
 
 function text(value: unknown, max: number): string {
@@ -74,9 +81,13 @@ export function parseHeartbeat(body: unknown): Heartbeat {
     if (beat.version !== HEARTBEAT_VERSION) {
         throw new Error(`Unsupported heartbeat version: ${String(beat.version)}.`);
     }
-    const instance = String(beat.instance ?? '');
-    if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(instance)) {
-        throw new Error('instance must be 1-32 characters: a-z, 0-9 and "-".');
+    // bunryu's Server Name, a display label (its default is "Bunryu"), so it is taken as
+    // typed. It only tells servers apart and is never shown or used in a query.
+    const instance = String(beat.instance ?? '').trim();
+    if (!instance || instance.length > MAX_INSTANCE_LENGTH || CONTROL_CHARACTERS.test(instance)) {
+        throw new Error(
+            `instance must be 1-${MAX_INSTANCE_LENGTH} characters with no control characters.`,
+        );
     }
     const sentAt = new Date(String(beat.sentAt ?? ''));
     if (Number.isNaN(sentAt.getTime())) throw new Error('sentAt must be an ISO date.');
@@ -85,15 +96,27 @@ export function parseHeartbeat(body: unknown): Heartbeat {
         throw new Error(`outputs has more than ${MAX_OUTPUTS} entries.`);
     }
 
-    const outputs = beat.outputs.map((raw, index): HeartbeatOutput => {
-        if (!raw || typeof raw !== 'object') throw new Error(`outputs[${index}] is invalid.`);
+    // One entry that cannot be used is left out and reported in `skipped`; it must not
+    // cost the destinations that are fine their status, since a report replaces the last.
+    const skipped: string[] = [];
+
+    const outputs: HeartbeatOutput[] = [];
+    beat.outputs.forEach((raw, index) => {
+        if (!raw || typeof raw !== 'object') {
+            skipped.push(`outputs[${index}] is not an object`);
+            return;
+        }
         const o = raw as Record<string, unknown>;
         const hash = String(o.hash ?? '');
-        if (!/^[0-9a-f]{32}$/.test(hash)) throw new Error(`outputs[${index}].hash is invalid.`);
-        if (!STATUSES.includes(o.status as Status)) {
-            throw new Error(`outputs[${index}].status is invalid.`);
+        if (!/^[0-9a-f]{32}$/.test(hash)) {
+            skipped.push(`outputs[${index}].hash is invalid`);
+            return;
         }
-        return {
+        if (!STATUSES.includes(o.status as Status)) {
+            skipped.push(`outputs[${index}].status is invalid`);
+            return;
+        }
+        outputs.push({
             hash,
             pipeline: text(o.pipeline, 200),
             output: text(o.output, 200),
@@ -102,7 +125,7 @@ export function parseHeartbeat(body: unknown): Heartbeat {
             failures: count(o.failures),
             stoppedAfterFailures: o.stoppedAfterFailures === true,
             sinceMs: count(o.sinceMs),
-        };
+        });
     });
 
     const rawInputs = beat.inputs ?? [];
@@ -110,23 +133,31 @@ export function parseHeartbeat(body: unknown): Heartbeat {
     if (rawInputs.length > MAX_OUTPUTS) {
         throw new Error(`inputs has more than ${MAX_OUTPUTS} entries.`);
     }
-    const inputs = rawInputs.map((raw, index): HeartbeatInput => {
-        if (!raw || typeof raw !== 'object') throw new Error(`inputs[${index}] is invalid.`);
+    const inputs: HeartbeatInput[] = [];
+    rawInputs.forEach((raw, index) => {
+        if (!raw || typeof raw !== 'object') {
+            skipped.push(`inputs[${index}] is not an object`);
+            return;
+        }
         const i = raw as Record<string, unknown>;
         const pipeline = text(i.pipeline, 200);
-        if (!pipeline) throw new Error(`inputs[${index}].pipeline is required.`);
-        if (!STATUSES.includes(i.status as Status)) {
-            throw new Error(`inputs[${index}].status is invalid.`);
+        if (!pipeline) {
+            skipped.push(`inputs[${index}].pipeline is blank`);
+            return;
         }
-        return {
+        if (!STATUSES.includes(i.status as Status)) {
+            skipped.push(`inputs[${index}].status is invalid`);
+            return;
+        }
+        inputs.push({
             pipeline,
             status: i.status as Status,
             message: safeMessage(i.message),
             sinceMs: count(i.sinceMs),
-        };
+        });
     });
 
-    return { instance, sentAt: sentAt.toISOString(), outputs, inputs };
+    return { instance, sentAt: sentAt.toISOString(), outputs, inputs, skipped };
 }
 
 // ---- Status of a destination ----

@@ -41,21 +41,24 @@ test('parseHeartbeat accepts the documented payload', () => {
     assert.equal(parsed.outputs[0].status, 'running');
 });
 
+// bunryu reports under its Server Name, a free-form label whose default is "Bunryu"; a
+// capital letter or a space in it must not make Key Vault refuse every report.
+test("parseHeartbeat accepts bunryu's Server Name as typed", () => {
+    for (const name of ['Bunryu', 'Prod Server', 'prod-2', 'Ashram (Main)']) {
+        assert.equal(parseHeartbeat(heartbeat({ instance: name })).instance, name);
+    }
+    assert.equal(parseHeartbeat(heartbeat({ instance: '  Bunryu  ' })).instance, 'Bunryu');
+});
+
 test('parseHeartbeat rejects bad payloads', () => {
     assert.throws(() => parseHeartbeat(null), /JSON object/);
     assert.throws(() => parseHeartbeat(heartbeat({ version: 2 })), /version/);
-    assert.throws(() => parseHeartbeat(heartbeat({ instance: 'Prod!' })), /instance/);
+    assert.throws(() => parseHeartbeat(heartbeat({ instance: '' })), /instance/);
+    assert.throws(() => parseHeartbeat(heartbeat({ instance: '   ' })), /instance/);
+    assert.throws(() => parseHeartbeat(heartbeat({ instance: 'a'.repeat(81) })), /instance/);
+    assert.throws(() => parseHeartbeat(heartbeat({ instance: 'a\nb' })), /instance/);
     assert.throws(() => parseHeartbeat(heartbeat({ sentAt: 'x' })), /sentAt/);
     assert.throws(() => parseHeartbeat(heartbeat({ outputs: 'x' })), /outputs/);
-    assert.throws(
-        () => parseHeartbeat(heartbeat({ outputs: [{ ...heartbeat().outputs[0], hash: 'xyz' }] })),
-        /hash/,
-    );
-    assert.throws(
-        () =>
-            parseHeartbeat(heartbeat({ outputs: [{ ...heartbeat().outputs[0], status: 'bad' }] })),
-        /status/,
-    );
     assert.throws(
         () =>
             parseHeartbeat(
@@ -236,16 +239,61 @@ test('parseHeartbeat takes inputs, and treats a missing list as none', () => {
     assert.ok(!parsed.inputs[0].message.includes('SECRET'));
 });
 
-test('parseHeartbeat rejects bad inputs', () => {
+test('parseHeartbeat rejects an inputs list that is not a list', () => {
     assert.throws(() => parseHeartbeat(heartbeat({ inputs: 'x' })), /inputs must be/);
     assert.throws(
-        () => parseHeartbeat(heartbeat({ inputs: [{ pipeline: '', status: 'running' }] })),
-        /pipeline/,
+        () =>
+            parseHeartbeat(
+                heartbeat({
+                    inputs: Array.from({ length: 1001 }, () => ({
+                        pipeline: 'Hindi',
+                        status: 'running',
+                    })),
+                }),
+            ),
+        /more than/,
     );
-    assert.throws(
-        () => parseHeartbeat(heartbeat({ inputs: [{ pipeline: 'Hindi', status: 'bad' }] })),
-        /status/,
+});
+
+// One unusable entry must not cost every other destination its status.
+test('parseHeartbeat leaves out an unusable entry and keeps the rest', () => {
+    const good = heartbeat().outputs[0];
+    const parsed = parseHeartbeat(
+        heartbeat({
+            outputs: [
+                good,
+                { ...good, hash: 'xyz' },
+                { ...good, status: 'bad' },
+                null,
+                'x',
+                { ...good, output: '', pipeline: '' },
+            ],
+            inputs: [
+                { pipeline: 'Hindi', status: 'running' },
+                { pipeline: '', status: 'running' },
+                { pipeline: '   \n ', status: 'running' },
+                { pipeline: 'Tamil', status: 'bad' },
+                null,
+            ],
+        }),
     );
+    assert.equal(parsed.outputs.length, 2);
+    assert.equal(parsed.outputs[1].output, '');
+    assert.deepEqual(
+        parsed.inputs.map((i) => i.pipeline),
+        ['Hindi'],
+    );
+    assert.deepEqual(parsed.skipped, [
+        'outputs[1].hash is invalid',
+        'outputs[2].status is invalid',
+        'outputs[3] is not an object',
+        'outputs[4] is not an object',
+        'inputs[1].pipeline is blank',
+        'inputs[2].pipeline is blank',
+        'inputs[3].status is invalid',
+        'inputs[4] is not an object',
+    ]);
+    assert.deepEqual(parseHeartbeat(heartbeat()).skipped, []);
 });
 
 test('an input is matched to a pipeline by name, ignoring case and spaces', async () => {

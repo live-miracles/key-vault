@@ -186,7 +186,7 @@ export function renderCard(key: KeyItem, eventKeys: KeyItem[], ctx: CardContext)
     const { tint, title: technicalTitle } = getKeyDisplay(key, report, nowMs);
     const isPending = Boolean(key.pending);
     const note = isPending ? null : describeKeyNote(key, report, nowMs, inputName(data, key.input));
-    // Hovering gives owners and admins bunryu's own report; everyone else the note.
+    // Hovering gives owners bunryu's own report; everyone else the note.
     const seesTechnical = data.events.find((e) => e.id === key.event)?.can.seeTechnicalStatus;
     const statusTitle = seesTechnical
         ? technicalTitle

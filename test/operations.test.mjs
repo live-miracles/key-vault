@@ -143,7 +143,7 @@ test('what the user may do is sent with each item, so the browser works nothing 
     const asAdmin = await ops.getAllData(store, admin);
     assert.equal(asAdmin.canCreateEvents, true);
     assert.equal(asAdmin.events[0].can.manageInputs, true);
-    assert.equal(asAdmin.events[0].can.seeTechnicalStatus, true);
+    assert.equal(asAdmin.events[0].can.seeTechnicalStatus, false);
     assert.deepEqual(asAdmin.events[0].can.addRoleTypes, ['viewer', 'editor', 'admin']);
     assert.equal(asAdmin.events[0].can.delete, false);
     assert.equal(asAdmin.roles.find((r) => r.type === 'admin').canChange, false);

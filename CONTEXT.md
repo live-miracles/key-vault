@@ -29,7 +29,7 @@ Key Vault fixes both ends. The media team adds destinations through a guided for
 ## Who uses it
 
 - **Media team and other editors**: not technical. They add and update destinations, and later look at the page to see which of theirs are live. Everything they see is in plain words.
-- **Streaming team (owners and admins)**: technical. They configure bunryu, manage who has access, and read status for the whole event.
+- **Streaming team (owners and admins)**: technical. They configure bunryu, manage who has access, and read status for the whole event. Only owners also see bunryu's own technical report when hovering a card; admins get the same plain-words note as editors.
 
 ## What the page must answer
 

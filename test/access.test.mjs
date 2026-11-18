@@ -91,11 +91,13 @@ test('a role with no input covers every input of its event, and only that event'
     assert.equal(access.canViewKey('e2', 'anything'), false);
 });
 
-test('technical status detail is for admins and owners', () => {
+test('technical status detail is for owners only', () => {
     const editor = createAccess(ME, false, [role('e1', ME, 'editor')]);
     const admin = createAccess(ME, false, [role('e1', ME, 'admin')]);
+    const owner = createAccess(ME, false, [role('e1', ME, 'owner')]);
     assert.equal(editor.canSeeTechnicalStatus('e1'), false);
-    assert.equal(admin.canSeeTechnicalStatus('e1'), true);
+    assert.equal(admin.canSeeTechnicalStatus('e1'), false);
+    assert.equal(owner.canSeeTechnicalStatus('e1'), true);
     assert.equal(createAccess(ME, true, []).canSeeTechnicalStatus('e1'), true);
 });
 
@@ -108,6 +110,6 @@ test('what the browser is told about an event follows the same rules', () => {
         viewRoles: true,
         addRoleTypes: ['viewer', 'editor', 'admin'],
         addKeys: true,
-        seeTechnicalStatus: true,
+        seeTechnicalStatus: false,
     });
 });

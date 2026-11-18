@@ -24,7 +24,7 @@ export interface Access {
     canViewKey(event: string, input: string): boolean;
     // Add, edit or delete a destination of this input; with no input, in any input.
     canChangeKey(event: string, input: string | null): boolean;
-    // Read bunryu's technical detail on a destination's status.
+    // Read bunryu's technical detail on a destination's status (owners only).
     canSeeTechnicalStatus(event: string): boolean;
     // Everything the browser needs to know about an event.
     describeEvent(event: string): EventCan;
@@ -69,7 +69,7 @@ export function createAccess(
         canViewKey: (event, input) =>
             isAdmin(event) || hasRole(event, 'editor', input) || hasRole(event, 'viewer', input),
         canChangeKey: (event, input) => isAdmin(event) || hasRole(event, 'editor', input),
-        canSeeTechnicalStatus: (event) => isAdmin(event),
+        canSeeTechnicalStatus: (event) => isOwner && canViewEvent(event),
         describeEvent: (event) => ({
             rename: access.canChangeEvent(event),
             delete: access.canChangeEvent(event),

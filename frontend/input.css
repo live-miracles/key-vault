@@ -1032,8 +1032,9 @@
 .platform-logo-ig {
     background: linear-gradient(45deg, #f09433, #e6683c 30%, #dc2743 55%, #cc2366 75%, #bc1888);
 }
-.dest-card-actions {
-    @apply shrink-0;
+/* Copy name, info, edit and delete: at the right end of the links row. */
+.dest-card-tools {
+    @apply ml-auto flex shrink-0 items-center gap-0.5;
 }
 .dest-card .status-pill {
     @apply shrink-0 px-2 whitespace-nowrap;
@@ -1053,8 +1054,8 @@
 .dest-card-note-text {
     @apply min-w-0 flex-1;
 }
-/* The links share one line: Main and Backup as words with a copy button each, then a Watch
-   button on the right. They wrap on a narrow card rather than overflow. */
+/* The bottom row: the status, Main and Backup as words with a copy button each, a Watch button,
+   and the card's buttons at the right end. It wraps on a narrow card rather than overflows. */
 .dest-card-links {
     @apply border-base-300/70 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5;
 }
@@ -1065,7 +1066,7 @@
     @apply text-ink-muted cursor-help text-xs font-medium underline decoration-dotted underline-offset-4;
 }
 .dest-watch {
-    @apply border-hairline-strong text-accent hover:bg-surface-3 ml-auto inline-flex h-6 items-center gap-1 rounded-md border px-2 text-xs font-medium whitespace-nowrap no-underline;
+    @apply border-hairline-strong text-accent hover:bg-surface-3 inline-flex h-6 items-center gap-1 rounded-md border px-2 text-xs font-medium whitespace-nowrap no-underline;
 }
 .dest-card-remarks {
     @apply text-ink-muted truncate text-xs;

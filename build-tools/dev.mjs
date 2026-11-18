@@ -27,6 +27,8 @@ const context = await esbuild.context(
     esbuildOptions({
         mode: 'demo',
         minify: false,
+        // A cached page would hide the edits the reload is there to show.
+        serviceWorker: false,
         extra: {
             sourcemap: true,
             banner: { js: reload },

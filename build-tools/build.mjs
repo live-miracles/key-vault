@@ -10,7 +10,7 @@
 // same options (see dev.mjs).
 
 import { spawnSync } from 'node:child_process';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,17 +69,42 @@ export function buildCss({ minify }) {
     if (result.status !== 0) throw new Error('Building the stylesheet failed.');
 }
 
-// What the page needs beside the bundle.
-const STATIC_FILES = ['index.html', 'logo.png', 'logo.svg'];
+// What the page needs beside the bundle. sw.js is copied separately (see copyStatic).
+const STATIC_FILES = ['index.html', 'logo.png', 'logo.svg', 'manifest.webmanifest'];
+
+// A new id for every deploy, so the service worker's cache is replaced instead of growing.
+export function buildId(env = process.env) {
+    return String(env.VERCEL_GIT_COMMIT_SHA || Date.now().toString(36)).slice(0, 12);
+}
+
+// The service worker carries the build id, which makes it a different file on every deploy, so
+// browsers fetch it again and replace the old one.
+export function stampServiceWorker(source, id) {
+    if (!source.includes('__BUILD_ID__')) throw new Error('sw.js has no __BUILD_ID__ to replace.');
+    return source.replaceAll('__BUILD_ID__', id);
+}
 
 export async function copyStatic() {
     await mkdir(outdir, { recursive: true });
     for (const file of STATIC_FILES) {
         await copyFile(path.join(root, 'frontend', file), path.join(outdir, file));
     }
+    await cp(path.join(root, 'frontend', 'icons'), path.join(outdir, 'icons'), { recursive: true });
+    await copyFile(
+        path.join(root, 'frontend', 'icons', 'apple-touch-icon.png'),
+        path.join(outdir, 'apple-touch-icon.png'),
+    );
+    const worker = await readFile(path.join(root, 'frontend', 'sw.js'), 'utf8');
+    await writeFile(path.join(outdir, 'sw.js'), stampServiceWorker(worker, buildId()));
 }
 
-export function esbuildOptions({ mode, env = process.env, minify = true, extra = {} }) {
+export function esbuildOptions({
+    mode,
+    env = process.env,
+    minify = true,
+    serviceWorker = true,
+    extra = {},
+}) {
     const config = mode === 'real' ? backendConfigFromEnv(env) : null;
     return {
         entryPoints: { app: path.join(root, 'frontend', 'src', 'main.ts') },
@@ -98,6 +123,7 @@ export function esbuildOptions({ mode, env = process.env, minify = true, extra =
         define: {
             __KEY_VAULT_MODE__: JSON.stringify(mode),
             __KEY_VAULT_CONFIG__: JSON.stringify(config),
+            __KEY_VAULT_SERVICE_WORKER__: JSON.stringify(serviceWorker),
         },
         logLevel: 'info',
         ...extra,

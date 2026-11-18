@@ -14,3 +14,4 @@ import './store.test.mjs';
 import './actions.test.mjs';
 import './demo.test.mjs';
 import './build-config.test.mjs';
+import './pwa.test.mjs';

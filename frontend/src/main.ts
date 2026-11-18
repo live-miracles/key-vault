@@ -57,6 +57,7 @@ import {
     saveRoleInline,
     showShareModal,
 } from './roles.ts';
+import { registerServiceWorker } from './pwa.ts';
 import { onRouteChange, route } from './route.ts';
 
 // Set at build time: the demo runs the server's operations in the page; the real site calls the
@@ -207,4 +208,5 @@ async function start() {
     setInterval(() => void app.refreshStatus(), STATUS_REFRESH_MS);
 }
 
+registerServiceWorker();
 void start();

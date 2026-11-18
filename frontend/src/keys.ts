@@ -18,19 +18,6 @@ function getRtmpValue(server, key) {
     return serverUrl + key;
 }
 
-function getRtmpPreview(server, key) {
-    const fullValue = getRtmpValue(server, key);
-    if (!fullValue) {
-        return '';
-    }
-
-    if (fullValue.length <= 28) {
-        return fullValue;
-    }
-
-    return fullValue.substring(0, 25) + ' … ' + key.slice(-3);
-}
-
 function getPlatformNamePreview(name) {
     return name.length > 30 ? name.slice(0, 25) + ' ...' : name;
 }
@@ -256,9 +243,6 @@ function renderKeyTable(eventId = null) {
           ? eventKeys.filter((k) => k.input === input)
           : eventKeys;
     renderDestinationSearch(eventKeys.length, keys.length);
-    const allUrls = eventKeys.flatMap((key) =>
-        [getKeyMainUrl(key), getKeyBackupUrl(key)].filter(Boolean),
-    );
 
     const renderedKeys = keys.map((k) => {
         const { color, title: detailTitle } = getKeyDisplay(k, keyStatus);
@@ -294,31 +278,27 @@ function renderKeyTable(eventId = null) {
         const mainUrl = getKeyMainUrl(k);
         const backupEndpoint = getKeyBackupEndpoint(k);
         const backupUrl = getKeyBackupUrl(k);
-        const cnt = allUrls.filter((url) => url === mainUrl).length;
-        const cnt2 = backupUrl ? allUrls.filter((url) => url === backupUrl).length : 0;
-        const mainUrlCell = renderCopyableTextCell({
-            text: getRtmpPreview(k.server, k.key),
-            value: mainUrl,
-            title: mainUrl,
-            className: cnt > 1 ? 'text-error' : '',
-            disabled: isPending || !mainUrl,
-        });
-        const backupUrlCell = renderCopyableTextCell({
-            text: getRtmpPreview(backupEndpoint.server, backupEndpoint.key),
-            value: backupUrl,
-            title: backupUrl,
-            className: cnt2 > 1 ? 'text-error' : '',
-            disabled: isPending || !backupUrl,
-        });
-        const webLinkCell = link
-            ? renderCopyableTextCell({
-                  text: getMiddleEllipsisText(k.link, 20, 15, 3),
-                  value: k.link,
-                  title: k.link,
-                  href: link,
-                  disabled: isPending,
-              })
-            : '';
+        // A link another destination of this event also uses, found across the whole event so
+        // a filter never hides a clash.
+        const clashes = isPending ? [] : describeLinkClashes(k, eventKeys);
+        const clashing = (label) => clashes.some((clash) => clash.labels.includes(label));
+        // One line of links: "Main" and "Backup" are just words (hover for the address), each
+        // with its copy button; the watch link is a button that opens it in a new tab.
+        const linksHtml = [
+            renderLinkChip({
+                label: 'Main',
+                value: mainUrl,
+                duplicate: clashing('Main'),
+                disabled: isPending,
+            }),
+            renderLinkChip({
+                label: 'Backup',
+                value: backupUrl,
+                duplicate: clashing('Backup'),
+                disabled: isPending,
+            }),
+            renderWatchButton(link),
+        ].join('');
 
         const nameCopyButton = isPending
             ? ''
@@ -332,19 +312,15 @@ function renderKeyTable(eventId = null) {
                         ${platformLogoHtml(k.server)}
                         <h4 class="dest-card-name" title="${escapeHtml(k.name)}">${escapeHtml(k.name || '(unnamed)')}</h4>
                         ${nameCopyButton}
+                        ${renderLastEdit(k)}
                         ${actions ? `<div class="dest-card-actions">${actions}</div>` : ''}
                     </div>
                     ${noteTextHtml}
-                    <div class="dest-card-fields">
-                        ${mixed ? renderKeyField('Input', inputLabelHtml(k.input)) : ''}
-                        ${renderKeyField('Main', mainUrlCell)}
-                        ${renderKeyField('Backup', backupUrlCell)}
-                        ${renderKeyField('Watch link', webLinkCell)}
-                        ${renderKeyField('Notes', escapeHtml(k.remarks || ''))}
-                        ${renderLastEdit(k)}
-                    </div>
+                    ${clashes.map(renderClashWarning).join('')}
+                    ${linksHtml ? `<div class="dest-card-links">${linksHtml}</div>` : ''}
+                    ${k.remarks ? `<p class="dest-card-remarks" title="${escapeHtml(k.remarks)}">${escapeHtml(k.remarks)}</p>` : ''}
                 </article>`;
-        return card;
+        return { input: k.input, key: k, card };
     });
 
     // A search with no match is not an empty input: say so, and do not offer to add one.
@@ -361,7 +337,7 @@ function renderKeyTable(eventId = null) {
             `Nothing matches “${destinationSearch.trim()}”. Try part of the name, the platform, the input or the stream key.`;
     }
 
-    document.querySelector('#key-cards').innerHTML = renderedKeys.join('');
+    document.querySelector('#key-cards').innerHTML = renderDestinationSections(renderedKeys, mixed);
 
     document.querySelectorAll('#key-cards [data-key-id]').forEach((card) => {
         card.addEventListener('dblclick', (event) => {
@@ -371,10 +347,20 @@ function renderKeyTable(eventId = null) {
     });
 }
 
+// The words for an input in trouble: its state label and what it means, as the inside of a banner.
+// null while the input is fine, or bunryu is not reporting.
+function describeBannerFor(inputId) {
+    return inputId ? describeInputBanner(inputId, getInputName(inputId), keyStatus) : null;
+}
+
+function inputBannerInnerHtml(info) {
+    return `<span class="status-pill status-${info.state}">${escapeHtml(info.label)}</span><span>${escapeHtml(info.text)}</span>`;
+}
+
 // When the chosen input is in trouble, say so above its streams.
 function renderInputBanner(inputId) {
     const banner = document.querySelector('#input-banner');
-    const info = inputId ? describeInputBanner(inputId, getInputName(inputId), keyStatus) : null;
+    const info = describeBannerFor(inputId);
     banner.classList.toggle('hidden', !info);
     banner.className = banner.className.replace(/input-banner-\w+/g, '').trim();
     if (!info) {
@@ -382,7 +368,7 @@ function renderInputBanner(inputId) {
         return;
     }
     banner.classList.add(`input-banner-${info.state}`);
-    banner.innerHTML = `<span class="status-pill status-${info.state}">${escapeHtml(info.label)}</span><span>${escapeHtml(info.text)}</span>`;
+    banner.innerHTML = inputBannerInnerHtml(info);
 }
 
 // With nothing to show, say what to do next instead of leaving a blank table.
@@ -439,46 +425,106 @@ function renderLastEdit(key) {
     const when = key.updatedBy ? formatWhen(key.updatedAt) : '';
     if (!when) return '';
     const label = key.updatedAction === 'added' ? 'Added' : 'Edited';
-    const text = `${key.updatedBy} · ${when}`;
-    return renderKeyField(
-        label,
-        `<span title="${escapeHtml(`${label} by ${key.updatedBy}, ${when}`)}">${escapeHtml(text)}</span>`,
-    );
+    const text = `${label} by ${key.updatedBy}, ${when}`;
+    return `<button type="button" class="dest-card-edit btn btn-ghost btn-square btn-xs shrink-0" title="${escapeHtml(text)}" aria-label="${escapeHtml(text)}">${iconSvg('info')}</button>`;
 }
 
-function renderKeyField(label, content) {
-    if (!content) return '';
-
-    return `
-        <div class="dest-card-field">
-            <div class="dest-card-label">${escapeHtml(label)}</div>
-            <div class="dest-card-value">${content}</div>
-        </div>
-    `;
+// Which of a destination's links another destination of the event also uses, in plain words:
+// one { label, text } per link. Two destinations on one link would fight over the same stream.
+function describeLinkClashes(key, eventKeys, nameOf = getInputName) {
+    const urlsOf = (k) => [getKeyMainUrl(k), getKeyBackupUrl(k)];
+    const found = [];
+    for (const [label, url] of [
+        ['Main', getKeyMainUrl(key)],
+        ['Backup', getKeyBackupUrl(key)],
+    ]) {
+        if (!url) continue;
+        const others = eventKeys.filter((o) => o.id !== key.id && urlsOf(o).includes(url));
+        if (others.length > 0) found.push({ labels: [label], others });
+    }
+    // Main and Backup clashing with the same destinations (a YouTube backup is made from the
+    // same key) is one problem, so it is said once.
+    const [first, second] = found;
+    if (second && first.others.map((o) => o.id).join() === second.others.map((o) => o.id).join()) {
+        found.splice(0, 2, { labels: ['Main', 'Backup'], others: first.others });
+    }
+    const clashes = found.map(({ labels, others }) => {
+        const names = others
+            .slice(0, 2)
+            .map((o) => `“${o.name || '(unnamed)'}” (${nameOf(o.input)})`)
+            .join(' and ');
+        const more = others.length > 2 ? ` and ${others.length - 2} more` : '';
+        const subject = labels.length > 1 ? 'Main and Backup links are' : `${labels[0]} link is`;
+        return { label: labels[0], labels, text: `${subject} also used by ${names}${more}.` };
+    });
+    // Both links of one destination being the same defeats the backup.
+    const [main, backup] = urlsOf(key);
+    if (main && main === backup)
+        clashes.push({
+            label: 'Backup',
+            labels: ['Backup'],
+            text: 'Main and Backup are the same link.',
+        });
+    return clashes;
 }
 
-function renderCopyableTextCell({
-    text,
-    value,
-    title,
-    href = '',
-    className = '',
-    disabled = false,
-}) {
+function renderClashWarning(clash) {
+    return `<p class="dest-card-warning" role="alert">${iconSvg('warning', 'h-3.5 w-3.5 shrink-0')}<span>${escapeHtml(clash.text)} Each destination needs its own link.</span></p>`;
+}
+
+// Under All, or in a search, the destinations come from several inputs: one section per
+// input, in the inputs' own order, each with its name and how many it holds. With a single
+// input chosen there is nothing to separate, so its cards are shown as they are.
+function renderDestinationSections(cards, grouped) {
+    if (!grouped) return `<div class="dest-grid">${cards.map((c) => c.card).join('')}</div>`;
+    const sections = [];
+    for (const { input, key, card } of cards) {
+        const last = sections[sections.length - 1];
+        if (last && last.input === input) {
+            last.cards.push(card);
+            last.keys.push(key);
+        } else sections.push({ input, cards: [card], keys: [key] });
+    }
+    return sections
+        .map(({ input, cards: inputCards, keys: inputKeys }) => {
+            // An input in trouble says so at the top of its own section, as it does when chosen.
+            const info = describeBannerFor(input);
+            const banner = info
+                ? `<div class="input-banner input-banner-${info.state}" role="status">${inputBannerInnerHtml(info)}</div>`
+                : '';
+            return `
+        <section class="dest-section" data-input-id="${escapeHtml(input)}">
+            <h3 class="dest-section-head">
+                ${inputDotHtml(input)}
+                <span class="dest-section-name">${inputLabelHtml(input)}</span>
+                <span class="dest-section-pills">${statusPillsHtml(summarizeKeyStatuses(inputKeys, keyStatus))}</span>
+                <span class="dest-section-count">${inputCards.length}</span>
+            </h3>
+            ${banner}
+            <div class="dest-grid">${inputCards.join('')}</div>
+        </section>`;
+        })
+        .join('');
+}
+
+// "Main" or "Backup" as plain words with a copy button right after. The address itself is
+// not shown: hovering the word shows it. A link used by another destination too is red.
+function renderLinkChip({ label, value, duplicate = false, disabled = false }) {
     if (!value) return '';
-
-    const content = href
-        ? `<a href="${escapeHtml(href)}" class="link ${escapeHtml(className)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(title)}">${escapeHtml(text)}</a>`
-        : `<span class="${escapeHtml(className)}" title="${escapeHtml(title)}">${escapeHtml(text)}</span>`;
-    const copyButton = disabled
+    const title = duplicate
+        ? `${value}
+Also used by another destination`
+        : value;
+    const copy = disabled
         ? ''
-        : `
-            <button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy" aria-label="Copy" data-action="copy-text" data-copy-value="${escapeHtml(value)}">
-                ${iconSvg('copy')}
-            </button>
-        `;
+        : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the ${escapeHtml(label.toLowerCase())} link" aria-label="Copy the ${escapeHtml(label.toLowerCase())} link" data-action="copy-text" data-copy-value="${escapeHtml(value)}">${iconSvg('copy')}</button>`;
+    return `<span class="dest-link"><span class="dest-link-name ${duplicate ? 'text-error' : ''}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>${copy}</span>`;
+}
 
-    return `<div class="flex items-center justify-center gap-1">${content}${copyButton}</div>`;
+// The viewers' web page for the stream: a button that opens it in a new tab.
+function renderWatchButton(href) {
+    if (!href) return '';
+    return `<a href="${escapeHtml(href)}" class="dest-watch" target="_blank" rel="noopener noreferrer" title="Open the watch link in a new tab">Watch ${iconSvg('external', 'h-3 w-3')}</a>`;
 }
 
 let selectedKeyId = null;
@@ -1301,7 +1347,7 @@ function getStatusAdvice(status) {
     return GENERIC_ADVICE[status.status] || '';
 }
 
-// A short sentence for how long a stream has been live, from its start time in ms.
+// A short phrase for how long a stream has been live (shown only on hover of its label), from its start time in ms.
 function describeLiveFor(sinceMs, nowMs) {
     if (!sinceMs) return '';
     const ago = formatAgo(nowMs - sinceMs);
@@ -1337,7 +1383,13 @@ function describeKeyNote(key, report, nowMs = Date.now(), inputName = '') {
         if (wrongInput)
             return { state: 'warning', label: 'Check input', text: wrongInput, copy: '' };
         return status.status === 'running'
-            ? { state: 'running', label, text: describeLiveFor(status.sinceMs, nowMs), copy: '' }
+            ? {
+                  state: 'running',
+                  label,
+                  text: '',
+                  detail: describeLiveFor(status.sinceMs, nowMs),
+                  copy: '',
+              }
             : { state: 'stopped', label, text: 'Set up, but not sending right now.', copy: '' };
     }
 
@@ -1391,20 +1443,39 @@ function describeInputBanner(inputId, name, report) {
     return { state: input.status, label: INPUT_LABELS[input.status], text };
 }
 
+// Only trouble needs words on the card. For anything calm (Live, Not set up yet, Not sending)
+// the explanation waits in the label's hover text, so the card stays short.
+function isTroubleNote(note) {
+    return note.state === 'error' || note.state === 'warning';
+}
+
 // The coloured label that starts a card: Live, Unstable, Problem, Not set up yet...
 function keyStatusPillHtml(note, isPending = false) {
     if (isPending) return '<span class="status-pill status-none">Saving</span>';
     if (!note) return '';
-    return `<span class="status-pill status-${note.state}">${escapeHtml(note.label)}</span>`;
+    const hover = isTroubleNote(note) ? '' : [note.detail, note.text].filter(Boolean).join(' ');
+    const title = hover
+        ? ` title="${escapeHtml(note.detail ? `${note.label} ${hover}` : hover)}"`
+        : '';
+    return `<span class="status-pill status-${note.state}"${title}>${escapeHtml(note.label)}</span>`;
 }
 
 // What the status means and what to try, in a sentence under the name.
 function keyNoteTextHtml(note) {
-    if (!note || (!note.text && !note.copy)) return '';
+    if (!note || !isTroubleNote(note) || (!note.text && !note.copy)) return '';
     const copy = note.copy
         ? `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the error details to send to the streaming team" aria-label="Copy error details" data-action="copy-text" data-copy-value="${escapeHtml(note.copy)}">${iconSvg('copy')}</button>`
         : '';
-    return `<p class="dest-card-note"><span class="dest-card-note-text">${escapeHtml(note.text)}</span>${copy}</p>`;
+    // Trouble reads as trouble: red with a cross for an error, amber with a triangle for a
+    // warning, plain for everything else.
+    const icon =
+        note.state === 'error'
+            ? iconSvg('error', 'h-4 w-4 shrink-0')
+            : note.state === 'warning'
+              ? iconSvg('warning', 'h-4 w-4 shrink-0')
+              : '';
+    const tone = icon ? ` dest-card-note-${note.state}` : '';
+    return `<p class="dest-card-note${tone}">${icon}<span class="dest-card-note-text">${escapeHtml(note.text)}</span>${copy}</p>`;
 }
 
 const LOCKED_BACKUP_BY_SERVER = {

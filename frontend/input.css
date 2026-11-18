@@ -768,13 +768,35 @@
     transition: opacity 150ms ease;
 }
 
-/* The destinations: a grid of cards, one column on a phone, more as the window widens. */
+/* The destinations: a grid of cards, one column on a phone, more as the window widens. Under
+   All the grids are split into one section per input. */
 #key-cards {
+    padding-block: 0.75rem;
+}
+.dest-grid {
     display: grid;
     gap: 0.5rem;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr));
     align-items: start;
-    padding-block: 0.75rem;
+}
+.dest-section + .dest-section {
+    margin-top: 1.25rem;
+}
+.dest-section-head {
+    @apply text-base-content mb-2 flex items-center gap-2 text-sm font-semibold;
+}
+.dest-section-head::after {
+    content: '';
+    @apply bg-base-300 h-px flex-1;
+}
+.dest-section-name {
+    @apply min-w-0 truncate;
+}
+.dest-section-pills {
+    @apply flex shrink-0 items-center gap-1;
+}
+.dest-section-count {
+    @apply text-ink-subtle order-last text-xs font-normal;
 }
 
 /* The color of a key's row or card: a tint mixed over the surface, never transparent, so
@@ -1019,44 +1041,72 @@
 .dest-card-note {
     @apply text-ink-muted flex items-start gap-1 text-xs leading-snug;
 }
+.dest-card-note-error {
+    @apply text-error font-medium;
+}
+.dest-card-note-warning {
+    @apply text-warning;
+}
+.dest-card-note > svg {
+    @apply mt-px;
+}
 .dest-card-note-text {
     @apply min-w-0 flex-1;
 }
-/* Each field is one line, label then value, so a card stays a few lines tall. */
-.dest-card-fields {
-    @apply border-base-300/70 border-t pt-1;
+/* The links share one line: Main and Backup as words with a copy button each, then a Watch
+   button on the right. They wrap on a narrow card rather than overflow. */
+.dest-card-links {
+    @apply border-base-300/70 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-1.5;
 }
-.dest-card-field {
+.dest-link {
+    @apply inline-flex items-center;
+}
+.dest-link-name {
+    @apply text-ink-muted cursor-help text-xs font-medium underline decoration-dotted underline-offset-4;
+}
+.dest-watch {
+    @apply border-hairline-strong text-accent hover:bg-surface-3 ml-auto inline-flex h-6 items-center gap-1 rounded-md border px-2 text-xs font-medium whitespace-nowrap no-underline;
+}
+.dest-card-remarks {
+    @apply text-ink-muted truncate text-xs;
+}
+.dest-card-warning {
+    @apply text-warning flex items-start gap-1.5 text-xs leading-snug;
+}
+.dest-card-warning svg {
+    @apply mt-px;
+}
+.dest-card-edit {
+    @apply text-ink-subtle cursor-help;
+}
+
+/* Refresh, bunryu's state and the account menu: in the bottom bar on a computer, in the top bar
+   on a phone (moved there by placeAppControls). */
+#top-bar:not(:has(#app-controls)) {
+    display: none;
+}
+.app-controls {
     @apply flex items-center gap-2;
 }
-.dest-card-label {
-    @apply text-base-content/60 w-[4.5rem] shrink-0 text-[0.65rem] leading-6 font-semibold whitespace-nowrap uppercase;
+.profile-menu {
+    @apply bg-surface-2 border-hairline-strong absolute right-0 z-60 hidden w-56 flex-col gap-1 rounded-lg border p-3 shadow-lg;
+    bottom: calc(100% + 0.5rem);
 }
-.dest-card-value {
-    @apply min-w-0 flex-1 truncate text-xs;
+.profile-menu.open {
+    display: flex;
 }
-.dest-card-value > .flex {
-    @apply min-w-0 justify-start;
-}
-.dest-card-value > .flex > :first-child {
-    @apply min-w-0 truncate;
+.profile-menu .btn {
+    @apply mt-1;
 }
 
 @media (max-width: 640px) {
-    .app-header {
-        @apply flex-wrap px-3 py-2;
+    #top-bar .app-controls {
+        @apply justify-end px-3 py-1.5;
     }
 
-    #event-name {
-        @apply max-w-[calc(100vw-8.5rem)] text-base font-semibold;
-    }
-
-    .header-status {
-        @apply order-last mt-1 w-full justify-between gap-2 text-sm;
-    }
-
-    #user-email {
-        @apply text-sm;
+    .profile-menu {
+        top: calc(100% + 0.5rem);
+        bottom: auto;
     }
 
     #key-table {

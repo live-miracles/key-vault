@@ -521,34 +521,8 @@
       </div>
     </dialog>
 
-    <div class="bg-base-200 sticky top-0 z-50">
-      <div class="app-header relative flex items-center gap-2 px-5 pt-3 pb-3">
-        <!-- LEFT -->
-        <button title="Refresh" aria-label="Refresh data" class="btn btn-accent btn-square btn-xs" id="refresh-data-btn" data-action="refresh-data">
-          <span data-icon="refresh" class="h-4 w-4"></span>
-        </button>
-        <span class="min-w-0 truncate text-xl" id="event-name"></span>
-
-        <!-- RIGHT -->
-        <div class="header-status ml-auto flex min-w-0 items-center gap-3">
-          <button
-            type="button"
-            id="bunryu-status"
-            class="text-base-content/60 enabled:hover:text-base-content inline-flex shrink-0 items-center gap-1.5 text-xs enabled:cursor-pointer"
-            data-action="show-bunryu"
-            aria-label="bunryu status"
-            hidden
-            disabled>
-            <span id="bunryu-dot" class="h-2 w-2 rounded-full"></span>
-            <span id="bunryu-status-text" class="max-sm:hidden"></span>
-          </button>
-          <span class="min-w-0 truncate text-xl" id="user-email">
-            <span class="loading loading-dots"></span>
-          </span>
-          <button type="button" class="btn btn-ghost btn-xs hidden" data-action="sign-out" id="sign-out-btn">Sign out</button>
-        </div>
-      </div>
-    </div>
+    <!-- Empty on a computer: the controls live in the bottom bar. On a phone they move here. -->
+    <div id="top-bar" class="bg-base-200 sticky top-0 z-50"></div>
 
     <div class="flex min-h-0 w-full flex-1 flex-col">
       <dialog id="share-modal" class="modal">
@@ -736,7 +710,7 @@
             <a role="tab" class="tab tab-active"><span class="loading loading-dots loading-sm"></span> </a>
           </div>
 
-          <label class="swap ml-auto">
+          <label class="swap ml-auto mr-2">
             <input id="saving-badge" type="checkbox" disabled />
             <div class="swap-off"></div>
             <div class="swap-on">
@@ -744,6 +718,50 @@
               Saving
             </div>
           </label>
+
+          <div id="controls-slot" class="flex shrink-0 items-center">
+            <div id="app-controls" class="app-controls">
+              <button
+                type="button"
+                id="bunryu-status"
+                class="text-base-content/60 enabled:hover:text-base-content inline-flex shrink-0 items-center gap-1.5 text-xs enabled:cursor-pointer"
+                data-action="show-bunryu"
+                aria-label="bunryu status"
+                hidden
+                disabled>
+                <span id="bunryu-dot" class="h-2 w-2 rounded-full"></span>
+                <span id="bunryu-status-text" class="max-sm:hidden"></span>
+              </button>
+              <button
+                type="button"
+                title="Refresh"
+                aria-label="Refresh data"
+                class="btn btn-ghost btn-square btn-xs text-accent"
+                id="refresh-data-btn"
+                data-action="refresh-data">
+                <span data-icon="refresh" class="h-4 w-4"></span>
+              </button>
+              <div id="profile-wrap" class="relative">
+                <button
+                  type="button"
+                  id="profile-btn"
+                  class="btn btn-ghost btn-circle btn-xs text-accent"
+                  title="Account"
+                  aria-label="Account"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                  aria-controls="profile-menu"
+                  data-action="toggle-profile-menu">
+                  <span data-icon="user" class="h-4 w-4"></span>
+                </button>
+                <div id="profile-menu" class="profile-menu" role="menu">
+                  <p class="text-ink-subtle text-xs">Signed in as</p>
+                  <p id="user-email" class="text-sm break-all"><span class="loading loading-dots loading-xs"></span></p>
+                  <button type="button" class="btn btn-sm w-full" data-action="sign-out" id="sign-out-btn">Sign out</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

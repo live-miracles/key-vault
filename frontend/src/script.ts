@@ -297,6 +297,38 @@ let eventRoles = {};
     document.querySelector('#key-modal').addEventListener('change', updateSaveKeyBtn);
 })();
 
+// The account menu: who is signed in, and Sign out. It opens upward from the bottom bar, or
+// downward from the top bar on a phone, and closes on any click elsewhere or on Escape.
+function isProfileMenuOpen() {
+    return document.getElementById('profile-menu')?.classList.contains('open') ?? false;
+}
+
+function setProfileMenu(open) {
+    document.getElementById('profile-menu')?.classList.toggle('open', open);
+    document.getElementById('profile-btn')?.setAttribute('aria-expanded', String(open));
+}
+
+document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element) || !event.target.closest('#profile-wrap')) {
+        setProfileMenu(false);
+    }
+});
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setProfileMenu(false);
+});
+
+// On a computer the refresh, bunryu and account controls sit in the bottom bar, where there is
+// room. On a phone that bar holds the event tabs, so they move to a slim bar at the top.
+function placeAppControls() {
+    const phone = window.matchMedia('(max-width: 640px)').matches;
+    const slot = document.getElementById(phone ? 'top-bar' : 'controls-slot');
+    const controls = document.getElementById('app-controls');
+    if (slot && controls && controls.parentElement !== slot) slot.append(controls);
+    setProfileMenu(false);
+}
+placeAppControls();
+window.matchMedia('(max-width: 640px)').addEventListener('change', placeAppControls);
+
 // Keep the frontend bundle scoped: the HTML uses data-action attributes and
 // this delegated layer routes them to the existing UI functions. Apps Script
 // RPC entry points remain global in the backend, but browser UI handlers do
@@ -326,6 +358,7 @@ document.addEventListener('click', (event) => {
         },
         'copy-bunryu-value': () => copyBunryuValue(target.dataset.field),
         'refresh-data': () => refreshDataBtn(),
+        'toggle-profile-menu': () => setProfileMenu(!isProfileMenuOpen()),
         'add-key': () => addKeyBtn(),
         'show-share': () => showShareModal(),
         'add-role': () => addRoleBtn(),

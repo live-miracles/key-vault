@@ -39,9 +39,6 @@ if (config?.supabaseUrl && config.publishableKey) {
         async start(): Promise<boolean> {
             const { data } = await client.auth.getSession();
             showLogin(!data.session);
-            if (data.session) {
-                document.getElementById('sign-out-btn')?.classList.remove('hidden');
-            }
             document.getElementById('sign-in-btn')?.addEventListener('click', () => void signIn());
             document
                 .querySelectorAll('[data-action="sign-out"]')

@@ -270,11 +270,10 @@ test('a card says who last added or edited the destination, when that is known',
         updatedAction: 'edited',
         updatedAt: at,
     });
-    assert.match(edited, />Edited</);
-    assert.match(edited, /ann@example\.test · /);
+    assert.match(edited, /title="Edited by ann@example\.test, /);
     assert.match(
         render({ updatedBy: 'ann@example.test', updatedAction: 'added', updatedAt: at }),
-        />Added</,
+        /title="Added by ann@example\.test, /,
     );
 
     // Made before this was recorded, or still being saved: nothing to say.
@@ -285,4 +284,28 @@ test('a card says who last added or edited the destination, when that is known',
         render({ updatedBy: '<b>x</b>@example.test', updatedAction: 'edited', updatedAt: at }),
         /<b>/,
     );
+});
+
+test('a card warns, in words, when its main or backup link is used by another destination', () => {
+    const runtime = loadKeys();
+    const describe = runtime.get('describeLinkClashes');
+    const nameOf = (id) => ({ en: 'English', hi: 'Hindi' })[id];
+    const yt = (id, name, input, key) => ({ id, name, input, server: 'yt', key });
+    const keys = [
+        yt('a', 'Channel 1', 'en', 'same-key'),
+        yt('b', 'Channel 3', 'hi', 'same-key'),
+        yt('c', 'Channel 5', 'hi', 'other-key'),
+    ];
+
+    const texts = (key) => plain(describe(key, keys, nameOf)).map((clash) => clash.text);
+    assert.deepEqual(texts(keys[0]), [
+        'Main and Backup links are also used by “Channel 3” (Hindi).',
+    ]);
+    assert.deepEqual(texts(keys[2]), []);
+
+    // A destination whose own main and backup are one link.
+    const same = { id: 'd', name: 'Own', input: 'en', server: 'rtmp', key: 'rtmp://x/y' };
+    same.server2 = 'rtmp';
+    same.key2 = 'rtmp://x/y';
+    assert.deepEqual(texts(same).slice(-1), ['Main and Backup are the same link.']);
 });

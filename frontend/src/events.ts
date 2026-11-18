@@ -6,7 +6,6 @@ function renderEventTabBar(eventId = null) {
     const isPending = Boolean(event?.pending);
     const canCreateEvents = hasEventAccess(eventRoles, ACTIONS.CREATE);
     // An event is named in its own card, beside the controls that act on it alone.
-    document.getElementById('event-name').innerText = '';
     document.getElementById('event-card-name').innerText = event?.name || '';
     document.getElementById('event-card-name').title = event?.name || '';
 

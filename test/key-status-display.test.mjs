@@ -140,7 +140,7 @@ test('the note says when it is the backup that has the problem, and when bunryu 
     );
 });
 
-test('a running stream says for how long, and a stopped one says it is not sending', () => {
+test('a running stream keeps for how long out of sight, and a stopped one says it is not sending', () => {
     const running = describeKeyNote(
         liveKey,
         report({
@@ -148,7 +148,8 @@ test('a running stream says for how long, and a stopped one says it is not sendi
         }),
         NOW,
     );
-    assert.deepEqual([running.label, running.text], ['Live', 'for 10 min']);
+    // How long it has been live is kept for the label's hover, not printed on the card.
+    assert.deepEqual([running.label, running.text, running.detail], ['Live', '', 'for 10 min']);
     const stopped = describeKeyNote(
         liveKey,
         report({ K1: { main: status('stopped'), backup: null } }),

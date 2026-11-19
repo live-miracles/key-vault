@@ -69,8 +69,10 @@ export interface Data {
     admins: AdminRow[];
 }
 
-// A deleted event is kept this long in the trash, where an admin can restore it.
-export const TRASH_DAYS = 30;
+// Changes are kept this long. A deleted event is kept as long, in the trash, so the event and
+// its history go together.
+export const HISTORY_DAYS = 30;
+export const TRASH_DAYS = HISTORY_DAYS;
 
 // An event in the trash, as the store holds it: when and by whom it was deleted (ISO time and
 // email), and how much it holds.
@@ -81,6 +83,81 @@ export interface TrashRow {
     deletedBy: string;
     destinations: number;
     inputs: number;
+}
+
+// ===== History =====
+// A log of changes, not snapshots: one row per row that was added, edited or deleted. An earlier
+// version of an event is worked out from it (see history.ts). Only admins can read it.
+
+export const CHANGE_KINDS = ['event', 'input', 'key', 'role', 'admin'] as const;
+export type ChangeKind = (typeof CHANGE_KINDS)[number];
+// `restored` is only for an event brought back from the trash.
+export type ChangeAction = 'added' | 'edited' | 'deleted' | 'restored';
+
+// A row as it was recorded, in the shape of its own type above (EventRow, InputRow, KeyRow,
+// RoleRow or AdminRow). For an event deleted or brought back from the trash it is
+// `{ name, destinations, inputs }`: its rows stay where they are.
+export type RowSnapshot = Record<string, any>;
+
+export interface ChangeRow {
+    // Also the order of the changes: a bigger id is a later change.
+    id: number;
+    // ISO time.
+    at: string;
+    // Email of whoever did it.
+    by: string;
+    // The event it happened in; null for a change to the admins.
+    event: string | null;
+    kind: ChangeKind;
+    // The id of the event, input, key, role or admin.
+    rowId: string;
+    action: ChangeAction;
+    // Null when the row was added.
+    before: RowSnapshot | null;
+    // Null when the row was deleted.
+    after: RowSnapshot | null;
+    // The same for every row of one version restore.
+    batch: string | null;
+    // For a version restore: the change it went back to.
+    restoredTo: number | null;
+}
+
+// What `recordChanges` is given: the store adds the id (and the time is passed with them all).
+export type NewChange = Omit<ChangeRow, 'id' | 'at'>;
+
+// An event as it was at some point, or is now.
+export interface EventState {
+    event: EventRow;
+    inputs: InputRow[];
+    keys: KeyRow[];
+    roles: RoleRow[];
+}
+
+// How a row of an event differs now from an earlier version. `status` is relative to now:
+// `added` means added since then, so restoring that version removes it.
+export interface RowDiff {
+    kind: 'event' | 'input' | 'key' | 'role';
+    rowId: string;
+    status: 'added' | 'deleted' | 'changed';
+    // The row in the earlier version, null if it was added since.
+    then: RowSnapshot | null;
+    // The row now, null if it was deleted since.
+    now: RowSnapshot | null;
+    // The fields that differ.
+    fields: string[];
+}
+
+// What turns an event into one of its earlier versions, so the store can apply it in one
+// transaction. Only the rows that differ are listed.
+export interface VersionSteps {
+    // The name to give the event, or null when it is unchanged.
+    eventName: string | null;
+    upsertInputs: InputRow[];
+    deleteInputs: string[];
+    upsertKeys: KeyRow[];
+    deleteKeys: string[];
+    upsertRoles: RoleRow[];
+    deleteRoles: string[];
 }
 
 // ===== What the browser is sent =====
@@ -124,12 +201,25 @@ export interface EveryEventPerson {
     owner: boolean;
 }
 
+// A change with the names the History dialog needs to say what happened.
+export interface ChangeView extends ChangeRow {
+    // The event's current name, or the last one known; '' when it is not known any more.
+    eventName: string;
+    // The destination, input or event, or the person's email, from `after ?? before`.
+    rowName: string;
+    // For a version restore: when the change it went back to was made, or null for the start
+    // of history (and for a change that is not kept any more).
+    restoredToAt: string | null;
+}
+
 export interface AppData {
     userEmail: string;
     isAppOwner: boolean;
     canCreateEvents: boolean;
     // See the trash and restore events from it.
     canRestoreEvents: boolean;
+    // Read the history of changes, compare an event with an earlier version and restore it.
+    canSeeHistory: boolean;
     // See the admins, and add or remove them.
     canManageAdmins: boolean;
     // Everyone who has access to every event. Empty for someone who sees no Share list.
@@ -164,6 +254,23 @@ export interface Operations {
     deleteEvent: { input: { id: string }; output: void };
     getTrash: { input: void; output: TrashedEvent[] };
     restoreEvent: { input: { id: string }; output: { id: string; name: string } };
+    // Admins only. Newest first, paged by id: `before` is the smallest id already shown. With
+    // no `event` it is every event and the admins; `kind` narrows it. Default limit 200.
+    getHistory: {
+        input: { event?: string; kind?: ChangeKind; before?: number; limit?: number };
+        output: ChangeView[];
+    };
+    // The event as it was right after change `atChange` (0: before its oldest recorded change),
+    // and how it differs from now.
+    compareEvent: {
+        input: { event: string; atChange: number };
+        output: { then: EventState; diff: RowDiff[] };
+    };
+    // Makes the event equal to that version, and records it as one entry.
+    restoreEventVersion: {
+        input: { event: string; atChange: number };
+        output: { changed: number };
+    };
     // The owners set on the server (fixed) and the admins added in the app.
     getAdmins: { input: void; output: { owners: string[]; admins: AdminRow[] } };
     addAdmin: { input: { email: string }; output: AdminRow };

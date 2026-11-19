@@ -79,7 +79,19 @@ If a button you expect is missing, you do not have that role for this event: ask
 Admins see two extra buttons at the bottom right.
 
 - **Admins** (shield) lists everyone who has every event. The owners named in the server's settings are listed first and marked **Fixed**: they cannot be removed here. Any admin can add other admins by email and remove the ones added here, but not themselves. **Share** also lists them, read only.
-- **Deleted events** (bin) lists events that were deleted in the last 30 days, who deleted each, and how long is left. **Restore** brings an event back with its destinations, inputs and the people who had access. After 30 days it is removed for good, stream keys included. Any admin can restore an event.
+- **History** (clock) lists every change of the last 30 days, newest first, grouped by day: who did it, when, and what. Choose **All events**, one event, **Deleted events** or **Admins** at the top. Several changes by one person in one event within ten minutes are folded into one line; open it to see each. Stream keys are never written out in the list.
+    - **Deleted events** lists events deleted in the last 30 days, who deleted each, and how long is left. **Bring back event** returns it with its destinations, inputs and the people who had access. After 30 days it is removed for good, stream keys included.
+    - Click a change in an event that still exists to open that event's version history. The **History** button on an event's card opens the same view.
+
+#### Going back to an earlier version
+
+The version history shows the event as it was right after a change you pick on the right, with every difference from now marked: destinations added since, deleted since (faded) and changed since, with the old and the current value side by side. Stream keys are dots until you press the eye. **Only show differences** hides the rest.
+
+- **Restore this version** makes the whole event the way it was: its name, inputs and their order, destinations and the people who had access. You are told what will change first. Other events are not touched.
+- A restore is one line in History. To undo it, open the version just before it and restore that.
+- If something in the old version is no longer allowed (for example a platform that was removed), the restore is refused with the reasons and nothing is changed.
+- History only starts when it was switched on: an event cannot be restored to a point before that, or before it was created. To bring back a single destination, copy it by hand from the version view.
+- Only admins see History. Editors and viewers see nothing new.
 
 ## Keep it on your desktop or phone
 

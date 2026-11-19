@@ -29,6 +29,7 @@ export function emptyData(): LoadedData {
         isAppOwner: false,
         canCreateEvents: false,
         canRestoreEvents: false,
+        canSeeHistory: false,
         canManageAdmins: false,
         everyEvent: [],
         events: [],

@@ -105,7 +105,10 @@ Editor and viewer are given per event, in **Share**. Admin is not: admins are li
 **Admins** dialog (bottom right), where the owners are shown as fixed. Share lists them too, read only.
 
 - Any admin can add and remove the other admins in that dialog, except themselves.
-- A deleted event goes to the **trash** (bottom right, admins only) for 30 days, where an admin can restore it.
+- A deleted event is kept for 30 days, and an admin brings it back from **History** (bottom right, admins only).
+- **History** (admins only) keeps every change of the last 30 days: who, when, and the row before and after. An admin
+  can open an event as it was right after any change, see every difference from now, and restore the whole event to
+  it. A restore is itself recorded, so it can be undone. See [ADR 5](docs/adr/0005-history-is-a-change-log.md).
 
 ## Part of Live Miracles
 

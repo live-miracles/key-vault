@@ -38,6 +38,8 @@ export interface Access {
     canManageAdmins(): boolean;
     // See the trash and restore a deleted event.
     canRestoreEvents(): boolean;
+    // Read the history of changes, compare an event with an earlier version and restore it.
+    canSeeHistory(): boolean;
     // Read bunryu's technical detail on a destination's status (owners only).
     canSeeTechnicalStatus(event: string): boolean;
     // Everything the browser needs to know about an event.
@@ -77,6 +79,7 @@ export function createAccess(
         canChangeKey: (event, input) => isAdmin || hasRole(event, 'editor', input),
         canManageAdmins: () => isAdmin,
         canRestoreEvents: () => isAdmin,
+        canSeeHistory: () => isAdmin,
         canSeeTechnicalStatus: (event) => standing === 'owner' && canViewEvent(event),
         describeEvent: (event) => ({
             rename: access.canChangeEvent(event),

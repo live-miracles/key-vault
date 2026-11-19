@@ -92,3 +92,75 @@ test('the owner can read the settings bunryu needs, and they are not real secret
     assert.match(settings.url, /\/functions\/v1\/ingest$/);
     assert.match(settings.secret, /not-a-real-key/);
 });
+
+test('the demo has a history, and every version of Winter Retreat can be compared', async () => {
+    const backend = await createDemoBackend();
+    const data = await backend.getAllData();
+    assert.equal(data.canSeeHistory, true);
+    const winter = data.events.find((e) => e.name === 'Winter Retreat');
+
+    const history = await backend.getHistory({ event: winter.id });
+    assert.ok(history.length >= 8);
+    // Newest first, each with the names the dialog needs.
+    assert.deepEqual(
+        history.map((c) => c.id),
+        history.map((c) => c.id).sort((a, b) => b - a),
+    );
+    assert.ok(history.every((c) => c.eventName === 'Winter Retreat'));
+    // The admin change is in the history of everything, and in no event's own.
+    assert.ok(!history.some((c) => c.kind === 'admin'));
+    assert.ok((await backend.getHistory({})).some((c) => c.kind === 'admin'));
+
+    // The newest version is the event as it is.
+    assert.deepEqual(
+        (await backend.compareEvent({ event: winter.id, atChange: history[0].id })).diff,
+        [],
+    );
+    // Every version in between can be worked out.
+    for (const change of history) {
+        const { then } = await backend.compareEvent({ event: winter.id, atChange: change.id });
+        assert.ok(then.event.id === winter.id);
+    }
+
+    const start = await backend.compareEvent({ event: winter.id, atChange: 0 });
+    assert.equal(start.then.event.name, 'Winter Retreat draft');
+    const statuses = Object.fromEntries(
+        start.diff
+            .filter((d) => d.kind === 'key' || d.kind === 'role')
+            .map((d) => [d.then?.name ?? d.then?.email ?? d.now?.name, d.status]),
+    );
+    // The destination that was deleted since was there at the start.
+    assert.equal(statuses['YouTube German old'], 'deleted');
+    assert.equal(statuses['Facebook English'], 'changed');
+    assert.equal(statuses['Channel 3 SRT Hindi'], 'changed');
+});
+
+test('the demo can restore Winter Retreat to the start of its history, and undo that', async () => {
+    const backend = await createDemoBackend();
+    const { events } = await backend.getAllData();
+    const winter = events.find((e) => e.name === 'Winter Retreat');
+    const before = await backend.getAllData();
+
+    const { changed } = await backend.restoreEventVersion({ event: winter.id, atChange: 0 });
+    assert.ok(changed > 0);
+    const after = await backend.getAllData();
+    assert.equal(after.events.find((e) => e.id === winter.id).name, 'Winter Retreat draft');
+    assert.ok(after.keys.some((k) => k.name === 'YouTube German old'));
+    // The other event is untouched.
+    const spring = (data) => data.keys.filter((k) => k.event !== winter.id);
+    assert.deepEqual(spring(after), spring(before));
+
+    // The restore is the newest entry, one line for all its rows, and reverting it brings back
+    // what there was.
+    const newest = (await backend.getHistory({ event: winter.id, limit: changed }))[0];
+    assert.ok(newest.batch);
+    assert.equal(newest.restoredTo, 0);
+    const lastBefore =
+        Math.min(
+            ...(await backend.getHistory({ event: winter.id, limit: changed })).map((c) => c.id),
+        ) - 1;
+    await backend.restoreEventVersion({ event: winter.id, atChange: lastBefore });
+    const undone = await backend.getAllData();
+    assert.equal(undone.events.find((e) => e.id === winter.id).name, 'Winter Retreat');
+    assert.ok(!undone.keys.some((k) => k.name === 'YouTube German old'));
+});

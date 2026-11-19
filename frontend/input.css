@@ -407,7 +407,318 @@
         color: var(--color-ink-subtle);
         font-size: 0.75rem;
     }
-    /* Trash dialog: the event's name, then what it held and how long it is kept. */
+    /* History dialog, and the timeline of the compare view: changes under a heading for each
+       day, one row each. A row that opens an event is a button; several by one person in a
+       short time fold into one that opens to show each. */
+    .history-day + .history-day {
+        margin-top: 1rem;
+    }
+    .history-day-head {
+        margin-bottom: 0.375rem;
+        color: var(--color-ink-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .history-list,
+    .history-fold-list {
+        display: grid;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .history-fold-list {
+        margin: 0.25rem 0 0.25rem 1.5rem;
+    }
+    .history-row {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        width: 100%;
+        padding: 0.375rem 0.5rem;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-field);
+        background: var(--color-base-200);
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    .history-row-link,
+    summary.history-row {
+        cursor: pointer;
+    }
+    .history-row-link:hover,
+    summary.history-row:hover {
+        background: var(--color-surface-3);
+    }
+    .history-text {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .history-time {
+        flex: none;
+        color: var(--color-ink-subtle);
+        font-size: 0.75rem;
+        white-space: nowrap;
+    }
+    .history-empty {
+        padding: 1.5rem 0;
+        color: var(--color-ink-subtle);
+        font-size: 0.875rem;
+        text-align: center;
+    }
+    .history-fold > summary {
+        list-style: none;
+    }
+    .history-fold > summary::-webkit-details-marker {
+        display: none;
+    }
+    .history-chevron {
+        flex: none;
+        color: var(--color-ink-subtle);
+        transition: transform 120ms ease;
+    }
+    .history-fold[open] > summary .history-chevron {
+        transform: rotate(180deg);
+    }
+
+    /* Compare view: the event as it was, with what differs from now marked. */
+    .compare {
+        padding-top: 0.75rem;
+    }
+    .cmp-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box);
+        background: var(--color-base-200);
+    }
+    .cmp-bar-title {
+        min-width: 0;
+    }
+    .cmp-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+    .cmp-sub {
+        color: var(--color-ink-muted);
+        font-size: 0.875rem;
+    }
+    .cmp-summary {
+        color: var(--color-ink-subtle);
+        font-size: 0.8125rem;
+    }
+    .cmp-bar-actions {
+        display: flex;
+        flex: none;
+        gap: 0.5rem;
+    }
+    /* The server's reasons for refusing a restore, a line each. */
+    .cmp-error {
+        margin-top: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid color-mix(in oklab, var(--color-error) 45%, var(--color-base-300));
+        border-radius: var(--radius-field);
+        background: color-mix(in oklab, var(--color-error) 10%, var(--color-base-200));
+        color: var(--color-error);
+        font-size: 0.875rem;
+        white-space: pre-line;
+    }
+    .cmp-layout {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+    }
+    .cmp-main {
+        flex: 1;
+        min-width: 0;
+    }
+    .cmp-timeline {
+        flex: none;
+        padding: 0.5rem;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-box);
+        background: var(--color-base-200);
+    }
+    .cmp-timeline-title {
+        padding: 0.125rem 0.5rem 0.375rem;
+        color: var(--color-ink-muted);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .cmp-timeline-body {
+        max-height: 16rem;
+        overflow-y: auto;
+    }
+    @media (min-width: 768px) {
+        .cmp-layout {
+            flex-direction: row;
+            align-items: flex-start;
+        }
+        .cmp-timeline {
+            position: sticky;
+            top: 0.75rem;
+            width: 20rem;
+        }
+        .cmp-timeline-body {
+            max-height: calc(100vh - 14rem);
+        }
+    }
+    .cmp-versions {
+        display: grid;
+        gap: 0.125rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .cmp-day {
+        margin-top: 0.5rem;
+    }
+    .cmp-day .history-day-head {
+        padding: 0 0.5rem;
+    }
+    .cmp-version {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        padding: 0.375rem 0.5rem;
+        border: 1px solid transparent;
+        border-radius: 0.375rem;
+        font-size: 0.8125rem;
+        text-align: left;
+        cursor: pointer;
+    }
+    .cmp-version:hover {
+        background: var(--color-surface-3);
+    }
+    .cmp-version-active {
+        border-color: var(--color-primary);
+        background: color-mix(in oklab, var(--color-primary) 18%, var(--color-base-200));
+    }
+    .cmp-version-text {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .cmp-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+        color: var(--color-ink-muted);
+        font-size: 0.8125rem;
+        cursor: pointer;
+    }
+    .cmp-eventname {
+        margin-bottom: 0.75rem;
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .cmp-item {
+        min-width: 0;
+    }
+    /* Deleted since is faded: it is in this version, and not in the event now. */
+    .cmp-item-deleted > .dest-card {
+        opacity: 0.6;
+    }
+    .cmp-item-added > .dest-card {
+        border-style: dashed;
+    }
+    .cmp-badge {
+        display: inline-block;
+        margin-bottom: 0.25rem;
+        padding: 0 0.5rem;
+        border-radius: 9999px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        line-height: 1.25rem;
+    }
+    .cmp-badge-added {
+        background: color-mix(in oklab, var(--color-success) 22%, var(--color-base-200));
+        color: var(--color-success);
+    }
+    .cmp-badge-deleted {
+        background: color-mix(in oklab, var(--color-error) 22%, var(--color-base-200));
+        color: var(--color-error);
+    }
+    .cmp-badge-changed {
+        background: color-mix(in oklab, var(--color-warning) 22%, var(--color-base-200));
+        color: var(--color-warning);
+    }
+    /* What a changed destination had then, beside what it has now. */
+    .cmp-fields {
+        display: grid;
+        gap: 0.375rem;
+        margin: 0.25rem 0 0;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid color-mix(in oklab, var(--color-warning) 40%, var(--color-base-300));
+        border-radius: var(--radius-field);
+        background: var(--color-base-200);
+        font-size: 0.8125rem;
+    }
+    .cmp-field dt {
+        color: var(--color-ink-subtle);
+        font-size: 0.75rem;
+    }
+    .cmp-field dd {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.125rem 0.875rem;
+        align-items: center;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+    .cmp-when {
+        margin-right: 0.25rem;
+        color: var(--color-ink-subtle);
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+    }
+    .cmp-secret {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        word-break: break-all;
+    }
+    .cmp-empty {
+        color: var(--color-ink-subtle);
+        font-style: italic;
+    }
+    .cmp-roles {
+        display: grid;
+        gap: 0.375rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .cmp-role {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--color-base-300);
+        border-radius: var(--radius-field);
+        background: var(--color-base-200);
+        font-size: 0.875rem;
+    }
+    .cmp-role .cmp-badge {
+        margin-bottom: 0;
+    }
+    .cmp-role.cmp-item-deleted {
+        opacity: 0.6;
+    }
+    /* Trash list in the History dialog: the event's name, then what it held and how long it is
+       kept. */
     .trash-name {
         overflow: hidden;
         font-size: 0.875rem;
@@ -1069,6 +1380,12 @@
    then its own inputs), on the right the streams of the input chosen. */
 .event-layout {
     @apply flex flex-col gap-2 md:flex-row md:items-start md:gap-3 md:pt-3;
+}
+
+/* The compare view takes its place while it is open. Its display is set outside the utilities
+   layer, so the `hidden` class needs a rule of its own to win. */
+.event-layout.hidden {
+    display: none;
 }
 
 .event-side {

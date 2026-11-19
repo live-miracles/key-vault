@@ -722,6 +722,7 @@ test('only the listed operations are callable', async () => {
         'addInput',
         'addKey',
         'addRole',
+        'compareEvent',
         'deleteEvent',
         'deleteInput',
         'deleteKey',
@@ -733,11 +734,13 @@ test('only the listed operations are callable', async () => {
         'getAdmins',
         'getAllData',
         'getBunryuSettings',
+        'getHistory',
         'getStatus',
         'getTrash',
         'removeAdmin',
         'reorderInputs',
         'restoreEvent',
+        'restoreEventVersion',
     ]);
     assert.equal(
         await refused(ops.callOperation(seed(), owner, 'toString', undefined)),
@@ -876,4 +879,522 @@ test('admins: the owners are fixed, the rest are managed by any admin', async ()
         0,
         'no longer an admin, so no longer sees every event',
     );
+});
+
+// ===== History =====
+
+const iso = (ms) => new Date(ms).toISOString();
+const minutesLater = (minutes, ctx = admin) => ({ ...ctx, nowMs: NOW + minutes * 60_000 });
+const NEW_KEY = { event: E1, name: 'New', input: HINDI, platform: 'yt', streamKey: 'abcd-9999' };
+
+// A recorded change without its id and time, to compare in a few lines.
+const brief = ({ id, at, ...change }) => change;
+const recorded = (store) => store.state.changes.map(brief);
+
+test('events, admins and the trash are recorded, with who did it and when', async () => {
+    const store = seed();
+    const created = await ops.addEvent(store, admin, { name: 'Event three' });
+    await ops.editEvent(store, admin, { id: E1, name: 'Event one' }); // the same name: no change
+    await ops.editEvent(store, minutesLater(1), { id: E1, name: 'First' });
+    await ops.deleteEvent(store, minutesLater(2), { id: E2 });
+    await ops.restoreEvent(store, minutesLater(3, owner), { id: E2 });
+    const boss = await ops.addAdmin(store, admin, { email: 'boss@example.test' });
+    await ops.removeAdmin(store, admin, { id: boss.id });
+
+    const by = 'admin@example.test';
+    const none = { batch: null, restoredTo: null };
+    const holds = { id: E2, name: 'Event two', destinations: 1, inputs: 1 };
+    const bossRow = { id: boss.id, email: 'boss@example.test', addedBy: by };
+    assert.deepEqual(recorded(store), [
+        {
+            by,
+            event: created.id,
+            kind: 'event',
+            rowId: created.id,
+            action: 'added',
+            before: null,
+            after: { id: created.id, name: 'Event three' },
+            ...none,
+        },
+        {
+            by,
+            event: E1,
+            kind: 'event',
+            rowId: E1,
+            action: 'edited',
+            before: { id: E1, name: 'Event one' },
+            after: { id: E1, name: 'First' },
+            ...none,
+        },
+        // A deleted event keeps its rows, so only how much it held is recorded.
+        {
+            by,
+            event: E2,
+            kind: 'event',
+            rowId: E2,
+            action: 'deleted',
+            before: holds,
+            after: null,
+            ...none,
+        },
+        {
+            by: 'owner@example.test',
+            event: E2,
+            kind: 'event',
+            rowId: E2,
+            action: 'restored',
+            before: null,
+            after: holds,
+            ...none,
+        },
+        {
+            by,
+            event: null,
+            kind: 'admin',
+            rowId: boss.id,
+            action: 'added',
+            before: null,
+            after: bossRow,
+            ...none,
+        },
+        {
+            by,
+            event: null,
+            kind: 'admin',
+            rowId: boss.id,
+            action: 'deleted',
+            before: bossRow,
+            after: null,
+            ...none,
+        },
+    ]);
+    assert.deepEqual(
+        store.state.changes.map((c) => c.at),
+        [0, 1, 2, 3, 0, 0].map((m) => iso(NOW + m * 60_000)),
+    );
+    assert.deepEqual(
+        store.state.changes.map((c) => c.id),
+        [1, 2, 3, 4, 5, 6],
+    );
+});
+
+test('inputs are recorded, and reordering records only the inputs that moved', async () => {
+    const store = seed();
+    const tamil = await ops.addInput(store, admin, { event: E1, name: 'Tamil' });
+    await ops.editInput(store, admin, { id: ENGLISH, name: 'English' }); // unchanged
+    await ops.editInput(store, admin, { id: HINDI, name: 'Hindi 2' });
+    // Hindi and Tamil swap places; English stays first.
+    await ops.reorderInputs(store, admin, { event: E1, ids: [ENGLISH, tamil.id, HINDI] });
+    await ops.reorderInputs(store, admin, { event: E1, ids: [ENGLISH, tamil.id, HINDI] }); // again
+    await ops.deleteInput(store, admin, { id: tamil.id });
+
+    const rows = recorded(store).map((c) => [
+        c.action,
+        c.before?.name,
+        c.after?.name,
+        c.before?.position,
+        c.after?.position,
+    ]);
+    assert.deepEqual(rows, [
+        ['added', undefined, 'Tamil', undefined, 3],
+        ['edited', 'Hindi', 'Hindi 2', 2, 2],
+        ['edited', 'Tamil', 'Tamil', 3, 2],
+        ['edited', 'Hindi 2', 'Hindi 2', 2, 3],
+        ['deleted', 'Tamil', undefined, 2, undefined],
+    ]);
+    assert.ok(recorded(store).every((c) => c.kind === 'input' && c.event === E1));
+});
+
+test('destinations are recorded, and an edit that changes nothing is not', async () => {
+    const store = seed();
+    const added = await ops.addKey(store, editor, { ...NEW_KEY, input: ENGLISH });
+    const edited = await ops.editKey(store, minutesLater(1, editor), { ...added, name: 'Renamed' });
+    // Saved again as it is: the "last edited" stamp moves, but there is nothing to restore.
+    await ops.editKey(store, minutesLater(2, editor), { ...edited });
+    await ops.deleteKey(store, admin, { id: added.id });
+
+    const keyOf = ({ canChange, ...key }) => key;
+    const log = (by, action, before, after) => ({
+        by,
+        event: E1,
+        kind: 'key',
+        rowId: added.id,
+        action,
+        before,
+        after,
+        batch: null,
+        restoredTo: null,
+    });
+    const editor_ = 'editor@example.test';
+    assert.deepEqual(recorded(store), [
+        log(editor_, 'added', null, keyOf(added)),
+        log(editor_, 'edited', keyOf(added), keyOf(edited)),
+        // The row as it was just before it was deleted: the second save stamped it.
+        log('admin@example.test', 'deleted', store.state.changes[2].before, null),
+    ]);
+    assert.equal(store.state.changes[2].before.name, 'Renamed');
+    // The stream key is recorded as it was: this is what a version is made from.
+    assert.equal(store.state.changes[0].after.streamKey, 'abcd-9999');
+});
+
+test('people are recorded', async () => {
+    const store = seed();
+    const role = await ops.addRole(store, admin, {
+        event: E1,
+        email: 'new@example.test',
+        type: 'viewer',
+        input: null,
+    });
+    const same = { id: role.id, email: 'new@example.test', type: 'viewer', input: null };
+    await ops.editRole(store, admin, same); // unchanged
+    await ops.editRole(store, admin, { ...same, type: 'editor', input: HINDI });
+    await ops.deleteRole(store, admin, { id: role.id });
+
+    const stored = { id: role.id, event: E1, email: 'new@example.test' };
+    const viewerRow = { ...stored, type: 'viewer', input: null };
+    const editorRow = { ...stored, type: 'editor', input: HINDI };
+    assert.deepEqual(
+        recorded(store).map((c) => [c.kind, c.event, c.action, c.before, c.after]),
+        [
+            ['role', E1, 'added', null, viewerRow],
+            ['role', E1, 'edited', viewerRow, editorRow],
+            ['role', E1, 'deleted', editorRow, null],
+        ],
+    );
+});
+
+test('a change that fails records nothing, and a failed record does not fail the change', async () => {
+    const store = seed();
+    assert.equal(await refused(ops.deleteKey(store, editor, { id: K2 })), 'denied');
+    assert.equal(
+        await refused(ops.editEvent(store, admin, { id: uuid(404), name: 'x' })),
+        'not_found',
+    );
+    assert.deepEqual(store.state.changes, []);
+
+    store.recordChanges = async () => {
+        throw new Error('disk full');
+    };
+    const logged = [];
+    const log = console.error;
+    console.error = (...args) => logged.push(args);
+    try {
+        assert.deepEqual(await ops.editEvent(store, admin, { id: E1, name: 'Renamed' }), {
+            id: E1,
+            name: 'Renamed',
+        });
+    } finally {
+        console.error = log;
+    }
+    assert.equal(store.state.events.find((e) => e.id === E1).name, 'Renamed');
+    assert.equal(logged.length, 1);
+});
+
+test('only admins read the history, compare an event or restore a version', async () => {
+    const store = seed();
+    await ops.editEvent(store, admin, { id: E1, name: 'First' });
+
+    for (const who of [owner, admin]) {
+        assert.equal((await ops.getAllData(store, who)).canSeeHistory, true);
+        assert.equal((await ops.getHistory(store, who, {})).length, 1);
+        const compared = await ops.compareEvent(store, who, { event: E1, atChange: 0 });
+        assert.equal(compared.then.event.name, 'Event one');
+    }
+    for (const who of [editor, viewer, stranger]) {
+        const here = { event: E1, atChange: 0 };
+        assert.equal((await ops.getAllData(store, who)).canSeeHistory, false);
+        assert.equal(await refused(ops.getHistory(store, who, {})), 'denied');
+        assert.equal(await refused(ops.compareEvent(store, who, here)), 'denied');
+        assert.equal(await refused(ops.restoreEventVersion(store, who, here)), 'denied');
+    }
+    assert.equal(store.state.events.find((e) => e.id === E1).name, 'First');
+});
+
+test('the history lists changes newest first, with names, in pages, and only those still kept', async () => {
+    const store = seed();
+    await ops.editEvent(store, admin, { id: E1, name: 'First' });
+    await ops.editKey(store, minutesLater(1), { ...key(K1, E1, ENGLISH), name: 'Renamed' });
+    await ops.addAdmin(store, minutesLater(2), { email: 'boss@example.test' });
+    await ops.editEvent(store, minutesLater(3), { id: E2, name: 'Second' });
+    const ids = async (input) => (await ops.getHistory(store, admin, input)).map((c) => c.id);
+
+    const all = await ops.getHistory(store, admin, {});
+    assert.deepEqual(
+        all.map((c) => c.id),
+        [4, 3, 2, 1],
+    );
+    assert.deepEqual(
+        all.map((c) => [c.eventName, c.rowName]),
+        [
+            ['Second', 'Second'],
+            ['', 'boss@example.test'],
+            ['First', 'Renamed'],
+            ['First', 'First'],
+        ],
+    );
+
+    // Pages: `before` is the smallest id already shown.
+    assert.deepEqual(await ids({ limit: 2 }), [4, 3]);
+    assert.deepEqual(await ids({ before: 3, limit: 2 }), [2, 1]);
+    // One event, or only the admins.
+    assert.deepEqual(await ids({ event: E1 }), [2, 1]);
+    assert.deepEqual(await ids({ kind: 'admin' }), [3]);
+    assert.equal(await refused(ops.getHistory(store, admin, { kind: 'nope' })), 'invalid');
+    assert.equal(await refused(ops.getHistory(store, admin, { before: 0 })), 'invalid');
+    assert.equal(await refused(ops.getHistory(store, admin, { limit: 'many' })), 'invalid');
+
+    // A deleted event is still named, from the trash.
+    await ops.deleteEvent(store, minutesLater(4), { id: E1 });
+    assert.equal((await ops.getHistory(store, admin, { event: E1 }))[0].eventName, 'First');
+
+    // Nothing older than 30 days is shown, even before it is removed.
+    store.state.changes[0].at = iso(NOW - 31 * DAY);
+    assert.ok(!(await ids({})).includes(1));
+});
+
+test('changes are kept 30 days, then removed with the trash', async () => {
+    const store = seed();
+    await ops.editEvent(store, admin, { id: E1, name: 'First' });
+    await ops.editEvent(store, inDays(admin, 20), { id: E1, name: 'Second' });
+
+    await ops.getAllData(store, inDays(admin, 29));
+    assert.equal(store.state.changes.length, 2);
+    await ops.getAllData(store, inDays(admin, 31));
+    assert.deepEqual(
+        store.state.changes.map((c) => c.after.name),
+        ['Second'],
+    );
+});
+
+test('compare shows an event as it was right after a change, and how it differs from now', async () => {
+    const store = seed();
+    await ops.editEvent(store, admin, { id: E1, name: 'First' }); // 1
+    await ops.deleteKey(store, admin, { id: K1 }); // 2
+    const added = await ops.addKey(store, admin, NEW_KEY); // 3
+    await ops.editEvent(store, admin, { id: E2, name: 'Second' }); // 4: another event
+    // An event deleted and brought back is the same event, and its versions still work.
+    await ops.deleteEvent(store, admin, { id: E1 }); // 5
+    await ops.restoreEvent(store, admin, { id: E1 }); // 6
+
+    const compare = (atChange, event = E1) => ops.compareEvent(store, admin, { event, atChange });
+    const summary = (diff) => diff.map((d) => `${d.kind} ${d.status} ${d.fields}`).sort();
+
+    const start = await compare(0);
+    assert.equal(start.then.event.name, 'Event one');
+    assert.deepEqual(start.then.keys.map((k) => k.id).sort(), [K1, K2]);
+    assert.deepEqual(summary(start.diff), ['event changed name', 'key added ', 'key deleted ']);
+    assert.deepEqual(start.diff.map((d) => d.rowId).sort(), [E1, K1, added.id].sort());
+
+    const afterDelete = await compare(2);
+    assert.equal(afterDelete.then.event.name, 'First');
+    assert.deepEqual(
+        afterDelete.then.keys.map((k) => k.id),
+        [K2],
+    );
+    assert.deepEqual(summary(afterDelete.diff), ['key added ']);
+
+    // The version after the newest change of this event is the event as it is.
+    assert.deepEqual((await compare(6)).diff, []);
+    assert.deepEqual((await compare(3)).diff, []);
+
+    // Not another event's change, not one that does not exist, and not nonsense.
+    assert.equal(await refused(compare(4)), 'invalid');
+    assert.equal(await refused(compare(999)), 'invalid');
+    assert.equal(await refused(compare(-1)), 'invalid');
+    assert.equal(await refused(compare('x')), 'invalid');
+    assert.equal(await refused(ops.compareEvent(store, admin, { event: E1 })), 'invalid');
+    assert.equal(await refused(compare(0, uuid(404))), 'not_found');
+
+    // Nothing older than 30 days.
+    store.state.changes[0].at = iso(NOW - 31 * DAY);
+    assert.equal(await refused(compare(1)), 'invalid');
+});
+
+test('an event in the trash is compared and restored only once it is back', async () => {
+    const store = seed();
+    await ops.editEvent(store, admin, { id: E1, name: 'First' });
+    await ops.deleteEvent(store, admin, { id: E1 });
+
+    for (const run of [ops.compareEvent, ops.restoreEventVersion]) {
+        const error = await failure(run(store, admin, { event: E1, atChange: 0 }));
+        assert.equal(error.code, 'invalid');
+        assert.equal(error.message, 'Bring the event back first.');
+    }
+    await ops.restoreEvent(store, admin, { id: E1 });
+    const compared = await ops.compareEvent(store, admin, { event: E1, atChange: 0 });
+    assert.equal(compared.then.event.name, 'Event one');
+});
+
+// What an event holds, without who last edited a destination.
+function held(store, event) {
+    const own = (rows) =>
+        rows.filter((r) => r.event === event).sort((a, b) => a.id.localeCompare(b.id));
+    return structuredClone({
+        event: store.state.events.find((e) => e.id === event),
+        inputs: own(store.state.inputs),
+        keys: own(store.state.keys).map(({ updatedBy, updatedAction, updatedAt, ...rest }) => rest),
+        roles: own(store.state.roles),
+    });
+}
+
+// A lot has happened to Event one since the seed: a rename, an input added and one renamed,
+// destinations added, edited and deleted, a person removed and one added.
+async function messAbout(store, ctx = admin) {
+    await ops.editEvent(store, ctx, { id: E1, name: 'First' }); // 1
+    const tamil = await ops.addInput(store, ctx, { event: E1, name: 'Tamil' }); // 2
+    await ops.editInput(store, ctx, { id: HINDI, name: 'Hindi 2' }); // 3
+    await ops.reorderInputs(store, ctx, { event: E1, ids: [tamil.id, HINDI, ENGLISH] }); // 4-6
+    await ops.deleteKey(store, ctx, { id: K1 });
+    await ops.editKey(store, ctx, { ...key(K2, E1, tamil.id), name: 'Moved' });
+    await ops.addKey(store, ctx, { ...NEW_KEY, input: tamil.id });
+    await ops.deleteRole(store, ctx, { id: uuid(33) });
+    const person = { event: E1, email: 'new@example.test', type: 'viewer', input: tamil.id };
+    await ops.addRole(store, ctx, person);
+}
+
+test('restoring a version makes the event equal to it, and no other event is touched', async () => {
+    const store = seed();
+    const first = held(store, E1);
+    const other = held(store, E2);
+    await messAbout(store);
+    assert.notDeepEqual(held(store, E1), first);
+
+    const ctx = minutesLater(30);
+    const result = await ops.restoreEventVersion(store, ctx, { event: E1, atChange: 0 });
+    assert.ok(result.changed > 0);
+
+    assert.deepEqual(held(store, E1), first);
+    assert.deepEqual(held(store, E2), other);
+    // The destination that was deleted is back under its own id, and the one added is gone.
+    assert.ok(store.state.keys.some((k) => k.id === K1));
+    assert.ok(!store.state.keys.some((k) => k.name === 'New'));
+    // Whoever restored it is the one who last edited what came back.
+    const back = store.state.keys.find((k) => k.id === K1);
+    assert.deepEqual(
+        [back.updatedBy, back.updatedAction, back.updatedAt],
+        ['admin@example.test', 'added', iso(NOW + 30 * 60_000)],
+    );
+});
+
+test('restoring to the middle of the timeline keeps what was done before it', async () => {
+    const store = seed();
+    await messAbout(store);
+    // Right after the second change: renamed and with Tamil added, nothing deleted yet.
+    const there = { event: E1, atChange: 2 };
+    const { then } = await ops.compareEvent(store, admin, there);
+    await ops.restoreEventVersion(store, minutesLater(5), there);
+
+    const now = held(store, E1);
+    assert.equal(now.event.name, 'First');
+    assert.deepEqual(
+        now.inputs,
+        [...then.inputs].sort((a, b) => a.id.localeCompare(b.id)),
+    );
+    assert.deepEqual(now.keys.map((k) => k.id).sort(), [K1, K2]);
+});
+
+test('a restore is one entry that can be undone by restoring the version before it', async () => {
+    const store = seed();
+    await messAbout(store);
+    const beforeRestore = held(store, E1);
+    const lastBefore = store.state.changes.at(-1).id;
+
+    const ctx = minutesLater(30);
+    const { changed } = await ops.restoreEventVersion(store, ctx, { event: E1, atChange: 0 });
+
+    const batch = store.state.changes.filter((c) => c.batch);
+    assert.equal(batch.length, changed);
+    assert.equal(new Set(batch.map((c) => c.batch)).size, 1);
+    assert.ok(batch.every((c) => c.restoredTo === 0 && c.by === 'admin@example.test'));
+    assert.ok(batch.every((c) => c.event === E1 && c.id > lastBefore));
+    const newest = await ops.getHistory(store, admin, { event: E1, limit: changed });
+    assert.deepEqual(
+        newest.map((c) => c.batch),
+        batch.map((c) => c.batch),
+    );
+
+    // Nothing is left to restore now.
+    const latest = { event: E1, atChange: store.state.changes.at(-1).id };
+    assert.deepEqual(await ops.restoreEventVersion(store, admin, latest), { changed: 0 });
+    assert.equal(store.state.changes.length, lastBefore + changed);
+
+    // The version before the restore is the event as it was before it, so this undoes it.
+    await ops.restoreEventVersion(store, minutesLater(40), { event: E1, atChange: lastBefore });
+    assert.deepEqual(held(store, E1), beforeRestore);
+});
+
+test('a restore can swap two inputs’ names', async () => {
+    const store = seed();
+    await ops.editInput(store, admin, { id: ENGLISH, name: 'Temp' });
+    await ops.editInput(store, admin, { id: HINDI, name: 'English' });
+    await ops.editInput(store, admin, { id: ENGLISH, name: 'Hindi' });
+
+    await ops.restoreEventVersion(store, admin, { event: E1, atChange: 0 });
+    assert.deepEqual(
+        store.state.inputs.filter((i) => i.event === E1).map((i) => [i.id, i.name]),
+        [
+            [ENGLISH, 'English'],
+            [HINDI, 'Hindi'],
+        ],
+    );
+});
+
+test('a restore that would put in something invalid is refused with the reasons, and changes nothing', async () => {
+    const store = seed();
+    await ops.deleteKey(store, admin, { id: K1 });
+    await ops.editEvent(store, admin, { id: E1, name: 'First' });
+    const deleted = store.state.changes.find((c) => c.kind === 'key');
+    const here = { event: E1, atChange: 0 };
+
+    // The rules have changed since: this destination's platform is not allowed any more.
+    deleted.before.platform = 'tiktok';
+    const before = structuredClone(store.state);
+    const error = await failure(ops.restoreEventVersion(store, admin, here));
+    assert.equal(error.code, 'invalid');
+    assert.match(error.message, /cannot be restored/);
+    assert.match(error.message, /• The destination "Key 21": /);
+    assert.deepEqual(store.state, before);
+
+    // Another rule is the same: nothing is half done.
+    deleted.before.platform = 'yt';
+    deleted.before.streamKey = 'abcd-22'; // the address of K2, which is still there
+    const clash = await failure(ops.restoreEventVersion(store, admin, here));
+    assert.match(clash.message, /already added in this event/);
+    assert.equal(store.state.events.find((e) => e.id === E1).name, 'First');
+    assert.ok(!store.state.keys.some((k) => k.id === K1));
+});
+
+test('an event is not restored to before it existed', async () => {
+    const store = seed();
+    const created = await ops.addEvent(store, admin, { name: 'Event three' }); // 1
+    await ops.addInput(store, admin, { event: created.id, name: 'English' }); // 2
+    const at = (atChange) => ({ event: created.id, atChange });
+    const inputsOfNew = () => store.state.inputs.filter((i) => i.event === created.id);
+
+    const error = await failure(ops.restoreEventVersion(store, admin, at(0)));
+    assert.equal(error.code, 'conflict');
+    assert.match(error.message, /did not exist yet/);
+    assert.equal(inputsOfNew().length, 1);
+    // It can still be compared, and restored to any point after it was added.
+    assert.equal((await ops.compareEvent(store, admin, at(0))).then.inputs.length, 0);
+    assert.deepEqual(await ops.restoreEventVersion(store, admin, at(1)), { changed: 1 });
+    assert.equal(inputsOfNew().length, 0);
+});
+
+test('a restore that cannot be applied changes nothing', async () => {
+    const store = seed();
+    await ops.deleteKey(store, admin, { id: K1 });
+    const before = structuredClone(store.state);
+    store.applyEventVersion = async () => {
+        throw new Error('deadlock');
+    };
+    const log = console.error;
+    console.error = () => {};
+    try {
+        const run = ops.restoreEventVersion(store, admin, { event: E1, atChange: 0 });
+        assert.equal(await refused(run), 'conflict');
+    } finally {
+        console.error = log;
+    }
+    assert.deepEqual(store.state, before);
 });

@@ -7,13 +7,20 @@ import { hashUrl } from '../../../supabase/functions/_shared/link-hash.ts';
 import type { MemoryState } from '../../../supabase/functions/_shared/memory-store.ts';
 import { backupUrl, mainUrl } from '../../../supabase/functions/_shared/platforms.ts';
 import type { Status, StatusRow } from '../../../supabase/functions/_shared/status.ts';
-import type { KeyRow } from '../../../supabase/functions/_shared/types.ts';
+import type {
+    AdminRow,
+    ChangeRow,
+    KeyRow,
+    RoleRow,
+} from '../../../supabase/functions/_shared/types.ts';
 
 export const DEMO_EMAIL = 'demo@example.org';
 export const DEMO_HASH_SECRET = 'demo-hash-secret';
 export const DEMO_SECRET = 'demo-secret-this-is-not-a-real-key-0123456789';
 
 const MINUTE = 60_000;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
 export async function buildDemoState(
     nowMs = Date.now(),
@@ -186,21 +193,187 @@ export async function buildDemoState(
         sinceMs: nowMs - minutesAgo * MINUTE,
     });
 
+    const roles = [
+        role(winter.id, 'ravi@example.org', 'editor', hindi.id),
+        role(winter.id, 'maya@example.org', 'editor', english.id),
+        role(winter.id, 'partner@example.org', 'viewer'),
+        role(spring.id, 'maya@example.org', 'editor'),
+    ];
+    const admins: AdminRow[] = [
+        { id: uuid(), email: 'ann@example.org', addedBy: DEMO_EMAIL },
+        { id: uuid(), email: 'producer@example.org', addedBy: DEMO_EMAIL },
+    ];
+
+    // The history of the last few days, so History has something to show. Each change is
+    // consistent with the rows above: undoing them, newest first, gives the earlier versions
+    // (the event had another name, a destination that is gone was still there, and so on).
+    const ann = 'ann@example.org';
+    const ravi = 'ravi@example.org';
+    const youtubeGerman: KeyRow = {
+        id: uuid(),
+        event: winter.id,
+        name: 'YouTube German old',
+        input: german.id,
+        platform: 'yt',
+        streamKey: 'olde-aaaa-bbbb-cccc-dddd',
+        backupPlatform: '',
+        backupStreamKey: '',
+        link: '',
+        remarks: 'Replaced by the partner stream',
+        ...edited(ann, 'added', 6 * 24 * 60),
+    };
+    const oldViewer: RoleRow = {
+        id: uuid(),
+        event: winter.id,
+        email: 'old.vendor@example.org',
+        type: 'viewer',
+        input: null,
+    };
+    const facebook = byName(winter.id, 'Facebook English');
+    const srt = byName(winter.id, 'Channel 3 SRT Hindi');
+    type Entry = Pick<ChangeRow, 'by' | 'kind' | 'action' | 'before' | 'after' | 'rowId'> & {
+        ago: number;
+        event: string | null;
+    };
+    const entries: Entry[] = [
+        {
+            ago: 2 * DAY + 2 * HOUR,
+            by: DEMO_EMAIL,
+            event: null,
+            kind: 'admin',
+            action: 'added',
+            rowId: admins[1].id,
+            before: null,
+            after: admins[1],
+        },
+        // "YouTube German old" was there before the history began, so it is in the start of
+        // it and was deleted since.
+        {
+            ago: DAY + 6 * HOUR,
+            by: ann,
+            event: winter.id,
+            kind: 'role',
+            action: 'added',
+            rowId: oldViewer.id,
+            before: null,
+            after: oldViewer,
+        },
+        {
+            ago: DAY + 3 * HOUR,
+            by: ann,
+            event: winter.id,
+            kind: 'event',
+            action: 'edited',
+            rowId: winter.id,
+            before: { id: winter.id, name: 'Winter Retreat draft' },
+            after: { ...winter },
+        },
+        {
+            ago: 20 * HOUR,
+            by: ann,
+            event: winter.id,
+            kind: 'role',
+            action: 'added',
+            rowId: roles[1].id,
+            before: null,
+            after: roles[1],
+        },
+        {
+            ago: 3 * HOUR,
+            by: ann,
+            event: winter.id,
+            kind: 'role',
+            action: 'deleted',
+            rowId: oldViewer.id,
+            before: oldViewer,
+            after: null,
+        },
+        {
+            ago: 2 * HOUR,
+            by: ravi,
+            event: winter.id,
+            kind: 'key',
+            action: 'deleted',
+            rowId: youtubeGerman.id,
+            before: youtubeGerman,
+            after: null,
+        },
+        {
+            ago: 45 * MINUTE,
+            by: ravi,
+            event: winter.id,
+            kind: 'key',
+            action: 'edited',
+            rowId: facebook.id,
+            before: {
+                ...facebook,
+                backupStreamKey: 'FB-1234567890-1-OldBackup',
+                remarks: '',
+                ...edited(ann, 'added', 3 * 24 * 60),
+            },
+            after: facebook,
+        },
+        // The inputs were reordered in one go, so both moves share a moment.
+        {
+            ago: 20 * MINUTE,
+            by: ravi,
+            event: winter.id,
+            kind: 'input',
+            action: 'edited',
+            rowId: tamil.id,
+            before: { ...tamil, position: 4 },
+            after: tamil,
+        },
+        {
+            ago: 20 * MINUTE,
+            by: ravi,
+            event: winter.id,
+            kind: 'input',
+            action: 'edited',
+            rowId: german.id,
+            before: { ...german, position: 3 },
+            after: german,
+        },
+        {
+            ago: 5 * MINUTE,
+            by: ravi,
+            event: winter.id,
+            kind: 'key',
+            action: 'edited',
+            rowId: srt.id,
+            before: {
+                ...srt,
+                streamKey: srt.streamKey.replace('streamid=ch3', 'streamid=ch3-old'),
+                remarks: '',
+                ...edited(ann, 'added', 3 * 24 * 60),
+            },
+            after: srt,
+        },
+    ];
+    const changes: ChangeRow[] = entries
+        .sort((a, b) => b.ago - a.ago)
+        .map((entry, index) => ({
+            id: index + 1,
+            at: new Date(nowMs - entry.ago).toISOString(),
+            by: entry.by,
+            event: entry.event,
+            kind: entry.kind,
+            rowId: entry.rowId,
+            action: entry.action,
+            before: entry.before,
+            after: entry.after,
+            batch: null,
+            restoredTo: null,
+        }));
+
     return {
         events: [winter, spring],
         inputs: [english, hindi, tamil, german, springEnglish, springHindi],
-        roles: [
-            role(winter.id, 'ravi@example.org', 'editor', hindi.id),
-            role(winter.id, 'maya@example.org', 'editor', english.id),
-            role(winter.id, 'partner@example.org', 'viewer'),
-            role(spring.id, 'maya@example.org', 'editor'),
-        ],
+        roles,
         keys,
-        admins: [
-            { id: uuid(), email: 'ann@example.org', addedBy: DEMO_EMAIL },
-            { id: uuid(), email: 'producer@example.org', addedBy: DEMO_EMAIL },
-        ],
+        admins,
         trash: [],
+        changes,
         status: {
             rows,
             pipelines: [

@@ -617,21 +617,25 @@
         </form>
       </dialog>
 
-      <dialog id="trash-modal" class="modal">
-        <div class="modal-box flex max-h-[calc(100dvh-5rem)] max-w-160 flex-col overflow-hidden">
-          <div class="mb-4 flex items-start justify-between gap-3">
+      <dialog id="history-modal" class="modal">
+        <div class="modal-box flex max-h-[calc(100dvh-5rem)] max-w-180 flex-col overflow-hidden">
+          <div class="mb-3 flex items-start justify-between gap-3">
             <div class="min-w-0">
-              <h3 class="text-lg font-semibold">Deleted events</h3>
-              <p id="trash-note" class="text-ink-subtle text-sm"></p>
+              <h3 class="text-lg font-semibold">History</h3>
+              <p id="history-note" class="text-ink-subtle text-sm"></p>
             </div>
             <form method="dialog">
-              <button class="btn btn-ghost btn-square btn-sm" title="Close" aria-label="Close deleted events">
+              <button class="btn btn-ghost btn-square btn-sm" title="Close" aria-label="Close history">
                 <span data-icon="x" class="h-5 w-5"></span>
               </button>
             </form>
           </div>
+          <select id="history-filter" class="select mb-3 w-full" aria-label="Show changes of"></select>
           <div class="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 py-1">
-            <ul class="trash-list" id="trash-rows"></ul>
+            <div id="history-list" aria-live="polite"></div>
+            <div class="mt-3 text-center">
+              <button type="button" id="history-older" class="btn btn-sm hidden" data-action="history-older">Load older</button>
+            </div>
           </div>
         </div>
         <form method="dialog" class="modal-backdrop">
@@ -675,11 +679,20 @@
       </div>
 
       <div class="min-h-0 flex-1 overflow-y-auto px-3" id="key-table">
-        <div class="event-layout">
+        <div id="compare-view" class="compare hidden" aria-label="Version history of this event"></div>
+        <div class="event-layout" id="event-layout">
           <aside class="event-side">
             <section class="event-card" aria-label="This event">
               <div class="event-card-head">
                 <h2 id="event-card-name" class="event-card-name"></h2>
+                <button
+                  title="History: see what changed in this event, and go back to an earlier version"
+                  aria-label="History of this event"
+                  class="btn btn-ghost btn-square btn-xs text-accent hidden"
+                  id="history-event-btn"
+                  data-action="open-compare">
+                  <span data-icon="history" class="h-4 w-4"></span>
+                </button>
                 <button
                   title="Rename this event"
                   aria-label="Edit event"
@@ -828,13 +841,13 @@
               </button>
               <button
                 type="button"
-                id="trash-btn"
-                title="Deleted events"
-                aria-label="Deleted events"
+                id="history-btn"
+                title="History"
+                aria-label="History"
                 class="btn btn-ghost btn-square btn-xs text-accent"
-                data-action="show-trash"
+                data-action="show-history"
                 hidden>
-                <span data-icon="trash" class="h-4 w-4"></span>
+                <span data-icon="history" class="h-4 w-4"></span>
               </button>
               <button
                 type="button"

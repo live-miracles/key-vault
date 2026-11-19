@@ -192,6 +192,159 @@ try {
     assert.equal(psql(`select count(*) from public.roles`), '0');
     assert.equal(psql(`select string_agg(id::text, ',') from public.inputs`), otherEnglish.id);
 
+    // ---- history ----
+    // A change is a row with who, when, and the row before and after. It has no foreign key:
+    // the history of an event outlives its row.
+    const ghost = '00000000-0000-4000-8000-0000000000ff';
+    psql(
+        `insert into public.changes (by, event_id, kind, row_id, action, after)
+         values ('a@example.test', '${ghost}', 'key', '${ghost}', 'added', '{"name": "Main"}')`,
+    );
+    assert.equal(psql(`select id from public.changes`), '1');
+    for (const [kind, action] of [
+        ['folder', 'added'],
+        ['key', 'renamed'],
+    ]) {
+        psql(
+            `insert into public.changes (by, kind, row_id, action) values ('a', '${kind}', '${ghost}', '${action}')`,
+            { fail: true },
+        );
+    }
+    psql(`delete from public.changes where at < now() - interval '30 days'`);
+    assert.equal(psql(`select count(*) from public.changes`), '1');
+    psql(`delete from public.changes`);
+
+    // Turning an event into an earlier version, and recording it, is one transaction.
+    const historic = newEvent('Event four');
+    const input = (name) =>
+        JSON.parse(psql(`select public.create_input('${historic}', '${name}')`));
+    const a = input('English');
+    const b = input('Hindi');
+    const c = input('Tamil');
+    const keyId = psql(
+        `with k as (insert into public.keys (event_id, name, input_id, platform, stream_key)
+          values ('${historic}', 'Main', '${a.id}', 'yt', 'abcd-1234') returning id) select id from k`,
+    );
+    const roleId = psql(
+        `with r as (insert into public.roles (event_id, email, type, input_id)
+          values ('${historic}', 'v@example.test', 'viewer', '${c.id}') returning id) select id from r`,
+    );
+    const apply = (steps, changes = []) =>
+        `select public.apply_event_version('${historic}',
+            '${JSON.stringify(steps)}'::jsonb, '${JSON.stringify(changes)}'::jsonb)`;
+    const none = {
+        eventName: null,
+        upsertInputs: [],
+        deleteInputs: [],
+        upsertKeys: [],
+        deleteKeys: [],
+        upsertRoles: [],
+        deleteRoles: [],
+    };
+    const stamp = { updatedBy: 'a@example.test', updatedAction: 'edited', updatedAt: '' };
+    const recorded = {
+        at: '2026-11-19T10:00:00.000Z',
+        by: 'a@example.test',
+        event: historic,
+        kind: 'input',
+        rowId: a.id,
+        action: 'edited',
+        before: { id: a.id, name: 'English' },
+        after: { id: a.id, name: 'Hindi' },
+        batch: '00000000-0000-4000-8000-0000000000aa',
+        restoredTo: 3,
+    };
+    const state = () =>
+        psql(`
+            select (select name from public.events where id = '${historic}')
+              || '|' || (select string_agg(name || sort_order, ',' order by sort_order) from public.inputs where event_id = '${historic}')
+              || '|' || (select string_agg(name, ',') from public.keys where event_id = '${historic}')
+              || '|' || (select count(*) from public.roles where event_id = '${historic}')
+              || '|' || (select count(*) from public.changes)`);
+    assert.equal(state(), 'Event four|English1,Hindi2,Tamil3|Main|1|0');
+
+    // Two inputs swap names, and the unique index on (event, name) does not stop it. A new
+    // input, a changed destination and the event's name come with it; the person and the input
+    // that were added since go away; and the change is recorded in the same step.
+    const added = JSON.parse(psql(`select public.create_input('${historic}', 'Added since')`));
+    const swap = {
+        ...none,
+        eventName: 'Event five',
+        upsertInputs: [
+            { id: a.id, event: historic, name: 'Hindi', position: 2 },
+            { id: b.id, event: historic, name: 'English', position: 1 },
+        ],
+        deleteInputs: [added.id],
+        upsertKeys: [
+            {
+                id: keyId,
+                event: historic,
+                name: 'Renamed',
+                input: b.id,
+                platform: 'yt',
+                streamKey: 'abcd-5678',
+                backupPlatform: '',
+                backupStreamKey: '',
+                link: '',
+                remarks: '',
+                ...stamp,
+            },
+        ],
+        deleteRoles: [roleId],
+    };
+    psql(apply(swap, [recorded]));
+    assert.equal(state(), 'Event five|English1,Hindi2,Tamil3|Renamed|0|1');
+    // The same names as before, on the other inputs: they really swapped.
+    assert.equal(psql(`select name from public.inputs where id = '${a.id}'`), 'Hindi');
+    assert.equal(psql(`select name from public.inputs where id = '${b.id}'`), 'English');
+    assert.equal(psql(`select id from public.keys where name = 'Renamed'`), keyId);
+    assert.equal(
+        psql(`select updated_by || '|' || updated_action from public.keys`),
+        'a@example.test|edited',
+    );
+    assert.equal(
+        psql(
+            `select by || '|' || event_id || '|' || kind || '|' || action || '|' || (after ->> 'name') || '|' || batch || '|' || restored_to from public.changes`,
+        ),
+        `a@example.test|${historic}|input|edited|Hindi|00000000-0000-4000-8000-0000000000aa|3`,
+    );
+
+    // A step that cannot be applied undoes all the others, the record included.
+    const missing = '00000000-0000-4000-8000-0000000000ee';
+    const broken = {
+        ...none,
+        eventName: 'Never',
+        upsertInputs: [{ id: a.id, event: historic, name: 'Elsewhere', position: 9 }],
+        deleteKeys: [keyId],
+        upsertRoles: [
+            {
+                id: roleId,
+                event: historic,
+                email: 'v@example.test',
+                type: 'viewer',
+                input: missing,
+            },
+        ],
+    };
+    psql(apply(broken, [recorded]), { fail: true });
+    assert.equal(state(), 'Event five|English1,Hindi2,Tamil3|Renamed|0|1');
+    // A row of another event is not touched, even under its id.
+    const foreign = psql(
+        `with k as (insert into public.keys (event_id, name, input_id, platform, stream_key)
+          values ('${bare.event.id}', 'Theirs', '${otherEnglish.id}', 'yt', 'abcd-9999') returning id) select id from k`,
+    );
+    psql(
+        apply({ ...none, upsertKeys: [{ ...swap.upsertKeys[0], id: foreign, name: 'Hijacked' }] }),
+    );
+    assert.equal(psql(`select name from public.keys where id = '${foreign}'`), 'Theirs');
+    psql(
+        `select public.apply_event_version(gen_random_uuid(), '${JSON.stringify(none)}'::jsonb, '[]'::jsonb)`,
+        {
+            fail: true,
+        },
+    );
+    psql(`delete from public.changes; delete from public.events where id = '${historic}'`);
+
     // ---- heartbeat ----
     const hash = (c) => c.repeat(32);
     const beat = (outputs) =>
@@ -267,7 +420,7 @@ try {
     assert.equal(
         psql(
             `select bool_and(relrowsecurity) from pg_class where relnamespace = 'public'::regnamespace
-             and relname in ('events','inputs','roles','keys','ingest_instances','stream_outputs','stream_inputs')`,
+             and relname in ('events','inputs','roles','keys','changes','ingest_instances','stream_outputs','stream_inputs')`,
         ),
         't',
     );

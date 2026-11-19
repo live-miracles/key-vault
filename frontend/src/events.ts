@@ -50,6 +50,7 @@ export function renderEventBar(eventId: string) {
     show('#edit-role-btn', canManageRoles);
     show('#delete-role-btn', canManageRoles);
     show('#add-key-btn', Boolean(event?.can.addKeys));
+    show('#history-event-btn', data.canSeeHistory && Boolean(event) && !isPending);
 
     $('.tabs').replaceChildren(
         ...data.events.map((e) => {
@@ -101,7 +102,7 @@ export async function saveEventForm(evt: Event) {
 export async function deleteEventBtn() {
     const event = app.data.events.find((e) => e.id === route.event());
     if (!event) return;
-    const kept = `It stays in the trash for ${TRASH_DAYS} days, and an admin can restore it from there.`;
+    const kept = `It is kept for ${TRASH_DAYS} days, and an admin can bring it back from History.`;
     if (!(await confirmAction(`Delete the event "${event.name}"? ${kept}`))) return;
 
     await actions.deleteEvent(event.id, (next) => selectEvent(next));

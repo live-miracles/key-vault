@@ -6,7 +6,7 @@
 
 import type { Store } from './operations.ts';
 import type { InstanceInfo, PipelineRow, StatusRow } from './status.ts';
-import type { Data, TrashRow } from './types.ts';
+import type { ChangeRow, Data, TrashRow } from './types.ts';
 
 // A deleted event with everything it holds, set aside whole until it is restored or removed.
 export interface TrashedBundle extends Omit<Data, 'events' | 'admins'> {
@@ -17,6 +17,8 @@ export interface TrashedBundle extends Omit<Data, 'events' | 'admins'> {
 
 export interface MemoryState extends Data {
     trash: TrashedBundle[];
+    // The history of changes, oldest first.
+    changes: ChangeRow[];
     status: { rows: StatusRow[]; pipelines: PipelineRow[]; instances: InstanceInfo[] };
 }
 
@@ -32,10 +34,13 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
         keys: [],
         admins: [],
         trash: [],
+        changes: [],
         status: { rows: [], pipelines: [], instances: [] },
         ...structuredClone(initial),
     };
     const nextId = () => crypto.randomUUID();
+    // Like an identity column: ever rising, never reused.
+    let lastChangeId = Math.max(0, ...state.changes.map((c) => c.id));
     const find = <T extends { id: string }>(list: T[], id: string): T => {
         const item = list.find((entry) => entry.id === id);
         if (!item) throw new Error('not found');
@@ -154,6 +159,87 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
         },
         async deleteKey(id) {
             state.keys = state.keys.filter((k) => k.id !== id);
+        },
+
+        async recordChanges(changes, at) {
+            for (const change of changes) {
+                state.changes.push({ ...structuredClone(change), id: ++lastChangeId, at });
+            }
+        },
+        async loadChanges({ event, kind, before, after, limit }) {
+            const found = state.changes
+                .filter(
+                    (c) =>
+                        (event === undefined || c.event === event) &&
+                        (kind === undefined || c.kind === kind) &&
+                        (before === undefined || c.id < before) &&
+                        (after === undefined || c.id > after),
+                )
+                .sort((a, b) => b.id - a.id);
+            return structuredClone(limit === undefined ? found : found.slice(0, limit));
+        },
+        async purgeChanges(before) {
+            state.changes = state.changes.filter((c) => Date.parse(c.at) >= Date.parse(before));
+        },
+        // The steps run in the order the SQL function runs them, on a copy that replaces the
+        // real rows only when all of them worked, and with the guarantees Postgres gives: a
+        // destination or role needs its input, an input in use cannot be deleted, and an event
+        // cannot have two inputs of one name.
+        async applyEventVersion(event, steps, changes, at) {
+            const draft = structuredClone({
+                events: state.events,
+                inputs: state.inputs,
+                keys: state.keys,
+                roles: state.roles,
+            });
+            const row = find(draft.events, event);
+            const upsert = <T extends { id: string }>(list: T[], item: T): T[] => {
+                const index = list.findIndex((entry) => entry.id === item.id);
+                if (index === -1) return [...list, structuredClone(item)];
+                if ((list[index] as { event?: string }).event !== event)
+                    throw new Error('other event');
+                return list.map((entry, i) => (i === index ? structuredClone(item) : entry));
+            };
+            const without = <T extends { id: string }>(list: T[], ids: string[]): T[] =>
+                list.filter((entry) => !ids.includes(entry.id));
+
+            for (const input of steps.upsertInputs) {
+                draft.inputs = upsert(draft.inputs, { ...input, name: `restoring ${input.id}` });
+            }
+            for (const key of steps.upsertKeys) draft.keys = upsert(draft.keys, key);
+            for (const role of steps.upsertRoles) draft.roles = upsert(draft.roles, role);
+            draft.keys = without(draft.keys, steps.deleteKeys);
+            draft.roles = without(draft.roles, steps.deleteRoles);
+            draft.inputs = without(draft.inputs, steps.deleteInputs);
+            for (const input of steps.upsertInputs) {
+                Object.assign(find(draft.inputs, input.id), {
+                    name: input.name,
+                    position: input.position,
+                });
+            }
+            if (steps.eventName !== null) row.name = steps.eventName;
+
+            const exists = (id: string | null) =>
+                id === null || draft.inputs.some((i) => i.id === id);
+            if (
+                !draft.keys.every((k) => exists(k.input)) ||
+                !draft.roles.every((r) => exists(r.input))
+            ) {
+                throw new Error('foreign key');
+            }
+            const names = draft.inputs
+                .filter((i) => i.event === event)
+                .map((i) => i.name.toLowerCase());
+            if (new Set(names).size !== names.length) throw new Error('duplicate input name');
+
+            draft.inputs.sort((a, b) => a.position - b.position);
+            state.events = draft.events;
+            state.inputs = draft.inputs;
+            state.keys = draft.keys;
+            state.roles = draft.roles;
+            for (const change of changes) {
+                state.changes.push({ ...structuredClone(change), id: ++lastChangeId, at });
+            }
         },
     };
 }

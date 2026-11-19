@@ -35,6 +35,31 @@ export function formatWhen(iso: string, nowMs = Date.now()): string {
     });
 }
 
+// "Today", "Yesterday", else "Tue 18 Nov" (with the year when it is not this one), by the
+// calendar day where the person is. '' for a time that is not one.
+export function formatDay(iso: string, nowMs = Date.now()): string {
+    const date = new Date(iso);
+    if (!iso || Number.isNaN(date.getTime())) return '';
+    const midnight = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const days = Math.round((midnight(new Date(nowMs)) - midnight(date)) / (24 * 60 * 60 * 1000));
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    const sameYear = date.getFullYear() === new Date(nowMs).getFullYear();
+    return date.toLocaleDateString(undefined, {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        ...(sameYear ? {} : { year: 'numeric' }),
+    });
+}
+
+// "3:42 pm".
+export function formatClock(iso: string): string {
+    const date = new Date(iso);
+    if (!iso || Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 export interface BunryuState {
     state: 'unknown' | 'online' | 'never' | 'offline';
     text: string;

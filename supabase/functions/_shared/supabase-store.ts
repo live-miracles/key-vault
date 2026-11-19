@@ -1,7 +1,17 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Store } from './operations.ts';
 import type { PipelineRow, StatusRow } from './status.ts';
-import type { AdminRow, Data, EventRow, InputRow, KeyRow, RoleRow, TrashRow } from './types.ts';
+import type {
+    AdminRow,
+    ChangeRow,
+    Data,
+    EventRow,
+    InputRow,
+    KeyRow,
+    NewChange,
+    RoleRow,
+    TrashRow,
+} from './types.ts';
 
 // The Store over Postgres, used by the `api` Edge Function with the service role. The
 // operations have already checked who may do what, so this only reads and writes.
@@ -67,6 +77,23 @@ const toKey = (k: any): KeyRow => ({
     updatedAction: k.updated_action,
     updatedAt: k.updated_by ? new Date(k.updated_at).toISOString() : '',
 });
+
+const toChange = (c: any): ChangeRow => ({
+    id: Number(c.id),
+    at: new Date(c.at).toISOString(),
+    by: c.by,
+    event: c.event_id,
+    kind: c.kind,
+    rowId: c.row_id,
+    action: c.action,
+    before: c.before,
+    after: c.after,
+    batch: c.batch,
+    restoredTo: c.restored_to === null ? null : Number(c.restored_to),
+});
+
+const CHANGE_COLUMNS =
+    'id, at, by, event_id, kind, row_id, action, before, after, batch, restored_to';
 
 const KEY_COLUMNS =
     'id, event_id, name, input_id, platform, stream_key, backup_platform, backup_stream_key, link, remarks, created_at, updated_by, updated_action, updated_at';
@@ -345,6 +372,58 @@ export function createSupabaseStore(db: SupabaseClient): Store {
         },
         async deleteKey(id) {
             check(await db.from('keys').delete().eq('id', id).select('id').single());
+        },
+
+        async recordChanges(changes, at) {
+            if (changes.length === 0) return;
+            check(
+                await db.from('changes').insert(
+                    changes.map((c) => ({
+                        at,
+                        by: c.by,
+                        event_id: c.event,
+                        kind: c.kind,
+                        row_id: c.rowId,
+                        action: c.action,
+                        before: c.before,
+                        after: c.after,
+                        batch: c.batch,
+                        restored_to: c.restoredTo,
+                    })),
+                ),
+            );
+        },
+        async loadChanges({ event, kind, before, after, limit }) {
+            const query = (from: number, to: number) => {
+                let q = db.from('changes').select(CHANGE_COLUMNS);
+                if (event !== undefined) q = q.eq('event_id', event);
+                if (kind !== undefined) q = q.eq('kind', kind);
+                if (before !== undefined) q = q.lt('id', before);
+                if (after !== undefined) q = q.gt('id', after);
+                return q.order('id', { ascending: false }).range(from, to);
+            };
+            if (limit === undefined) return (await fetchAll(query)).map(toChange);
+            // One page, which PostgREST would cut at its own maximum, so ask for no more.
+            const rows: any[] = [];
+            while (rows.length < limit) {
+                const want = Math.min(PAGE_SIZE, limit - rows.length);
+                const page = check(await query(rows.length, rows.length + want - 1)) ?? [];
+                rows.push(...page);
+                if (page.length < want) break;
+            }
+            return rows.map(toChange);
+        },
+        async purgeChanges(before) {
+            check(await db.from('changes').delete().lt('at', before));
+        },
+        async applyEventVersion(event, steps, changes: NewChange[], at) {
+            check(
+                await db.rpc('apply_event_version', {
+                    p_event: event,
+                    p_steps: steps,
+                    p_changes: changes.map((c) => ({ ...c, at })),
+                }),
+            );
         },
     };
 }

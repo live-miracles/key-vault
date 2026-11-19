@@ -66,7 +66,24 @@ import {
 import { registerServiceWorker } from './pwa.ts';
 import { onRouteChange, route } from './route.ts';
 import { initTheme, toggleTheme } from './theme.ts';
-import { renderTrashButton, restoreEventById, showTrashModal } from './trash.ts';
+import {
+    closeCompare,
+    loadOlderVersions,
+    openCompare,
+    restoreVersion,
+    selectVersion,
+    syncCompare,
+    toggleDiffOnly,
+    toggleReveal,
+} from './compare.ts';
+import {
+    loadOlderHistory,
+    openCompareFromHistory,
+    renderHistoryButton,
+    restoreEventById,
+    setHistoryFilter,
+    showHistoryModal,
+} from './history.ts';
 
 // Set at build time: the demo runs the server's operations in the page; the real site calls the
 // Edge Function after Google sign-in.
@@ -87,11 +104,12 @@ function currentEventId(): string {
 
 function renderAll() {
     const eventId = currentEventId();
+    syncCompare(eventId);
     renderEventBar(eventId);
     renderRoleTable();
     renderDestinations(eventId);
     renderBunryuStatus();
-    renderTrashButton();
+    renderHistoryButton();
     renderAdminsButton();
     $('#user-email').innerText = app.data.userEmail;
 }
@@ -129,8 +147,20 @@ function handleClick(event: MouseEvent) {
         'show-admins': () => showAdminsModal(),
         'add-admin': () => addAdminFromForm(),
         'remove-admin': () => removeAdminById(adminId),
-        'show-trash': () => showTrashModal(),
+        'show-history': () => showHistoryModal(),
+        'history-older': () => loadOlderHistory(),
         'restore-event': () => restoreEventById(trashId),
+        // From a line of the History dialog (which names the event), or the event's own button.
+        'open-compare': () =>
+            target.dataset.eventId
+                ? openCompareFromHistory(target.dataset.eventId, target.dataset.change)
+                : openCompare(currentEventId()),
+        'compare-select': () => selectVersion(target.dataset.change),
+        'compare-older': () => loadOlderVersions(),
+        'compare-restore': () => restoreVersion(),
+        'compare-close': () => closeCompare(),
+        'compare-diff-only': () => toggleDiffOnly(),
+        'compare-reveal': () => toggleReveal(target.dataset.reveal),
         'add-input': () => addInputBtn(),
         'edit-input-by-id': () => editInputById(inputId),
         'delete-input-by-id': () => deleteInputById(inputId),
@@ -201,6 +231,9 @@ async function start() {
         if (target) renderRoleInputForRow(target as HTMLSelectElement);
     });
     $('#share-modal').addEventListener('close', resetRoleInlineEdit);
+    $<HTMLSelectElement>('#history-filter').addEventListener('change', (event) =>
+        setHistoryFilter((event.target as HTMLSelectElement).value),
+    );
 
     // Enter in the admin's email box adds them, as it would in a form.
     $('#admin-email-input').addEventListener('keydown', (event) => {

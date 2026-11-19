@@ -3,6 +3,8 @@ import './platforms.test.mjs';
 import './link-hash.test.mjs';
 import './secrets.test.mjs';
 import './status.test.mjs';
+import './history.test.mjs';
+import './history-format.test.mjs';
 import './operations.test.mjs';
 import './api-client.test.mjs';
 import './status-wording.test.mjs';

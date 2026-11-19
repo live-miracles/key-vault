@@ -1,3 +1,10 @@
+# Repository Instructions
+
+## Production link stays private
+
+- Never add the production URL of this app (our own Vercel deployment) anywhere on GitHub: not in the README, docs, issues, pull requests, commit messages or the repository's "Website" (homepage) setting. It is the media team's private link; anyone who clones this repository deploys their own and must not be pointed at ours. Use placeholders such as `https://your-app.vercel.app`.
+- Do not add a production link to the live-miracles.github.io project directory either.
+
 ## Agent skills
 
 ### Issue tracker

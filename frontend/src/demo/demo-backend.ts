@@ -36,6 +36,7 @@ export async function createDemoBackend(): Promise<Backend & { store: MemoryStor
     const backend = backendFromOperations(store, () => ({
         email: DEMO_EMAIL,
         isAppOwner: true,
+        ownerEmails: [DEMO_EMAIL],
         hashSecret: DEMO_HASH_SECRET,
         secret: DEMO_SECRET,
         ingestUrl: 'https://demo.example.org/functions/v1/ingest',

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { Store } from './operations.ts';
 import type { PipelineRow, StatusRow } from './status.ts';
-import type { Data, EventRow, InputRow, KeyRow, RoleRow } from './types.ts';
+import type { AdminRow, Data, EventRow, InputRow, KeyRow, RoleRow, TrashRow } from './types.ts';
 
 // The Store over Postgres, used by the `api` Edge Function with the service role. The
 // operations have already checked who may do what, so this only reads and writes.
@@ -37,6 +37,12 @@ const toRole = (r: any): RoleRow => ({
     email: String(r.email).toLowerCase(),
     type: r.type,
     input: r.input_id,
+});
+
+const toAdmin = (a: any): AdminRow => ({
+    id: a.id,
+    email: String(a.email).toLowerCase(),
+    addedBy: a.added_by,
 });
 
 const toInput = (i: any): InputRow => ({
@@ -84,9 +90,13 @@ function keyColumns(key: Omit<KeyRow, 'id' | 'event'>) {
 export function createSupabaseStore(db: SupabaseClient): Store {
     return {
         async load(): Promise<Data> {
-            const [events, roles, inputs, keys] = await Promise.all([
+            const [events, roles, inputs, keys, admins] = await Promise.all([
                 fetchAll((from, to) =>
-                    db.from('events').select('id, name, created_at').order('id').range(from, to),
+                    db
+                        .from('events')
+                        .select('id, name, created_at, deleted_at')
+                        .order('id')
+                        .range(from, to),
                 ),
                 fetchAll((from, to) =>
                     db
@@ -105,16 +115,34 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                 fetchAll((from, to) =>
                     db.from('keys').select(KEY_COLUMNS).order('id').range(from, to),
                 ),
+                fetchAll((from, to) =>
+                    db
+                        .from('app_admins')
+                        .select('id, email, added_by, created_at')
+                        .order('id')
+                        .range(from, to),
+                ),
             ]);
+            // An event in the trash is kept whole, but nothing of it is loaded.
+            const live = events.filter((e) => !e.deleted_at);
+            const liveIds = new Set(live.map((e) => e.id));
             return {
-                events: [...events]
+                events: [...live]
                     .sort(byCreated)
                     .map((e): EventRow => ({ id: e.id, name: e.name })),
-                roles: [...roles].sort(byCreated).map(toRole),
+                roles: roles
+                    .filter((r) => liveIds.has(r.event_id))
+                    .sort(byCreated)
+                    .map(toRole),
                 inputs: inputs
+                    .filter((i) => liveIds.has(i.event_id))
                     .map(toInput)
                     .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id)),
-                keys: [...keys].sort(byCreated).map(toKey),
+                keys: keys
+                    .filter((k) => liveIds.has(k.event_id))
+                    .sort(byCreated)
+                    .map(toKey),
+                admins: [...admins].sort(byCreated).map(toAdmin),
             };
         },
 
@@ -170,17 +198,92 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             };
         },
 
-        async createEvent(name, adminEmail) {
-            const created = check(
-                await db.rpc('create_event', { p_name: name, p_admin_email: adminEmail }),
-            ) as { event: EventRow; adminRole: RoleRow | null };
-            return created;
+        async createEvent(name) {
+            const row = check(await db.from('events').insert({ name }).select('id, name').single());
+            return { id: row.id, name: row.name } as EventRow;
         },
         async updateEvent(id, name) {
             check(await db.from('events').update({ name }).eq('id', id).select('id').single());
         },
-        async deleteEvent(id) {
-            check(await db.from('events').delete().eq('id', id).select('id').single());
+        async trashEvent(id, deletedBy, deletedAt) {
+            check(
+                await db
+                    .from('events')
+                    .update({ deleted_at: deletedAt, deleted_by: deletedBy })
+                    .eq('id', id)
+                    .is('deleted_at', null)
+                    .select('id')
+                    .single(),
+            );
+        },
+        async restoreEvent(id) {
+            check(
+                await db
+                    .from('events')
+                    .update({ deleted_at: null, deleted_by: '' })
+                    .eq('id', id)
+                    .not('deleted_at', 'is', null)
+                    .select('id')
+                    .single(),
+            );
+        },
+        async loadTrash() {
+            const events = await fetchAll((from, to) =>
+                db
+                    .from('events')
+                    .select('id, name, deleted_at, deleted_by')
+                    .not('deleted_at', 'is', null)
+                    .order('id')
+                    .range(from, to),
+            );
+            if (events.length === 0) return [];
+            const ids = events.map((e) => e.id);
+            const [keys, inputs] = await Promise.all([
+                fetchAll((from, to) =>
+                    db
+                        .from('keys')
+                        .select('id, event_id')
+                        .in('event_id', ids)
+                        .order('id')
+                        .range(from, to),
+                ),
+                fetchAll((from, to) =>
+                    db
+                        .from('inputs')
+                        .select('id, event_id')
+                        .in('event_id', ids)
+                        .order('id')
+                        .range(from, to),
+                ),
+            ]);
+            const count = (rows: { event_id: string }[], id: string) =>
+                rows.filter((r) => r.event_id === id).length;
+            return events.map((e): TrashRow => ({
+                id: e.id,
+                name: e.name,
+                deletedAt: new Date(e.deleted_at).toISOString(),
+                deletedBy: e.deleted_by,
+                destinations: count(keys, e.id),
+                inputs: count(inputs, e.id),
+            }));
+        },
+        // The foreign keys remove each event's roles, inputs and destinations with it.
+        async purgeTrash(before) {
+            check(await db.from('events').delete().lt('deleted_at', before));
+        },
+
+        async createAdmin(email, addedBy) {
+            const row = check(
+                await db
+                    .from('app_admins')
+                    .insert({ email, added_by: addedBy })
+                    .select('id, email, added_by')
+                    .single(),
+            );
+            return toAdmin(row);
+        },
+        async deleteAdmin(id) {
+            check(await db.from('app_admins').delete().eq('id', id).select('id').single());
         },
 
         async createRole(role) {

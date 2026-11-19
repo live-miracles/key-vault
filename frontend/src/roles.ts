@@ -12,7 +12,7 @@ import type { RoleItem } from './model.ts';
 import { route } from './route.ts';
 
 // Highest first, as the role list reads and as the choices are offered.
-const ROLE_ORDER: RoleType[] = ['owner', 'admin', 'editor', 'viewer'];
+const ROLE_ORDER: RoleType[] = ['editor', 'viewer'];
 
 // The role being edited: null is none, '' is the new one being added.
 let selectedRoleId: string | null = null;
@@ -21,7 +21,7 @@ function eventId(): string {
     return route.event() ?? '';
 }
 
-// Owners first, then admins, editors and viewers; within a type, those who see every input
+// Editors first, then viewers; within a type, those who see every input
 // before those limited to one, in the order of the inputs, then by email.
 export function compareRoles(
     a: RoleItem,
@@ -43,8 +43,6 @@ export function compareRoles(
 const ROLE_HINTS: Record<RoleType, string> = {
     viewer: 'Sees destinations and their status. Can be limited to one input.',
     editor: 'Adds, edits and deletes destinations. Can be limited to one input.',
-    admin: 'Everything an editor can, and creates events, renames or deletes its events, and manages inputs. Adds, changes and removes editors, viewers and admins. Sees every input.',
-    owner: 'Everything, in every event, including adding, changing and removing owners.',
 };
 
 function roleHint(type: string): string {
@@ -68,14 +66,8 @@ function roleTypeOptions(selectedType: string): string {
         .join('');
 }
 
-// Admins and owners see every input, so there is nothing to choose and the field is hidden.
-function seesEveryInput(roleType: string): boolean {
-    return roleType === 'admin' || roleType === 'owner';
-}
-
-function roleInputOptions(selectedInput: string | null, roleType: string): string {
-    const inputs = seesEveryInput(roleType) ? [] : inputsOf(app.data, eventId());
-    return [{ id: '', name: 'All inputs' }, ...inputs]
+function roleInputOptions(selectedInput: string | null): string {
+    return [{ id: '', name: 'All inputs' }, ...inputsOf(app.data, eventId())]
         .map(
             (input) =>
                 `<option value="${escapeHtml(input.id)}" ${input.id === (selectedInput ?? '') ? 'selected' : ''}>${escapeHtml(input.name)}</option>`,
@@ -105,10 +97,10 @@ function renderRoleEditRow(role: {
                         ${roleTypeOptions(role.type)}
                     </select>
                 </label>
-                <label class="fieldset role-input-field ${seesEveryInput(role.type) ? 'hidden' : ''}">
+                <label class="fieldset role-input-field">
                     <span class="fieldset-legend">Can see</span>
                     <select class="select role-input-select w-full">
-                        ${roleInputOptions(role.input, role.type)}
+                        ${roleInputOptions(role.input)}
                     </select>
                 </label>
             </div>
@@ -151,16 +143,40 @@ function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {
     `;
 }
 
+// An admin or an owner has every event, so they are listed here but changed under Admins.
+function renderEveryEventRow(person: { email: string; owner: boolean }, isCurrentUser: boolean) {
+    const you = isCurrentUser ? ' <span class="role-you">(you)</span>' : '';
+    const kind = person.owner ? 'owner' : 'admin';
+    const why = person.owner ? 'fixed' : 'see Admins';
+    return `
+        <li class="role-row">
+            <span class="role-avatar" aria-hidden="true">${escapeHtml(person.email.charAt(0))}</span>
+            <div class="role-body">
+                <span class="role-email" title="${escapeHtml(person.email)}">${escapeHtml(person.email)}${you}</span>
+                <span class="role-meta">
+                    <span class="role-pill role-pill-${kind}">${person.owner ? 'Owner' : 'Admin'}</span>
+                    <span>Every event <span class="text-ink-subtle">· ${why}</span></span>
+                </span>
+            </div>
+        </li>
+    `;
+}
+
 export function renderRoleTable() {
     const id = eventId();
     const { data } = app;
     const roles = data.roles.filter((r) => r.event === id).sort((a, b) => compareRoles(a, b));
 
-    const rows = roles.map((r) =>
-        selectedRoleId === r.id
-            ? renderRoleEditRow(r)
-            : renderRoleRow(r, r.email.toLowerCase() === data.userEmail.toLowerCase()),
-    );
+    const rows = [
+        ...data.everyEvent.map((p) =>
+            renderEveryEventRow(p, p.email.toLowerCase() === data.userEmail.toLowerCase()),
+        ),
+        ...roles.map((r) =>
+            selectedRoleId === r.id
+                ? renderRoleEditRow(r)
+                : renderRoleRow(r, r.email.toLowerCase() === data.userEmail.toLowerCase()),
+        ),
+    ];
 
     // A new person goes first, where it can be seen without scrolling.
     if (selectedRoleId === '') {
@@ -242,15 +258,9 @@ export function cancelRoleInlineEdit() {
     renderRoleTable();
 }
 
-// Choosing another role type changes which inputs it can be limited to, and what it says it can do.
+// Choosing another role type changes what the line under it says the role can do.
 export function renderRoleInputForRow(typeSelect: HTMLSelectElement) {
     const panel = typeSelect.closest<HTMLElement>('[data-role-id]');
-    const inputSelect = panel?.querySelector<HTMLSelectElement>('.role-input-select');
-    if (inputSelect)
-        inputSelect.innerHTML = roleInputOptions(inputSelect.value || null, typeSelect.value);
-    panel
-        ?.querySelector('.role-input-field')
-        ?.classList.toggle('hidden', seesEveryInput(typeSelect.value));
     const hint = panel?.querySelector('.role-hint');
     if (hint) hint.textContent = roleHint(typeSelect.value);
 }
@@ -263,7 +273,7 @@ export async function saveRoleInline(button: HTMLElement) {
     const email = emailInput.value.trim();
     const type = (row.querySelector('.role-type-input') as HTMLSelectElement).value as RoleType;
     const chosenInput = (row.querySelector('.role-input-select') as HTMLSelectElement).value;
-    const input = seesEveryInput(type) ? null : chosenInput || null;
+    const input = chosenInput || null;
 
     const error = row.querySelector<HTMLElement>('.role-error');
     if (email === '' || !emailInput.checkValidity()) {

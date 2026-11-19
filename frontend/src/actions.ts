@@ -56,9 +56,7 @@ export function createActions(app: AppStore) {
                 },
                 () => api().addEvent({ name }),
                 (data, saved) => {
-                    const { adminRole, ...event } = saved;
-                    if (adminRole) data.roles.push(adminRole);
-                    replace(data.events, tempId, event as EventItem);
+                    replace(data.events, tempId, saved as EventItem);
                     select(saved.id);
                 },
             );
@@ -93,6 +91,19 @@ export function createActions(app: AppStore) {
                 () => api().deleteEvent({ id }),
             );
             return outcome.ok;
+        },
+
+        // Brings an event back from the trash. Its destinations, inputs and people are not in the
+        // browser, so there is nothing to show first: the data is loaded again once it is done.
+        // Returns the restored event, or null when the server refused.
+        async restoreEvent(id: string): Promise<{ id: string; name: string } | null> {
+            const outcome = await app.change(
+                () => {},
+                () => api().restoreEvent({ id }),
+            );
+            if (!outcome.ok) return null;
+            await app.refresh();
+            return outcome.result;
         },
 
         // ===== Roles =====

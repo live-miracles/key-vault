@@ -56,22 +56,52 @@ try {
 
     const dir = path.join(root, 'supabase', 'migrations');
     for (const file of readdirSync(dir).sort()) {
+        if (file.endsWith('_global_admins.sql')) {
+            // This one moves data, so give it some to move: an admin or owner of an event
+            // becomes an admin of every event, once however many events or cases they had.
+            psql(`
+                insert into public.events (id, name) values
+                  ('00000000-0000-4000-8000-000000000001', 'Old one'),
+                  ('00000000-0000-4000-8000-000000000002', 'Old two');
+                insert into public.roles (event_id, email, type) values
+                  ('00000000-0000-4000-8000-000000000001', 'Ann@Example.test', 'admin'),
+                  ('00000000-0000-4000-8000-000000000002', 'ann@example.test', 'admin'),
+                  ('00000000-0000-4000-8000-000000000002', 'Boss@Example.test', 'owner'),
+                  ('00000000-0000-4000-8000-000000000002', 'ed@example.test', 'editor'),
+                  ('00000000-0000-4000-8000-000000000001', 'vi@example.test', 'viewer');
+            `);
+        }
         psql(readFileSync(path.join(dir, file), 'utf8'));
         console.log('applied', file);
+        if (file.endsWith('_global_admins.sql')) {
+            assert.equal(
+                psql(
+                    `select string_agg(lower(email::text), ',' order by email) from public.app_admins`,
+                ),
+                'ann@example.test,boss@example.test',
+            );
+            assert.equal(
+                psql(`select string_agg(distinct type, ',' order by type) from public.roles`),
+                'editor,viewer',
+            );
+            assert.equal(psql(`select count(*) from public.roles`), '2');
+            psql(`delete from public.app_admins; delete from public.events`);
+        }
     }
 
     // ---- ids, events, roles ----
     // Ids are random UUIDs the database makes; the caller never picks one.
     const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-    const created = JSON.parse(psql(`select public.create_event('Event one', 'a@example.test')`));
-    const eventId = created.event.id;
+    const newEvent = (eventName) =>
+        psql(
+            `with e as (insert into public.events (name) values ('${eventName}') returning id) select id from e`,
+        );
+    const eventId = newEvent('Event one');
     assert.match(eventId, uuid);
-    assert.match(created.adminRole.id, uuid);
-    assert.equal(created.adminRole.type, 'admin');
-    assert.equal(created.adminRole.input, null);
-    const bare = JSON.parse(psql(`select public.create_event('Event two', null)`));
+    const bare = { event: { id: newEvent('Event two') } };
     assert.notEqual(bare.event.id, eventId);
-    assert.equal(bare.adminRole, null);
+    // The function that made an event and its admin role is gone: admins have every event.
+    psql(`select public.create_event('Event x', null)`, { fail: true });
 
     // ---- inputs ----
     // An input belongs to one event: its order and its names are that event's own.
@@ -88,7 +118,9 @@ try {
     assert.equal(otherEnglish.position, 1);
     psql(`select public.create_input('${eventId}', 'english')`, { fail: true });
     psql(`select public.create_input(gen_random_uuid(), 'Tamil')`, { fail: true });
-    psql(`select public.reorder_inputs('${eventId}', array['${hindi.id}', '${english.id}'])`);
+    psql(
+        `select public.reorder_inputs('${eventId}', array['${hindi.id}', '${english.id}']::uuid[])`,
+    );
     assert.equal(
         psql(
             `select string_agg(name, ',' order by sort_order) from public.inputs where event_id = '${eventId}'`,
@@ -132,7 +164,28 @@ try {
         { fail: true },
     );
     // Emails compare without case.
-    assert.equal(psql(`select count(*) from public.roles where email = 'A@EXAMPLE.TEST'`), '1');
+    assert.equal(psql(`select count(*) from public.roles where email = 'V@EXAMPLE.TEST'`), '1');
+    // Admins and owners are not a role: admins are listed once for the app, by email, without case.
+    for (const type of ['admin', 'owner']) {
+        psql(
+            `insert into public.roles (event_id, email, type) values ('${eventId}', 'o@example.test', '${type}')`,
+            { fail: true },
+        );
+    }
+    psql(
+        `insert into public.app_admins (email, added_by) values ('Boss@Example.test', 'a@example.test')`,
+    );
+    psql(`insert into public.app_admins (email) values ('boss@example.test')`, { fail: true });
+    assert.equal(psql(`select email from public.app_admins`), 'Boss@Example.test');
+    psql(`delete from public.app_admins`);
+    // A deleted event is kept, with a time and who deleted it, until the API removes it.
+    const trashed = { event: { id: newEvent('Event three') } };
+    assert.equal(psql(`select count(*) from public.events where deleted_at is not null`), '0');
+    psql(
+        `update public.events set deleted_at = now() - interval '31 days', deleted_by = 'a@example.test' where id = '${trashed.event.id}'`,
+    );
+    psql(`delete from public.events where deleted_at < now() - interval '30 days'`);
+    assert.equal(psql(`select count(*) from public.events where id = '${trashed.event.id}'`), '0');
     // Deleting an event takes its roles, keys and inputs with it, and leaves the others alone.
     psql(`delete from public.events where id = '${eventId}'`);
     assert.equal(psql(`select count(*) from public.keys`), '0');

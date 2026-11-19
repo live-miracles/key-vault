@@ -71,6 +71,7 @@ Deno.serve(async (request) => {
             {
                 email,
                 isAppOwner: ownerEmails.has(email),
+                ownerEmails: [...ownerEmails],
                 hashSecret: secrets.hashSecret,
                 secret,
                 ingestUrl: `${url}/functions/v1/ingest`,

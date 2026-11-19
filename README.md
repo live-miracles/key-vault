@@ -29,8 +29,9 @@ was down, or why.
   When the input is not arriving, it says so, and nobody wastes time chasing the platform.
 - **Changes are visible.** A replaced link stays **Not set up yet** until the streaming server has it,
   and each card records who last changed it and when.
-- **Access follows the work.** People are owners, admins, editors or viewers, and editors and viewers
-  can be limited to a single input, such as one language. The server decides what each person may do.
+- **Access follows the work.** Admins have every event. Everyone else is an editor or a viewer of an event, and
+  can be limited to a single input, such as one language. The
+  server decides what each person may do.
 - **Installs like an app.** Chrome, Edge and phones can add it to the desktop or home screen.
 
 ## Try it
@@ -93,12 +94,18 @@ their free plans.
 
 ## Roles
 
-- **Owner**: can do everything in every event, including adding, changing and removing owners. An owner anywhere is an owner everywhere.
-- **Admin**: can create events, rename or delete the events they administer, and manage their inputs. Can add, change and remove viewers, editors and other admins.
 - **Editor**: can add and edit destinations, and can be limited to one input.
 - **Viewer**: can only view destinations, and can be limited to one input.
+- **Admin**: has every event and can do everything: create, rename, delete and restore events, manage inputs,
+  share events, and add or remove other admins.
+- **Owner**: an admin named in `KEY_VAULT_OWNER_EMAILS`. Owners cannot be added or removed in the app, and also
+  open the bunryu settings and read bunryu's technical report.
 
-Anyone listed in `KEY_VAULT_OWNER_EMAILS` is an owner without a role.
+Editor and viewer are given per event, in **Share**. Admin is not: admins are listed once for the whole app, in the
+**Admins** dialog (bottom right), where the owners are shown as fixed. Share lists them too, read only.
+
+- Any admin can add and remove the other admins in that dialog, except themselves.
+- A deleted event goes to the **trash** (bottom right, admins only) for 30 days, where an admin can restore it.
 
 ## Part of Live Miracles
 

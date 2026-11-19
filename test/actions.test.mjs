@@ -62,6 +62,38 @@ test('renaming and deleting an event, with the next one opened', async () => {
     assert.deepEqual(selected, [store.data.events[0].id]);
 });
 
+test('a deleted event can be restored, and comes back with its destinations', async () => {
+    const { store, actions, demo } = await setup();
+    const winter = winterOf(store);
+    const keyCount = store.data.keys.filter((k) => k.event === winter.id).length;
+    assert.ok(keyCount > 0);
+    assert.equal(store.data.canRestoreEvents, true);
+
+    await actions.deleteEvent(winter.id, () => {});
+    assert.equal(demo.store.state.trash.length, 1);
+    assert.deepEqual(
+        (await demo.getTrash()).map((t) => t.name),
+        ['Winter Retreat'],
+    );
+
+    assert.deepEqual(await actions.restoreEvent(winter.id), {
+        id: winter.id,
+        name: 'Winter Retreat',
+    });
+    assert.equal(winterOf(store).id, winter.id);
+    assert.equal(store.data.keys.filter((k) => k.event === winter.id).length, keyCount);
+    assert.deepEqual(await demo.getTrash(), []);
+});
+
+test('restoring something that is not in the trash says so and changes nothing', async () => {
+    const { store, actions, errors } = await setup();
+    const winter = winterOf(store);
+
+    assert.equal(await actions.restoreEvent(winter.id), null);
+    assert.deepEqual(errors, ['The deleted event was not found.']);
+    assert.equal(winterOf(store).id, winter.id);
+});
+
 test('inputs: add (and open it), rename, reorder, and delete one that is in use', async () => {
     const { store, actions, demo, errors } = await setup();
     const winter = winterOf(store);

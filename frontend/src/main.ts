@@ -57,9 +57,16 @@ import {
     saveRoleInline,
     showShareModal,
 } from './roles.ts';
+import {
+    addAdminFromForm,
+    removeAdminById,
+    renderAdminsButton,
+    showAdminsModal,
+} from './admins.ts';
 import { registerServiceWorker } from './pwa.ts';
 import { onRouteChange, route } from './route.ts';
 import { initTheme, toggleTheme } from './theme.ts';
+import { renderTrashButton, restoreEventById, showTrashModal } from './trash.ts';
 
 // Set at build time: the demo runs the server's operations in the page; the real site calls the
 // Edge Function after Google sign-in.
@@ -84,6 +91,8 @@ function renderAll() {
     renderRoleTable();
     renderDestinations(eventId);
     renderBunryuStatus();
+    renderTrashButton();
+    renderAdminsButton();
     $('#user-email').innerText = app.data.userEmail;
 }
 
@@ -105,6 +114,8 @@ function handleClick(event: MouseEvent) {
     const keyId = target.closest<HTMLElement>('[data-key-id]')?.dataset.keyId;
     const inputId = target.closest<HTMLElement>('[data-input-id]')?.dataset.inputId;
     const roleId = target.closest<HTMLElement>('[data-role-id]')?.dataset.roleId;
+    const trashId = target.closest<HTMLElement>('[data-trash-id]')?.dataset.trashId;
+    const adminId = target.closest<HTMLElement>('[data-admin-id]')?.dataset.adminId;
     const clearSearch = () => {
         setDestinationSearch('', renderAll);
         $('#destination-search')?.focus();
@@ -115,6 +126,11 @@ function handleClick(event: MouseEvent) {
         'edit-event': () => editEventBtn(),
         'delete-event': () => deleteEventBtn(),
         'save-event': () => saveEventForm(event),
+        'show-admins': () => showAdminsModal(),
+        'add-admin': () => addAdminFromForm(),
+        'remove-admin': () => removeAdminById(adminId),
+        'show-trash': () => showTrashModal(),
+        'restore-event': () => restoreEventById(trashId),
         'add-input': () => addInputBtn(),
         'edit-input-by-id': () => editInputById(inputId),
         'delete-input-by-id': () => deleteInputById(inputId),
@@ -185,6 +201,13 @@ async function start() {
         if (target) renderRoleInputForRow(target as HTMLSelectElement);
     });
     $('#share-modal').addEventListener('close', resetRoleInlineEdit);
+
+    // Enter in the admin's email box adds them, as it would in a form.
+    $('#admin-email-input').addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        void addAdminFromForm();
+    });
 
     const searchBox = $<HTMLInputElement>('#destination-search');
     searchBox.addEventListener('input', () => setDestinationSearch(searchBox.value, renderAll));

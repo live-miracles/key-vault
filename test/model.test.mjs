@@ -111,7 +111,7 @@ test('the list opens on All unless the wanted input is in it', () => {
     assert.equal(resolveInputFilter([], null), '');
 });
 
-test('roles read owners first, and those who see every input before those limited to one', () => {
+test('roles read editors first, and those who see every input before those limited to one', () => {
     const position = (id) => ({ L1: 1, L2: 2 })[id];
     const role = (email, type, input) => ({ email, type, input });
     const roles = [
@@ -120,13 +120,9 @@ test('roles read owners first, and those who see every input before those limite
         role('editor-l1@example.test', 'editor', 'L1'),
         role('viewer-all@example.test', 'viewer', null),
         role('editor-all@example.test', 'editor', null),
-        role('admin@example.test', 'admin', null),
-        role('owner@example.test', 'owner', null),
     ];
     const sorted = roles.sort((a, b) => compareRoles(a, b, position)).map((r) => r.email);
     assert.deepEqual(sorted, [
-        'owner@example.test',
-        'admin@example.test',
         'editor-all@example.test',
         'editor-l1@example.test',
         'editor-l2@example.test',

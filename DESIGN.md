@@ -116,10 +116,9 @@ Errors (`getStreamKeyProblem` and the checks in `saveKeyFormBtn`) say what to do
 
 An owners-and-admins screen (`roles.ts`), so it stays terse, but it must work on a phone. It is a list, not a table: a table has fixed columns and pushed the role and the buttons off a phone's screen.
 
-- One row per person (`.role-row`): an avatar with the email's first letter, the email, a role pill (`.role-pill-*`: owner and admin in the accent, editor plain, viewer outlined) and what they can see ("All inputs" or "Only English"), then change and remove buttons. On a wide screen the email and the role line up as columns; on a phone the role sits under the email.
+- One row per person (`.role-row`): an avatar with the email's first letter, the email, a role pill (`.role-pill-*`: owner and admin in the accent, editor plain, viewer outlined; the admins and owners come first, read only, with "see Admins") and what they can see ("All inputs" or "Only English"), then change and remove buttons. On a wide screen the email and the role line up as columns; on a phone the role sits under the email.
 - **Add person** is a labelled button in the header. The new person's panel opens at the top of the list, so it is seen without scrolling. Changing a role opens the same panel in the row's place.
 - The panel (`.role-edit`) has labelled fields (Email, Role, Can see), one line on what the chosen role can do (`ROLE_HINTS`, which restates the user guide's "Who can do what"; the server still decides, see ADR 0003), and Cancel / Save. A bad or empty email says so under the fields. Enter in the email box saves.
-- Admins and owners see every input, so the "Can see" field is hidden while one of those roles is chosen (and the saved role always covers every input).
 
 ## Components
 

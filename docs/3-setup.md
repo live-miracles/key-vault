@@ -50,7 +50,7 @@ Note the site's URL (for example `https://your-site.vercel.app`) for the next st
     ```
 
     - `KEY_VAULT_APP_ORIGIN` is exactly the site's origin: no trailing slash, no path.
-    - `KEY_VAULT_OWNER_EMAILS` is a comma-separated list of Google sign-in addresses. Owners can do everything in every event; for anyone who needs less, grant a role in the app. The first owner is how the first event and roles get created.
+    - `KEY_VAULT_OWNER_EMAILS` is a comma-separated list of Google sign-in addresses. Owners can do everything in every event, and are the only ones who open the bunryu settings; for anyone who needs less, grant a role in the app. These owners are fixed: the app cannot remove them. Once signed in they can add other admins in the **Admins** dialog, who can be removed there and cannot open the bunryu settings. The first owner is how the first event and roles get created.
     - The `list` should show all three `KEY_VAULT_*` names. Values are not shown afterwards, so keep your copies.
 
 Check: opening the site shows "Sign in with Google"; signing in with an owner email shows an empty app (no events yet) and no error.

@@ -28,6 +28,9 @@ export function emptyData(): LoadedData {
         userEmail: '',
         isAppOwner: false,
         canCreateEvents: false,
+        canRestoreEvents: false,
+        canManageAdmins: false,
+        everyEvent: [],
         events: [],
         roles: [],
         inputs: [],
@@ -70,6 +73,4 @@ export function eventKeysOf(data: LoadedData, eventId: string | null): KeyItem[]
 export const ROLE_LABELS: Record<string, string> = {
     viewer: 'Viewer',
     editor: 'Editor',
-    admin: 'Admin',
-    owner: 'Owner',
 };

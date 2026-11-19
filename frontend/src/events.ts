@@ -1,5 +1,6 @@
 // The event bar and the event's own card: which event is open, adding, renaming and deleting.
 
+import { TRASH_DAYS } from '../../supabase/functions/_shared/types.ts';
 import { actions, app } from './app.ts';
 import { $, confirmAction } from './dom.ts';
 import { route } from './route.ts';
@@ -100,7 +101,8 @@ export async function saveEventForm(evt: Event) {
 export async function deleteEventBtn() {
     const event = app.data.events.find((e) => e.id === route.event());
     if (!event) return;
-    if (!(await confirmAction(`Delete the event "${event.name}"? This cannot be undone.`))) return;
+    const kept = `It stays in the trash for ${TRASH_DAYS} days, and an admin can restore it from there.`;
+    if (!(await confirmAction(`Delete the event "${event.name}"? ${kept}`))) return;
 
     await actions.deleteEvent(event.id, (next) => selectEvent(next));
 }

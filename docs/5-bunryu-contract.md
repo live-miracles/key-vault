@@ -77,11 +77,11 @@ bunryu only runs during events, so silence is normal and never shown as a proble
 
 One secret, `KEY_VAULT_SECRET` (at least 32 characters). Two values are derived from it, each by HMAC-SHA256 under its own label (`_shared/secrets.ts`): the **ingest token**, which travels in a header on every heartbeat, and the **hash secret**, which never leaves bunryu and the server. Knowing the token reveals nothing about the hash secret. bunryu takes the same `KEY_VAULT_SECRET` (owners copy it, with the link, from the bunryu dialog in the app) and derives both itself; both repositories pin the derivation in tests.
 
-| Secret                   | Used by     | Meaning                       |
-| ------------------------ | ----------- | ----------------------------- |
-| `KEY_VAULT_APP_ORIGIN`   | api         | The frontend origin, for CORS |
-| `KEY_VAULT_OWNER_EMAILS` | api         | App owners (comma separated)  |
-| `KEY_VAULT_SECRET`       | api, ingest | The one secret above          |
+| Secret                   | Used by     | Meaning                        |
+| ------------------------ | ----------- | ------------------------------ |
+| `KEY_VAULT_APP_ORIGIN`   | api         | The frontend origin, for CORS  |
+| `KEY_VAULT_OWNER_EMAILS` | api         | Fixed owners (comma separated) |
+| `KEY_VAULT_SECRET`       | api, ingest | The one secret above           |
 
 ## bunryu's side
 

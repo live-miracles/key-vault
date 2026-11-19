@@ -65,14 +65,21 @@ Beside a red card there is a small copy button. It copies the technical details 
 
 ## Who can do what
 
-| Role       | Can                                                                                                                                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Viewer** | See destinations and their status. Can be limited to one input.                                                                                          |
-| **Editor** | Add, edit and delete destinations. Can be limited to one input.                                                                                          |
-| **Admin**  | Everything an editor can, and create events, rename or delete their events, and manage their inputs. Add, change and remove editors, viewers and admins. |
-| **Owner**  | Everything, in every event, including adding, changing and removing owners.                                                                              |
+| Role       | Can                                                                                                                                                                                                              |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Viewer** | See destinations and their status. Can be limited to one input.                                                                                                                                                  |
+| **Editor** | Add, edit and delete destinations. Can be limited to one input.                                                                                                                                                  |
+| **Admin**  | Everything, in every event: create, rename, delete and restore events, manage inputs, share events, and add or remove other admins. Not given under **Share**: admins are listed once, in the **Admins** dialog. |
+| **Owner**  | An admin named in the server's settings, so nobody can remove them in the app. Also opens the bunryu settings and reads bunryu's technical report.                                                               |
 
 If a button you expect is missing, you do not have that role for this event: ask an admin to change it under **Share**.
+
+### Admins
+
+Admins see two extra buttons at the bottom right.
+
+- **Admins** (shield) lists everyone who has every event. The owners named in the server's settings are listed first and marked **Fixed**: they cannot be removed here. Any admin can add other admins by email and remove the ones added here, but not themselves. **Share** also lists them, read only.
+- **Deleted events** (bin) lists events that were deleted in the last 30 days, who deleted each, and how long is left. **Restore** brings an event back with its destinations, inputs and the people who had access. After 30 days it is removed for good, stream keys included. Any admin can restore an event.
 
 ## Keep it on your desktop or phone
 

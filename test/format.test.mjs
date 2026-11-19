@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { describeBunryu, formatWhen, listInstances } from '../frontend/src/format.ts';
+import {
+    describeBunryu,
+    formatDaysLeft,
+    formatWhen,
+    listInstances,
+} from '../frontend/src/format.ts';
 import { escapeHtml, safeUrl } from '../frontend/src/html.ts';
 import { newTempId } from '../frontend/src/store.ts';
 
@@ -87,4 +92,17 @@ test('counts the connected bunryu and lists them, connected ones first', () => {
         { name: 'Old', online: false, seen: '2 h ago' },
     ]);
     assert.deepEqual(listInstances(undefined, now), []);
+});
+
+test('the days left in the trash count whole days, rounded up', () => {
+    const now = Date.parse('2026-11-18T10:00:00Z');
+    const at = (hours) => new Date(now + hours * 3600000).toISOString();
+    assert.equal(formatDaysLeft(at(30 * 24), now), '30 days left');
+    assert.equal(formatDaysLeft(at(29 * 24 + 1), now), '30 days left');
+    assert.equal(formatDaysLeft(at(24), now), '1 day left');
+    assert.equal(formatDaysLeft(at(2), now), '1 day left');
+    // Past the end, or not a time: the removal has not run yet.
+    assert.equal(formatDaysLeft(at(0), now), 'Removed soon');
+    assert.equal(formatDaysLeft(at(-5), now), 'Removed soon');
+    assert.equal(formatDaysLeft('not a time', now), 'Removed soon');
 });

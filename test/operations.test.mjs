@@ -49,7 +49,6 @@ function seed() {
             { id: ENGLISH2, event: E2, name: 'English', position: 1 },
         ],
         roles: [
-            { id: uuid(31), event: E1, email: 'admin@example.test', type: 'admin', input: null },
             {
                 id: uuid(32),
                 event: E1,
@@ -60,12 +59,14 @@ function seed() {
             { id: uuid(33), event: E1, email: 'viewer@example.test', type: 'viewer', input: HINDI },
         ],
         keys: [key(K1, E1, ENGLISH), key(K2, E1, HINDI), key(K3, E2, ENGLISH2)],
+        admins: [{ id: uuid(31), email: 'admin@example.test', addedBy: 'owner@example.test' }],
     });
 }
 
 const as = (email, isAppOwner = false) => ({
     email,
     isAppOwner,
+    ownerEmails: isAppOwner ? [email] : [],
     hashSecret: 'secret',
     nowMs: NOW,
 });
@@ -144,45 +145,77 @@ test('what the user may do is sent with each item, so the browser works nothing 
     assert.equal(asAdmin.canCreateEvents, true);
     assert.equal(asAdmin.events[0].can.manageInputs, true);
     assert.equal(asAdmin.events[0].can.seeTechnicalStatus, false);
-    assert.deepEqual(asAdmin.events[0].can.addRoleTypes, ['viewer', 'editor', 'admin']);
+    assert.deepEqual(asAdmin.events[0].can.addRoleTypes, ['viewer', 'editor']);
     assert.equal(asAdmin.events[0].can.rename, true);
     assert.equal(asAdmin.events[0].can.delete, true);
-    assert.equal(asAdmin.roles.find((r) => r.type === 'admin').canChange, true);
     assert.equal(asAdmin.roles.find((r) => r.type === 'editor').canChange, true);
+    assert.equal(asAdmin.canManageAdmins, true);
+    assert.equal(asAdmin.canRestoreEvents, true);
+    // An admin has every event, not only the ones they have a role in.
+    assert.deepEqual(asAdmin.events.map((e) => e.id).sort(), [E1, E2].sort());
+    assert.equal(asAdmin.keys.length, 3);
+    assert.equal(asAdmin.isAppOwner, false);
 
     const asOwner = await ops.getAllData(store, owner);
-    assert.deepEqual(asOwner.events[0].can.addRoleTypes, ['viewer', 'editor', 'admin', 'owner']);
+    assert.deepEqual(asOwner.events[0].can.addRoleTypes, ['viewer', 'editor']);
     assert.equal(asOwner.events[0].can.delete, true);
+    assert.equal(asOwner.events[0].can.seeTechnicalStatus, true);
 });
 
-test('events: admins create, edit and delete their own; editors and strangers cannot', async () => {
+test('who has access to every event is sent to the people who see a Share list', async () => {
+    const store = seed();
+    const everyone = { ...owner, ownerEmails: ['owner@example.test'] };
+    const named = (ctx) => ({ ...ctx, ownerEmails: ['owner@example.test'] });
+
+    const expected = [
+        { email: 'owner@example.test', owner: true },
+        { email: 'admin@example.test', owner: false },
+    ];
+    assert.deepEqual((await ops.getAllData(store, everyone)).everyEvent, expected);
+    assert.deepEqual((await ops.getAllData(store, named(admin))).everyEvent, expected);
+    // An editor sees the list of their event, so they see who else has it.
+    assert.deepEqual((await ops.getAllData(store, named(editor))).everyEvent, expected);
+    // A viewer sees no list, and a stranger no event.
+    assert.deepEqual((await ops.getAllData(store, named(viewer))).everyEvent, []);
+    assert.deepEqual((await ops.getAllData(store, named(stranger))).everyEvent, []);
+
+    // Someone added as an admin who is also named on the server is listed once, as an owner.
+    store.state.admins.push({ id: uuid(62), email: 'owner@example.test', addedBy: '' });
+    assert.deepEqual((await ops.getAllData(store, everyone)).everyEvent, expected);
+});
+
+test('events: admins create, edit and delete any; editors and strangers cannot', async () => {
     const store = seed();
 
     assert.equal(await refused(ops.addEvent(store, stranger, { name: 'X' })), 'denied');
+    assert.equal(await refused(ops.addEvent(store, editor, { name: 'X' })), 'denied');
     assert.equal(await refused(ops.addEvent(store, admin, {})), 'invalid');
 
+    // Admins have every event, so nobody is given a role in the event they create.
     const created = await ops.addEvent(store, admin, { name: '  New event  ' });
     assert.equal(created.name, 'New event');
-    assert.equal(created.adminRole.email, 'admin@example.test');
-    assert.equal(created.adminRole.type, 'admin');
     assert.equal(created.can.manageInputs, true);
+    assert.equal(created.adminRole, undefined);
+    assert.equal(store.state.roles.length, 2);
 
     const byOwner = await ops.addEvent(store, owner, { name: 'Owner event' });
-    assert.equal(byOwner.adminRole, undefined);
+    assert.equal(byOwner.can.manageInputs, true);
+    assert.equal(store.state.roles.length, 2);
 
-    // Not an admin: an editor can see the event but not change it, a stranger cannot see it.
+    // An editor can see the event but not change it, a stranger cannot see it.
     assert.equal(await refused(ops.editEvent(store, editor, { id: E1, name: 'x' })), 'denied');
     assert.equal(await refused(ops.deleteEvent(store, editor, { id: E1 })), 'denied');
     assert.equal(await refused(ops.deleteEvent(store, stranger, { id: E1 })), 'not_found');
 
-    // An admin of one event has no say over another.
-    assert.equal(await refused(ops.editEvent(store, admin, { id: E2, name: 'x' })), 'not_found');
-    assert.equal(await refused(ops.deleteEvent(store, admin, { id: E2 })), 'not_found');
+    // An admin has a say over every event.
+    assert.deepEqual(await ops.editEvent(store, admin, { id: E2, name: 'by admin' }), {
+        id: E2,
+        name: 'by admin',
+    });
     assert.deepEqual(await ops.editEvent(store, owner, { id: E2, name: 'by owner' }), {
         id: E2,
         name: 'by owner',
     });
-
     assert.deepEqual(await ops.editEvent(store, admin, { id: E1, name: 'ok' }), {
         id: E1,
         name: 'ok',
@@ -203,29 +236,146 @@ test('events: admins create, edit and delete their own; editors and strangers ca
     );
 });
 
-test('roles: an admin removes other admins, but not an owner', async () => {
+const DAY = 24 * 60 * 60 * 1000;
+const inDays = (ctx, days) => ({ ...ctx, nowMs: NOW + days * DAY });
+
+test('a deleted event goes to the trash with everything it holds, out of sight', async () => {
     const store = seed();
-    const role = (email, type) => ({ event: E1, email, type, input: null });
 
-    const otherAdmin = await ops.addRole(store, owner, role('admin2@example.test', 'admin'));
-    const anOwner = await ops.addRole(store, owner, role('owner2@example.test', 'owner'));
-    assert.equal(otherAdmin.canChange, true);
+    await ops.deleteEvent(store, admin, { id: E1 });
 
-    assert.equal(await refused(ops.deleteRole(store, admin, { id: anOwner.id })), 'denied');
+    // Nobody loads it any more, not even an owner, and its destinations are no longer in status.
+    for (const who of [owner, admin, editor, viewer]) {
+        const data = await ops.getAllData(store, who);
+        assert.equal(
+            data.events.some((e) => e.id === E1),
+            false,
+        );
+        assert.equal(
+            data.keys.some((k) => k.event === E1),
+            false,
+        );
+    }
+    assert.deepEqual(Object.keys((await ops.getStatus(store, owner)).keys), [K3]);
+    assert.equal(await refused(ops.editEvent(store, owner, { id: E1, name: 'x' })), 'not_found');
+    assert.equal(await refused(ops.deleteEvent(store, owner, { id: E1 })), 'not_found');
     assert.equal(
         await refused(
-            ops.editRole(store, admin, {
-                id: otherAdmin.id,
-                ...role('admin2@example.test', 'owner'),
+            ops.addKey(store, owner, {
+                event: E1,
+                name: 'New',
+                input: ENGLISH,
+                platform: 'yt',
+                streamKey: 'abcd-9999',
             }),
         ),
-        'denied',
+        'not_found',
     );
 
-    await ops.deleteRole(store, admin, { id: otherAdmin.id });
-    assert.equal(
-        store.state.roles.some((r) => r.email === 'admin2@example.test'),
-        false,
+    // It is in the trash: who deleted it, when, and how much it holds.
+    assert.deepEqual(await ops.getTrash(store, owner), [
+        {
+            id: E1,
+            name: 'Event one',
+            deletedAt: new Date(NOW).toISOString(),
+            deletedBy: 'admin@example.test',
+            destinations: 2,
+            inputs: 2,
+            expiresAt: new Date(NOW + 30 * DAY).toISOString(),
+        },
+    ]);
+});
+
+test('only admins see the trash and restore from it', async () => {
+    const store = seed();
+    const another = as('boss@example.test');
+    await ops.addAdmin(store, owner, { email: 'boss@example.test' });
+    await ops.deleteEvent(store, admin, { id: E1 });
+
+    for (const who of [owner, admin, another]) {
+        assert.equal((await ops.getAllData(store, who)).canRestoreEvents, true);
+        assert.equal((await ops.getTrash(store, who)).length, 1);
+    }
+    for (const who of [editor, viewer, stranger]) {
+        assert.equal((await ops.getAllData(store, who)).canRestoreEvents, false);
+        assert.equal(await refused(ops.getTrash(store, who)), 'denied');
+        assert.equal(await refused(ops.restoreEvent(store, who, { id: E1 })), 'denied');
+    }
+});
+
+test('restoring an event brings back its inputs, destinations and people as they were', async () => {
+    const store = seed();
+    const before = structuredClone(store.state);
+    await ops.deleteEvent(store, admin, { id: E1 });
+
+    assert.equal(await refused(ops.restoreEvent(store, owner, { id: uuid(404) })), 'not_found');
+    assert.equal(await refused(ops.restoreEvent(store, owner, {})), 'invalid');
+    // An event that is not in the trash cannot be "restored".
+    assert.equal(await refused(ops.restoreEvent(store, owner, { id: E2 })), 'not_found');
+
+    assert.deepEqual(await ops.restoreEvent(store, owner, { id: E1 }), {
+        id: E1,
+        name: 'Event one',
+    });
+    assert.deepEqual(await ops.getTrash(store, owner), []);
+    assert.equal(await refused(ops.restoreEvent(store, owner, { id: E1 })), 'not_found');
+
+    const byId = (a, b) => a.id.localeCompare(b.id);
+    for (const table of ['events', 'roles', 'inputs', 'keys']) {
+        assert.deepEqual([...store.state[table]].sort(byId), [...before[table]].sort(byId));
+    }
+    // The people who had access have it again, with the same limits.
+    const asEditor = await ops.getAllData(store, editor);
+    assert.deepEqual(
+        asEditor.keys.map((k) => k.id),
+        [K1],
+    );
+    // The order the store keeps them in is its own business.
+    assert.deepEqual((await ops.getAllData(store, admin)).events.map((e) => e.id).sort(), [E1, E2]);
+});
+
+test('the trash keeps an event for 30 days, then it is gone for good', async () => {
+    const store = seed();
+    await ops.deleteEvent(store, admin, { id: E1 });
+
+    // The last day still counts.
+    const day29 = inDays(owner, 29.5);
+    assert.equal((await ops.getTrash(store, day29)).length, 1);
+
+    // After 30 days it cannot be seen or restored, whether or not it has been removed yet.
+    const day31 = inDays(owner, 31);
+    assert.deepEqual(await ops.getTrash(store, day31), []);
+    assert.equal(await refused(ops.restoreEvent(store, day31, { id: E1 })), 'not_found');
+    assert.equal(store.state.trash.length, 1);
+
+    // The next time anyone loads the data, it is removed, and a newer deletion is kept.
+    await ops.deleteEvent(store, inDays(owner, 30.5), { id: E2 });
+    await ops.getAllData(store, day31);
+    assert.deepEqual(
+        store.state.trash.map((t) => t.event.id),
+        [E2],
+    );
+    assert.equal((await ops.getTrash(store, day31)).map((t) => t.id).join(), E2);
+});
+
+test('roles: admins remove people from any event', async () => {
+    const store = seed();
+    store.state.roles.push({
+        id: uuid(35),
+        event: E2,
+        email: 'someone@example.test',
+        type: 'viewer',
+        input: null,
+    });
+
+    // An editor can see the list of their event, but not change it.
+    assert.equal(await refused(ops.deleteRole(store, editor, { id: uuid(33) })), 'denied');
+
+    await ops.deleteRole(store, admin, { id: uuid(32) });
+    await ops.deleteRole(store, admin, { id: uuid(35) });
+    assert.deepEqual(
+        store.state.roles.map((r) => r.id),
+        [uuid(33)],
     );
 });
 
@@ -352,7 +502,7 @@ test('one address cannot be used by two destinations of an event', async () => {
     await ops.editKey(store, admin, { ...key(K1, E1, ENGLISH), remarks: 'note' });
 });
 
-test('roles: admins manage non-owner roles, emails are validated and lowercased', async () => {
+test('roles: admins manage roles, emails are validated and lowercased', async () => {
     const store = seed();
     const add = (ctx, extra) =>
         ops.addRole(store, ctx, {
@@ -367,11 +517,10 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
     const added = await add(admin);
     assert.equal(added.email, 'new@example.test');
 
-    assert.equal(await refused(add(admin, { type: 'owner' })), 'denied');
-    assert.ok(await add(owner, { type: 'owner' }));
+    // Admin and owner are not roles: admins are listed for the whole app, under Admins.
+    assert.equal(await refused(add(admin, { type: 'admin' })), 'invalid');
+    assert.equal(await refused(add(owner, { type: 'owner' })), 'invalid');
 
-    // An admin sees every input, whatever was sent.
-    assert.equal((await add(admin, { type: 'admin', input: ENGLISH })).input, null);
     // A viewer or editor with no input sees them all.
     assert.equal((await add(admin, { type: 'viewer', input: null })).input, null);
 
@@ -393,14 +542,13 @@ test('roles: admins manage non-owner roles, emails are validated and lowercased'
     assert.equal(await refused(ops.deleteRole(store, admin, { id: uuid(404) })), 'not_found');
 });
 
-test("inputs: an event's admins and owners manage its list, and one in use stays", async () => {
+test("inputs: admins manage an event's list, and one in use stays", async () => {
     const store = seed();
     const addInput = (who, event, name) => ops.addInput(store, who, { event, name });
 
-    // Editors and viewers cannot; neither can an admin of another event's list.
+    // Editors and viewers cannot.
     assert.equal(await refused(addInput(editor, E1, 'Tamil')), 'denied');
     assert.equal(await refused(addInput(viewer, E1, 'Tamil')), 'denied');
-    assert.equal(await refused(addInput(admin, E2, 'Tamil')), 'not_found');
     assert.equal(await refused(addInput(stranger, E1, 'Tamil')), 'not_found');
 
     const added = await addInput(admin, E1, '  Tamil  ');
@@ -408,7 +556,7 @@ test("inputs: an event's admins and owners manage its list, and one in use stays
     assert.equal(added.event, E1);
     assert.equal(added.position, 3);
     // The first input of another event starts its own order.
-    const other = await addInput(owner, E2, 'Tamil');
+    const other = await addInput(admin, E2, 'Tamil');
     assert.equal(other.position, 2);
     // The id is made by the store, never taken from the caller, and is never reused.
     const again = await ops.addInput(store, admin, { event: E1, id: added.id, name: 'Again' });
@@ -434,16 +582,11 @@ test("inputs: an event's admins and owners manage its list, and one in use stays
         await refused(ops.editInput(store, editor, { id: added.id, name: 'Nope' })),
         'denied',
     );
-    assert.equal(
-        await refused(ops.editInput(store, admin, { id: ENGLISH2, name: 'Nope' })),
-        'not_found',
-    );
 
     const inUse = await failure(ops.deleteInput(store, admin, { id: ENGLISH }));
     assert.equal(inUse.code, 'conflict');
     assert.match(inUse.message, /still has destinations or shared people/);
     assert.equal(await refused(ops.deleteInput(store, editor, { id: added.id })), 'denied');
-    assert.equal(await refused(ops.deleteInput(store, admin, { id: ENGLISH2 })), 'not_found');
     await ops.deleteInput(store, admin, { id: added.id });
 
     // Reordering covers exactly the inputs of that event.
@@ -461,8 +604,9 @@ test("inputs: an event's admins and owners manage its list, and one in use stays
     );
     assert.equal(store.state.inputs.find((i) => i.id === ENGLISH2).position, 1);
     assert.equal(await refused(reorder(editor, E1, [HINDI, ENGLISH])), 'denied');
-    assert.equal(await refused(reorder(admin, E2, [ENGLISH2])), 'not_found');
-    await reorder(owner, E2, [ENGLISH2, other.id]);
+    assert.equal(await refused(reorder(admin, E2, [ENGLISH2])), 'conflict');
+    await reorder(admin, E2, [other.id, ENGLISH2]);
+    assert.equal(store.state.inputs.find((i) => i.id === other.id).position, 1);
 });
 
 test("an input of one event cannot be used by another event's destinations or roles", async () => {
@@ -573,6 +717,7 @@ test('only owners can read the settings bunryu needs', async () => {
 
 test('only the listed operations are callable', async () => {
     assert.deepEqual(Object.keys(ops.operations).sort(), [
+        'addAdmin',
         'addEvent',
         'addInput',
         'addKey',
@@ -585,10 +730,14 @@ test('only the listed operations are callable', async () => {
         'editInput',
         'editKey',
         'editRole',
+        'getAdmins',
         'getAllData',
         'getBunryuSettings',
         'getStatus',
+        'getTrash',
+        'removeAdmin',
         'reorderInputs',
+        'restoreEvent',
     ]);
     assert.equal(
         await refused(ops.callOperation(seed(), owner, 'toString', undefined)),
@@ -639,4 +788,92 @@ test('a destination records who last added or edited it, and when', async () => 
     // Anyone who may see the destination is told who last changed it.
     const seen = await ops.getAllData(store, admin);
     assert.equal(seen.keys.find((k) => k.id === added.id).updatedBy, 'admin@example.test');
+});
+
+test('admins: the owners are fixed, the rest are managed by any admin', async () => {
+    const store = seed();
+    const named = ['owner@example.test', 'Second@Example.test'];
+    const asOwner = { ...owner, ownerEmails: named };
+    const asAdmin = { ...admin, ownerEmails: named };
+    const boss = { ...as('boss@example.test'), ownerEmails: named };
+
+    // Only admins and owners see the list or change it.
+    for (const who of [editor, viewer, stranger]) {
+        assert.equal(await refused(ops.getAdmins(store, who)), 'denied');
+        assert.equal(
+            await refused(ops.addAdmin(store, who, { email: 'x@example.test' })),
+            'denied',
+        );
+        assert.equal(await refused(ops.removeAdmin(store, who, { id: uuid(31) })), 'denied');
+        assert.equal((await ops.getAllData(store, who)).canManageAdmins, false);
+    }
+    assert.equal((await ops.getAllData(store, admin)).canManageAdmins, true);
+    assert.equal((await ops.getAllData(store, owner)).canManageAdmins, true);
+
+    // The owners are listed (lowercase, once each) apart from the admins added in the app.
+    assert.deepEqual(await ops.getAdmins(store, asAdmin), {
+        owners: ['owner@example.test', 'second@example.test'],
+        admins: [{ id: uuid(31), email: 'admin@example.test', addedBy: 'owner@example.test' }],
+    });
+
+    // An admin adds someone, who then has every event, with no role in any of them.
+    assert.equal(await refused(ops.addAdmin(store, asAdmin, { email: 'nope' })), 'invalid');
+    assert.equal(await refused(ops.addAdmin(store, asAdmin, {})), 'invalid');
+    const added = await ops.addAdmin(store, asAdmin, { email: '  Boss@Example.test ' });
+    assert.equal(added.email, 'boss@example.test');
+    assert.equal(added.addedBy, 'admin@example.test');
+    assert.ok(added.id);
+    const asBoss = await ops.getAllData(store, boss);
+    assert.equal(asBoss.canManageAdmins, true);
+    assert.equal(asBoss.canCreateEvents, true);
+    assert.deepEqual(asBoss.events.map((e) => e.id).sort(), [E1, E2].sort());
+    // Not an owner: no technical status, no bunryu settings.
+    assert.equal(asBoss.events[0].can.seeTechnicalStatus, false);
+    assert.equal(
+        await refused(ops.getBunryuSettings(store, { ...boss, secret: 's', ingestUrl: 'u' })),
+        'denied',
+    );
+
+    // Not twice, and not someone who is already an owner.
+    assert.equal(
+        await refused(ops.addAdmin(store, asOwner, { email: 'BOSS@example.test' })),
+        'conflict',
+    );
+    assert.equal(
+        await refused(ops.addAdmin(store, asOwner, { email: 'admin@example.test' })),
+        'conflict',
+    );
+    assert.equal(
+        await refused(ops.addAdmin(store, asOwner, { email: 'second@example.test' })),
+        'conflict',
+    );
+
+    // Admins add and remove each other, but not themselves.
+    const third = await ops.addAdmin(store, boss, { email: 'third@example.test' });
+    assert.equal(third.addedBy, 'boss@example.test');
+    assert.equal(await refused(ops.removeAdmin(store, boss, { id: added.id })), 'invalid');
+    await ops.removeAdmin(store, boss, { id: third.id });
+    assert.equal(await refused(ops.removeAdmin(store, boss, { id: third.id })), 'not_found');
+    assert.equal(await refused(ops.removeAdmin(store, boss, {})), 'invalid');
+    // Including the one who added them.
+    await ops.removeAdmin(store, boss, { id: uuid(31) });
+    assert.deepEqual(
+        (await ops.getAdmins(store, asOwner)).admins.map((a) => a.email),
+        ['boss@example.test'],
+    );
+
+    // Nothing removes an owner: even a row that was added before the server listed them.
+    store.state.admins.push({ id: uuid(60), email: 'second@example.test', addedBy: '' });
+    assert.equal(await refused(ops.removeAdmin(store, asOwner, { id: uuid(60) })), 'denied');
+    assert.deepEqual(
+        (await ops.getAdmins(store, asOwner)).admins.map((a) => a.email),
+        ['boss@example.test'],
+    );
+
+    await ops.removeAdmin(store, asOwner, { id: added.id });
+    assert.equal(
+        (await ops.getAllData(store, boss)).events.length,
+        0,
+        'no longer an admin, so no longer sees every event',
+    );
 });

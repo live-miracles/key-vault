@@ -39,7 +39,7 @@ export async function buildDemoState(
     const role = (
         eventId: string,
         email: string,
-        type: 'viewer' | 'editor' | 'admin' | 'owner',
+        type: 'viewer' | 'editor',
         inputId: string | null = null,
     ) => ({ id: uuid(), event: eventId, email, type, input: inputId });
 
@@ -190,14 +190,17 @@ export async function buildDemoState(
         events: [winter, spring],
         inputs: [english, hindi, tamil, german, springEnglish, springHindi],
         roles: [
-            role(winter.id, 'ann@example.org', 'admin'),
             role(winter.id, 'ravi@example.org', 'editor', hindi.id),
             role(winter.id, 'maya@example.org', 'editor', english.id),
             role(winter.id, 'partner@example.org', 'viewer'),
-            role(spring.id, 'ann@example.org', 'admin'),
             role(spring.id, 'maya@example.org', 'editor'),
         ],
         keys,
+        admins: [
+            { id: uuid(), email: 'ann@example.org', addedBy: DEMO_EMAIL },
+            { id: uuid(), email: 'producer@example.org', addedBy: DEMO_EMAIL },
+        ],
+        trash: [],
         status: {
             rows,
             pipelines: [

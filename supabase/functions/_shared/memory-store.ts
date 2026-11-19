@@ -6,9 +6,17 @@
 
 import type { Store } from './operations.ts';
 import type { InstanceInfo, PipelineRow, StatusRow } from './status.ts';
-import type { Data } from './types.ts';
+import type { Data, TrashRow } from './types.ts';
+
+// A deleted event with everything it holds, set aside whole until it is restored or removed.
+export interface TrashedBundle extends Omit<Data, 'events' | 'admins'> {
+    event: Data['events'][number];
+    deletedAt: string;
+    deletedBy: string;
+}
 
 export interface MemoryState extends Data {
+    trash: TrashedBundle[];
     status: { rows: StatusRow[]; pipelines: PipelineRow[]; instances: InstanceInfo[] };
 }
 
@@ -22,6 +30,8 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
         roles: [],
         inputs: [],
         keys: [],
+        admins: [],
+        trash: [],
         status: { rows: [], pipelines: [], instances: [] },
         ...structuredClone(initial),
     };
@@ -40,35 +50,66 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
                 roles: state.roles,
                 inputs: state.inputs,
                 keys: state.keys,
+                admins: state.admins,
             });
         },
         async loadStatus() {
             return structuredClone(state.status);
         },
-        async createEvent(name, adminEmail) {
+        async createEvent(name) {
             const event = { id: nextId(), name };
             state.events.push(event);
-            let adminRole = null;
-            if (adminEmail) {
-                adminRole = {
-                    id: nextId(),
-                    event: event.id,
-                    email: adminEmail,
-                    type: 'admin' as const,
-                    input: null,
-                };
-                state.roles.push(adminRole);
-            }
-            return structuredClone({ event, adminRole });
+            return structuredClone(event);
         },
         async updateEvent(id, name) {
             find(state.events, id).name = name;
         },
-        async deleteEvent(id) {
+        async trashEvent(id, deletedBy, deletedAt) {
+            const event = find(state.events, id);
+            const own = <T extends { event: string }>(list: T[]) =>
+                list.filter((x) => x.event === id);
+            state.trash.push({
+                event,
+                roles: own(state.roles),
+                inputs: own(state.inputs),
+                keys: own(state.keys),
+                deletedAt,
+                deletedBy,
+            });
             state.events = state.events.filter((e) => e.id !== id);
             state.roles = state.roles.filter((r) => r.event !== id);
             state.keys = state.keys.filter((k) => k.event !== id);
             state.inputs = state.inputs.filter((i) => i.event !== id);
+        },
+        async restoreEvent(id) {
+            const bundle = state.trash.find((b) => b.event.id === id);
+            if (!bundle) throw new Error('not found');
+            state.trash = state.trash.filter((b) => b.event.id !== id);
+            state.events.push(bundle.event);
+            state.roles.push(...bundle.roles);
+            state.inputs.push(...bundle.inputs);
+            state.keys.push(...bundle.keys);
+        },
+        async loadTrash() {
+            return state.trash.map((b): TrashRow => ({
+                id: b.event.id,
+                name: b.event.name,
+                deletedAt: b.deletedAt,
+                deletedBy: b.deletedBy,
+                destinations: b.keys.length,
+                inputs: b.inputs.length,
+            }));
+        },
+        async purgeTrash(before) {
+            state.trash = state.trash.filter((b) => Date.parse(b.deletedAt) >= Date.parse(before));
+        },
+        async createAdmin(email, addedBy) {
+            const created = { id: nextId(), email, addedBy };
+            state.admins.push(created);
+            return structuredClone(created);
+        },
+        async deleteAdmin(id) {
+            state.admins = state.admins.filter((a) => a.id !== id);
         },
         async createRole(role) {
             const created = { id: nextId(), ...role };

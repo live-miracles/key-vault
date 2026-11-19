@@ -2,7 +2,9 @@
 // what it may ask for, and the error every operation fails with. Only erasable TypeScript
 // syntax is used so Node, Deno and the bundler all read it as it is.
 
-export const ROLE_TYPES = ['viewer', 'editor', 'admin', 'owner'] as const;
+// What a person can be given in one event. Admins and owners are not here: they have access to
+// every event, so they are listed once for the whole app (see AdminRow).
+export const ROLE_TYPES = ['viewer', 'editor'] as const;
 export type RoleType = (typeof ROLE_TYPES)[number];
 
 // ===== What is stored =====
@@ -50,11 +52,35 @@ export interface KeyRow {
     updatedAt: string;
 }
 
+// An admin: someone with access to every event, added in the app. The owners named in
+// KEY_VAULT_OWNER_EMAILS have no row: they are set on the server and cannot be changed here.
+export interface AdminRow {
+    id: string;
+    email: string;
+    // Who added them (an email), or '' for one moved over from the old per-event admin roles.
+    addedBy: string;
+}
+
 export interface Data {
     events: EventRow[];
     roles: RoleRow[];
     inputs: InputRow[];
     keys: KeyRow[];
+    admins: AdminRow[];
+}
+
+// A deleted event is kept this long in the trash, where an admin can restore it.
+export const TRASH_DAYS = 30;
+
+// An event in the trash, as the store holds it: when and by whom it was deleted (ISO time and
+// email), and how much it holds.
+export interface TrashRow {
+    id: string;
+    name: string;
+    deletedAt: string;
+    deletedBy: string;
+    destinations: number;
+    inputs: number;
 }
 
 // ===== What the browser is sent =====
@@ -86,10 +112,28 @@ export interface KeyView extends KeyRow {
     canChange: boolean;
 }
 
+// What the trash shows for each deleted event, with the time it is removed for good.
+export interface TrashedEvent extends TrashRow {
+    expiresAt: string;
+}
+
+// Someone with access to every event, so each event's Share list can show them.
+export interface EveryEventPerson {
+    email: string;
+    // Named on the server rather than added in the app.
+    owner: boolean;
+}
+
 export interface AppData {
     userEmail: string;
     isAppOwner: boolean;
     canCreateEvents: boolean;
+    // See the trash and restore events from it.
+    canRestoreEvents: boolean;
+    // See the admins, and add or remove them.
+    canManageAdmins: boolean;
+    // Everyone who has access to every event. Empty for someone who sees no Share list.
+    everyEvent: EveryEventPerson[];
     events: EventView[];
     roles: RoleView[];
     inputs: InputView[];
@@ -114,9 +158,16 @@ export interface Operations {
     getAllData: { input: void; output: AppData };
     getStatus: { input: void; output: import('./status.ts').StatusReport };
     getBunryuSettings: { input: void; output: { url: string; secret: string } };
-    addEvent: { input: { name: string }; output: EventView & { adminRole?: RoleView } };
+    addEvent: { input: { name: string }; output: EventView };
     editEvent: { input: { id: string; name: string }; output: { id: string; name: string } };
+    // Moves the event to the trash.
     deleteEvent: { input: { id: string }; output: void };
+    getTrash: { input: void; output: TrashedEvent[] };
+    restoreEvent: { input: { id: string }; output: { id: string; name: string } };
+    // The owners set on the server (fixed) and the admins added in the app.
+    getAdmins: { input: void; output: { owners: string[]; admins: AdminRow[] } };
+    addAdmin: { input: { email: string }; output: AdminRow };
+    removeAdmin: { input: { id: string }; output: void };
     addRole: {
         input: { event: string; email: string; type: RoleType; input: string | null };
         output: RoleView;

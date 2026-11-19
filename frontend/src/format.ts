@@ -12,6 +12,15 @@ export function formatAgo(ms: number): string {
     return `${Math.floor(hours / 24)} d ago`;
 }
 
+// "27 days left", "1 day left", "Less than a day left", for a time to come. Whole days, rounded
+// up, so the last day reads "1 day left" until it is over.
+export function formatDaysLeft(iso: string, nowMs = Date.now()): string {
+    const left = new Date(iso).getTime() - nowMs;
+    if (Number.isNaN(left) || left <= 0) return 'Removed soon';
+    const days = Math.ceil(left / (24 * 60 * 60 * 1000));
+    return days === 1 ? '1 day left' : `${days} days left`;
+}
+
 // "18 Nov, 3:42 pm", with the year only when it is not this one. '' for a time that is not one.
 export function formatWhen(iso: string, nowMs = Date.now()): string {
     const date = new Date(iso);

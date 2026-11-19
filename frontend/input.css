@@ -486,7 +486,18 @@
 
     /* Compare view: the event as it was, with what differs from now marked. */
     .compare {
+        display: flex;
+        min-height: 0;
+        flex: 1;
+        flex-direction: column;
         padding-top: 0.75rem;
+    }
+    .compare.hidden {
+        display: none;
+    }
+    .compare > .cmp-bar,
+    .compare > .cmp-error {
+        flex: none;
     }
     .cmp-bar {
         display: flex;
@@ -531,18 +542,28 @@
         font-size: 0.875rem;
         white-space: pre-line;
     }
+    /* The bar above stays; the version on show and the timeline each scroll on their own. */
     .cmp-layout {
         display: flex;
+        min-height: 0;
+        flex: 1;
         flex-direction: column-reverse;
         gap: 0.75rem;
         margin-top: 0.75rem;
     }
     .cmp-main {
         flex: 1;
+        min-height: 0;
         min-width: 0;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+        padding-bottom: 0.75rem;
     }
     .cmp-timeline {
+        display: flex;
+        min-height: 0;
         flex: none;
+        flex-direction: column;
         padding: 0.5rem;
         border: 1px solid var(--color-base-300);
         border-radius: var(--radius-box);
@@ -557,21 +578,21 @@
         text-transform: uppercase;
     }
     .cmp-timeline-body {
+        min-height: 0;
         max-height: 16rem;
         overflow-y: auto;
+        padding-right: 0.25rem;
     }
     @media (min-width: 768px) {
         .cmp-layout {
             flex-direction: row;
-            align-items: flex-start;
+            padding-bottom: 0.75rem;
         }
         .cmp-timeline {
-            position: sticky;
-            top: 0.75rem;
             width: 20rem;
         }
         .cmp-timeline-body {
-            max-height: calc(100vh - 14rem);
+            max-height: none;
         }
     }
     .cmp-versions {
@@ -1311,6 +1332,10 @@
    All the grids are split into one section per input. */
 #key-cards {
     padding-block: 0.75rem;
+    /* The scrollbar sits at the edge of the page, and the cards keep the page's own side
+       margin (0.75rem, 0.5rem on a phone) between themselves and it. */
+    margin-right: -0.75rem;
+    padding-right: 0.75rem;
 }
 .dest-grid {
     display: grid;
@@ -1378,8 +1403,18 @@
 
 /* Event view: on the left everything that belongs to this event alone (its name and controls,
    then its own inputs), on the right the streams of the input chosen. */
+/* The page never scrolls: the top and bottom bars and the left column stay where they are.
+   #key-table fills the space between the bars, and only the lists inside it scroll (the
+   destination cards, the inputs, and in the compare view the version and the timeline). */
+#key-table {
+    @apply flex min-h-0 flex-1 flex-col overflow-hidden;
+}
+#key-table.hidden {
+    display: none;
+}
+
 .event-layout {
-    @apply flex flex-col gap-2 md:flex-row md:items-start md:gap-3 md:pt-3;
+    @apply flex min-h-0 flex-1 flex-col gap-2 md:flex-row md:gap-3 md:pt-3;
 }
 
 /* The compare view takes its place while it is open. Its display is set outside the utilities
@@ -1389,7 +1424,7 @@
 }
 
 .event-side {
-    @apply flex shrink-0 flex-col gap-2 max-md:mt-2 md:sticky md:top-3 md:max-h-[calc(100vh-8rem)] md:w-64 md:gap-3;
+    @apply flex shrink-0 flex-col gap-2 max-md:mt-2 md:min-h-0 md:w-64 md:gap-3;
 }
 
 .event-card,
@@ -1398,7 +1433,7 @@
 }
 
 .event-card {
-    @apply flex flex-col gap-2 p-2.5;
+    @apply flex shrink-0 flex-col gap-2 p-2.5;
 }
 
 .event-card-head {
@@ -1418,15 +1453,23 @@
 }
 
 .input-panel-head {
-    @apply text-ink-muted flex items-center justify-between px-2.5 pt-1 pb-1.5 text-xs font-semibold tracking-wide uppercase;
+    @apply text-ink-muted flex shrink-0 items-center justify-between px-2.5 pt-1 pb-1.5 text-xs font-semibold tracking-wide uppercase;
 }
 
+/* The heading and the add button above stay put; a long list scrolls here. */
 .input-list {
-    @apply flex gap-1 overflow-x-auto md:flex-col md:overflow-y-auto;
+    @apply flex min-h-0 gap-1 overflow-x-auto md:flex-col md:overflow-x-hidden md:overflow-y-auto md:pr-1;
 }
 
+/* Search, the input's status and the empty notices stay on top; the cards scroll below them. */
 .event-main {
-    @apply min-w-0 flex-1;
+    @apply flex min-h-0 min-w-0 flex-1 flex-col;
+}
+.event-main > * {
+    @apply shrink-0;
+}
+.event-main > #key-cards {
+    @apply min-h-0 shrink flex-1 overflow-y-auto;
 }
 
 /* One input of the list: the button that picks it, and (for the event's admins) rename and
@@ -1697,6 +1740,11 @@
 
     #key-table {
         @apply px-2;
+    }
+
+    #key-cards {
+        margin-right: -0.5rem;
+        padding-right: 0.5rem;
     }
 
     .modal-box {

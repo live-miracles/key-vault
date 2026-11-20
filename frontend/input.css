@@ -1712,6 +1712,10 @@
 .app-controls {
     @apply flex items-center gap-2;
 }
+/* The logo and name only show in the phone top bar; a computer has room for them elsewhere. */
+.app-brand {
+    @apply mr-auto hidden min-w-0 items-center gap-2;
+}
 /* The theme button shows the sun in dark mode (press for light) and the moon in light mode. */
 :root[data-theme='light'] .theme-icon-to-light,
 :root:not([data-theme='light']) .theme-icon-to-dark {
@@ -1731,6 +1735,10 @@
 @media (max-width: 640px) {
     #top-bar .app-controls {
         @apply justify-end px-3 py-1.5;
+    }
+
+    #top-bar .app-brand {
+        @apply flex;
     }
 
     .profile-menu {

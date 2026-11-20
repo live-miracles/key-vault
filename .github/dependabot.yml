@@ -1,0 +1,16 @@
+# Keeps the dependencies and the pinned GitHub Actions current. Security updates open their own
+# pull requests; these weekly ones cover everything else.
+version: 2
+updates:
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+      open-pull-requests-limit: 5
+      groups:
+          dev-tooling:
+              dependency-type: development
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly

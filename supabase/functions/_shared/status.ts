@@ -63,9 +63,16 @@ function text(value: unknown, max: number): string {
 // bunryu already strips destinations and secrets from a message. This is a second line
 // of defence on this side: a URL that still got through is replaced before it is stored.
 function safeMessage(value: unknown): string {
-    return text(value, 2000)
-        .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, '<url>')
-        .slice(0, MAX_MESSAGE_LENGTH);
+    return (
+        text(value, 2000)
+            .replace(/\b[a-z][a-z0-9+.-]*:\/\/\S+/gi, '<url>')
+            // A secret that was pasted as a parameter outside a URL ("passphrase=...", "key=...").
+            .replace(
+                /\b([a-z_]*(?:key|passphrase|streamid|token|secret|password|s_prp))=[^\s&"',;]+/gi,
+                '$1=<hidden>',
+            )
+            .slice(0, MAX_MESSAGE_LENGTH)
+    );
 }
 
 function count(value: unknown): number {

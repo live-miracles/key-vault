@@ -82,6 +82,15 @@ If a destination you know is configured shows nothing, the address differs betwe
 
 Key Vault is a progressive web app, so once the site is on HTTPS Chrome and Edge offer to install it, with no store or extra build step. See [Install Key Vault as an app](2-install-as-app.md) for how your team does it and what to check if the install button is missing.
 
+## Security settings to check
+
+Key Vault decides who may do what by the **email address** of the signed-in person, so what proves that address matters.
+
+- **Sign-in methods.** In Supabase → Authentication → Providers, leave only **Google** enabled. Switch the Email provider off, so nobody can register an address they do not own. The server also refuses a sign-in whose email the provider did not verify.
+- **Who can sign in with Google.** If everyone who uses Key Vault has an account in your company's Google Workspace, set the OAuth consent screen's user type to **Internal** (Google Cloud → APIs & Services → OAuth consent screen). Only your organisation can then sign in at all. Leave it External only if editors use outside addresses; they still see nothing until someone gives them a role.
+- **The deploy.** The **Deploy Supabase** workflow changes the production database when `master` changes. Protect `master` (require a pull request and a review) so nothing reaches it unreviewed, and keep the Supabase secrets in a GitHub environment that needs approval if you want a second pair of eyes on each deploy.
+- **The secret.** `KEY_VAULT_SECRET` is shown to owners in the bunryu dialog. To rotate it, set the new value (step 4) and enter it in bunryu (step 5); until both match, statuses show "Not set up yet".
+
 ## Backups
 
 The free Supabase plan has no managed backups and pauses a project after a week without activity (bunryu's heartbeat prevents the pause while it runs). Take a dump before and after an event, for example with `npx supabase db dump --data-only -f backup.sql` (the file contains stream keys: store it like a secret).

@@ -87,6 +87,24 @@ test('parseHeartbeat strips urls and control characters and bounds messages', ()
     assert.equal(out.pipeline, 'Line bell');
 });
 
+test('parseHeartbeat hides secret parameters that are not inside a URL', () => {
+    const out = parseHeartbeat(
+        heartbeat({
+            outputs: [
+                {
+                    ...heartbeat().outputs[0],
+                    message: 'bad passphrase=hunter2hunter2 and streamKey=abcd-1234 retrying',
+                },
+            ],
+        }),
+    ).outputs[0];
+    assert.ok(!out.message.includes('hunter2'));
+    assert.ok(!out.message.includes('abcd-1234'));
+    // The words the advice is matched on are kept.
+    assert.match(out.message, /passphrase=<hidden>/);
+    assert.match(out.message, /retrying/);
+});
+
 const row = (status, extra = {}) => ({
     instance: 'prod',
     hash: 'h',

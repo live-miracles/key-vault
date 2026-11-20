@@ -15,7 +15,14 @@
 
 const BUILD_ID = '__BUILD_ID__';
 const CACHE = `key-vault-${BUILD_ID}`;
-const SHELL = ['./', './app.js', './app.css', './manifest.webmanifest', './icons/icon-192.png'];
+const SHELL = [
+    './',
+    './app.js',
+    './app.css',
+    './theme-init.js',
+    './manifest.webmanifest',
+    './icons/icon-192.png',
+];
 const CHUNKS = new URL('chunks/', self.registration.scope).pathname;
 
 self.addEventListener('install', (event) => {

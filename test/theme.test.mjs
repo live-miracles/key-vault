@@ -48,5 +48,9 @@ test('blocked or missing storage never breaks the page', () => {
 
 test('the script in the page head reads the same key the app saves', () => {
     const html = readFileSync(new URL('../frontend/index.html', import.meta.url), 'utf8');
-    assert.ok(html.includes(`localStorage.getItem('${THEME_KEY}') === 'light'`));
+    const script = readFileSync(new URL('../frontend/theme-init.js', import.meta.url), 'utf8');
+    assert.ok(script.includes(`localStorage.getItem('${THEME_KEY}') === 'light'`));
+    // The page has no inline script, so its Content-Security-Policy can refuse them.
+    assert.match(html, /<script src="\.\/theme-init\.js"><\/script>/);
+    assert.ok(!/<script(?![^>]*\bsrc=)[^>]*>/.test(html), 'index.html has an inline script');
 });

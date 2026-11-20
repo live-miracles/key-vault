@@ -6,7 +6,13 @@ import { ApiError, HTTP_STATUS } from './types.ts';
 
 // The operation a request is for: the last segment of the path, ".../api/addKey".
 export function operationFrom(pathname: string): string {
-    return decodeURIComponent(pathname.split('/').filter(Boolean).pop() ?? '');
+    const last = pathname.split('/').filter(Boolean).pop() ?? '';
+    try {
+        return decodeURIComponent(last);
+    } catch {
+        // A malformed escape (".../api/%E0%A4%A") names no operation: "not found", not a crash.
+        return '';
+    }
 }
 
 export function errorResponse(error: unknown): {

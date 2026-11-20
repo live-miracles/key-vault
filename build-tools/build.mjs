@@ -70,7 +70,13 @@ export function buildCss({ minify }) {
 }
 
 // What the page needs beside the bundle. sw.js is copied separately (see copyStatic).
-const STATIC_FILES = ['index.html', 'logo.png', 'logo.svg', 'manifest.webmanifest'];
+const STATIC_FILES = [
+    'index.html',
+    'theme-init.js',
+    'logo.png',
+    'logo.svg',
+    'manifest.webmanifest',
+];
 
 // A new id for every deploy, so the service worker's cache is replaced instead of growing.
 export function buildId(env = process.env) {

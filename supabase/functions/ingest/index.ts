@@ -10,7 +10,10 @@ const ingestToken = (await deriveSecrets(Deno.env.get('KEY_VAULT_SECRET') || '')
 const MAX_BODY_BYTES = 1024 * 1024;
 
 function respond(body: unknown, status = 200): Response {
-    return Response.json(body, { status });
+    return Response.json(body, {
+        status,
+        headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
+    });
 }
 
 // Compares digests, so neither the length nor the content of the token decides how long
@@ -39,8 +42,11 @@ Deno.serve(async (request) => {
         return respond({ error: 'Authentication is required.' }, 401);
     }
 
+    if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY_BYTES) {
+        return respond({ error: 'The request body is too large.' }, 413);
+    }
     const text = await request.text();
-    if (text.length > MAX_BODY_BYTES)
+    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES)
         return respond({ error: 'The request body is too large.' }, 413);
 
     let heartbeat;

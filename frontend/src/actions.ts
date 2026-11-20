@@ -102,7 +102,7 @@ export function createActions(app: AppStore) {
                 () => api().restoreEvent({ id }),
             );
             if (!outcome.ok) return null;
-            await app.refresh();
+            await Promise.all([app.refresh(), app.refreshStatus()]);
             return outcome.result;
         },
 
@@ -237,6 +237,9 @@ export function createActions(app: AppStore) {
                 () => (isAdd ? api().addKey(fields) : api().editKey({ ...fields, id })),
                 (data, saved) => replace(data.keys, isAdd ? tempId : id, saved),
             );
+            // bunryu's report is older than this link: ask again, so the card gets its badge
+            // (usually "Not set up yet") now and not at the next regular check.
+            if (outcome.ok) void app.refreshStatus();
             return outcome.ok;
         },
 

@@ -105,6 +105,8 @@ function renderWatchButton(href: string): string {
 }
 
 // The coloured label that starts a card: Live, Unstable, Problem, Not set up yet...
+// A calm label explains itself on hover, the same for everyone, and a small "i" says so. Trouble
+// is already written under the name, so its label has no hover and no "i".
 export function keyStatusPillHtml(note: KeyNote | null, isPending = false): string {
     if (isPending) return '<span class="status-pill status-none">Saving</span>';
     if (!note) return '';
@@ -112,7 +114,8 @@ export function keyStatusPillHtml(note: KeyNote | null, isPending = false): stri
     const title = hover
         ? ` title="${escapeHtml(note.detail ? `${note.label} ${hover}` : hover)}"`
         : '';
-    return `<span class="status-pill status-${note.state}"${title}>${escapeHtml(note.label)}</span>`;
+    const hint = hover ? iconSvg('info', 'status-pill-hint') : '';
+    return `<span class="status-pill status-${note.state}${hover ? ' status-pill-has-hint' : ''}"${title}>${escapeHtml(note.label)}${hint}</span>`;
 }
 
 // What the status means and what to try, in a sentence under the name. Trouble reads as
@@ -183,16 +186,9 @@ export function bannerFor(ctx: CardContext, inputId: string) {
 // means, then one row with the links and the edit buttons.
 export function renderCard(key: KeyItem, eventKeys: KeyItem[], ctx: CardContext): string {
     const { data, report, nowMs } = ctx;
-    const { tint, title: technicalTitle } = getKeyDisplay(key, report, nowMs);
+    const { tint } = getKeyDisplay(key, report, nowMs);
     const isPending = Boolean(key.pending);
     const note = isPending ? null : describeKeyNote(key, report, nowMs, inputName(data, key.input));
-    // Hovering gives owners bunryu's own report; everyone else the note.
-    const seesTechnical = data.events.find((e) => e.id === key.event)?.can.seeTechnicalStatus;
-    const statusTitle = seesTechnical
-        ? technicalTitle
-        : note
-          ? [note.label, note.text].filter(Boolean).join(': ')
-          : '';
     const actions = isPending
         ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
         : key.canChange
@@ -237,7 +233,7 @@ export function renderCard(key: KeyItem, eventKeys: KeyItem[], ctx: CardContext)
         ? ''
         : `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the name" aria-label="Copy the name" data-action="copy-text" data-copy-value="${escapeHtml(key.name)}">${iconSvg('copy')}</button>`;
     return `
-                <article class="dest-card ${tint}" data-key-id="${escapeHtml(key.id)}" title="${escapeHtml(statusTitle)}">
+                <article class="dest-card ${tint}" data-key-id="${escapeHtml(key.id)}">
                     <div class="dest-card-head">
                         ${platformLogoHtml(key.platform)}
                         ${keyStatusPillHtml(note, isPending)}

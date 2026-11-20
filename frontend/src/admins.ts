@@ -28,13 +28,13 @@ function isMe(email: string) {
 }
 
 export function adminRowsHtml(current: AdminList): { owners: string; added: string } {
-    const you = (email: string) => (isMe(email) ? ' <span class="role-you">(you)</span>' : '');
+    const you = (email: string) => (isMe(email) ? '<span class="role-you">(you)</span>' : '');
     const owners = current.owners.map(
         (email) => `
         <li class="admin-row">
             ${avatar(email)}
             <div class="role-body">
-                <span class="role-email" title="${escapeHtml(email)}">${escapeHtml(email)}${you(email)}</span>
+                <span class="role-email"><span class="role-email-text" title="${escapeHtml(email)}">${escapeHtml(email)}</span>${you(email)}</span>
             </div>
             <span class="admin-fixed" title="Set in the server settings">${iconSvg('lock')} Fixed</span>
         </li>`,
@@ -49,7 +49,7 @@ export function adminRowsHtml(current: AdminList): { owners: string; added: stri
         <li class="admin-row" data-admin-id="${escapeHtml(admin.id)}">
             ${avatar(admin.email)}
             <div class="role-body">
-                <span class="role-email" title="${escapeHtml(admin.email)}">${escapeHtml(admin.email)}${you(admin.email)}</span>
+                <span class="role-email"><span class="role-email-text" title="${escapeHtml(admin.email)}">${escapeHtml(admin.email)}</span>${you(admin.email)}</span>
                 <span class="role-meta">${by}</span>
             </div>
             <div class="role-actions">${remove}</div>

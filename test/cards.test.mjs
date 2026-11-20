@@ -127,23 +127,25 @@ test('a card shows a dot before Main and before Backup, and none before a link t
     );
 });
 
-test('a card for a destination in trouble says what to try, and admins also get bunryu’s own report', () => {
+test('a card for a destination in trouble says what to try on the card, with no hover for anyone', () => {
     const report = { online: true, instances: [], inputs: {}, keys: { k1: errorStatus } };
     const editor = renderCard(key(), [key()], ctx({ report }));
     assert.match(editor, /status-error/);
     assert.match(editor, /tint-error/);
     assert.match(editor, /Could not reach the platform/);
     assert.match(editor, /Copy error details/);
-    // The editor's hover is the note, not the encoder's words.
-    assert.doesNotMatch(editor, /title="Error • /);
+    // The note is already on the card, so the label has no hover and no "i", and the
+    // encoder's words are never shown.
+    assert.doesNotMatch(editor, /status-pill-has-hint|status-pill-hint/);
+    assert.doesNotMatch(editor, /title="(Error • |Could not reach)/);
 
     const admin = {
         ...data(),
         events: [{ ...event, can: { seeTechnicalStatus: true } }],
     };
-    assert.match(
+    assert.equal(
         renderCard(key(), [key()], ctx({ report, data: admin })),
-        /title="Error • Hindi → YouTube • Connection refused"/,
+        renderCard(key(), [key()], ctx({ report })),
     );
 });
 

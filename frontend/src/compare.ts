@@ -545,7 +545,7 @@ export async function restoreVersion() {
     try {
         await app.backend.restoreEventVersion({ event: c.event, atChange: c.version });
         // What the page shows is now out of date: load it again, and show the new entry.
-        await app.refresh();
+        await Promise.all([app.refresh(), app.refreshStatus()]);
         c.restoring = false;
         await loadTimeline(c, false);
         if (current === c) await select(c, c.latest);

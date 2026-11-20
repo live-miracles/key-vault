@@ -115,7 +115,7 @@ function renderRoleEditRow(role: {
 }
 
 function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {
-    const you = isCurrentUser ? ' <span class="role-you">(you)</span>' : '';
+    const you = isCurrentUser ? '<span class="role-you">(you)</span>' : '';
     const actions = r.pending
         ? '<span class="loading loading-dots loading-xs" title="Saving"></span>'
         : r.canChange
@@ -132,7 +132,7 @@ function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {
         <li class="role-row" data-role-id="${escapeHtml(r.id)}">
             <span class="role-avatar" aria-hidden="true">${escapeHtml(r.email.charAt(0))}</span>
             <div class="role-body">
-                <span class="role-email" title="${escapeHtml(r.email)}">${escapeHtml(r.email)}${you}</span>
+                <span class="role-email"><span class="role-email-text" title="${escapeHtml(r.email)}">${escapeHtml(r.email)}</span>${you}</span>
                 <span class="role-meta">
                     <span class="role-pill role-pill-${escapeHtml(r.type)}">${escapeHtml(ROLE_LABELS[r.type])}</span>
                     <span>${roleInputLabel(r.input)}</span>
@@ -145,14 +145,14 @@ function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {
 
 // An admin or an owner has every event, so they are listed here but changed under Admins.
 function renderEveryEventRow(person: { email: string; owner: boolean }, isCurrentUser: boolean) {
-    const you = isCurrentUser ? ' <span class="role-you">(you)</span>' : '';
+    const you = isCurrentUser ? '<span class="role-you">(you)</span>' : '';
     const kind = person.owner ? 'owner' : 'admin';
     const why = person.owner ? 'fixed' : 'see Admins';
     return `
         <li class="role-row">
             <span class="role-avatar" aria-hidden="true">${escapeHtml(person.email.charAt(0))}</span>
             <div class="role-body">
-                <span class="role-email" title="${escapeHtml(person.email)}">${escapeHtml(person.email)}${you}</span>
+                <span class="role-email"><span class="role-email-text" title="${escapeHtml(person.email)}">${escapeHtml(person.email)}</span>${you}</span>
                 <span class="role-meta">
                     <span class="role-pill role-pill-${kind}">${person.owner ? 'Owner' : 'Admin'}</span>
                     <span>Every event <span class="text-ink-subtle">· ${why}</span></span>

@@ -771,14 +771,22 @@
         gap: 0.125rem;
         min-width: 0;
     }
+    /* The email shortens with an ellipsis; "(you)" stays beside it and is never cut. */
     .role-email {
-        overflow: hidden;
+        display: flex;
+        min-width: 0;
+        gap: 0.3em;
         font-size: 0.875rem;
         font-weight: 500;
-        text-overflow: ellipsis;
         white-space: nowrap;
     }
+    .role-email-text {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     .role-you {
+        flex: none;
         color: var(--color-ink-subtle);
         font-weight: 400;
     }
@@ -1577,6 +1585,16 @@
 .input-banner.hidden,
 .input-banner:empty {
     display: none;
+}
+/* A badge with its explanation on hover: a small "i" says so, and the pointer turns to help. */
+.status-pill-has-hint {
+    @apply cursor-help gap-1;
+}
+.status-pill-hint {
+    @apply h-3 w-3 shrink-0 opacity-70;
+}
+.status-pill-has-hint:hover .status-pill-hint {
+    @apply opacity-100;
 }
 .input-banner .status-pill {
     @apply shrink-0 px-2 whitespace-nowrap;

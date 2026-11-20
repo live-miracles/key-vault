@@ -84,12 +84,7 @@ Key Vault is a progressive web app, so once the site is on HTTPS Chrome and Edge
 
 ## Security settings to check
 
-Key Vault decides who may do what by the **email address** of the signed-in person, so what proves that address matters.
-
-- **Sign-in methods.** In Supabase → Authentication → Providers, leave only **Google** enabled. Switch the Email provider off, so nobody can register an address they do not own. The server also refuses a sign-in whose email the provider did not verify.
-- **Who can sign in with Google.** If everyone who uses Key Vault has an account in your company's Google Workspace, set the OAuth consent screen's user type to **Internal** (Google Cloud → APIs & Services → OAuth consent screen). Only your organisation can then sign in at all. Leave it External only if editors use outside addresses; they still see nothing until someone gives them a role.
-- **The deploy.** The **Deploy Supabase** workflow changes the production database when `master` changes. Protect `master` (require a pull request and a review) so nothing reaches it unreviewed, and keep the Supabase secrets in a GitHub environment that needs approval if you want a second pair of eyes on each deploy.
-- **The secret.** `KEY_VAULT_SECRET` is shown to owners in the bunryu dialog. To rotate it, set the new value (step 4) and enter it in bunryu (step 5); until both match, statuses show "Not set up yet".
+Key Vault decides who may do what by the email address of the signed-in person. Before you let people in, work through the checklist in [Security](6-security.md#before-you-go-live): who can sign in, two-step verification, the sign-in methods, the secrets and the repository settings.
 
 ## Backups
 

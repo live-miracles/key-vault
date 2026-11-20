@@ -11,6 +11,7 @@ Key Vault is where a media team adds every stream destination for an event, and 
 
 - [Setting up Key Vault](3-setup.md): Supabase, Google sign-in, Vercel and connecting bunryu, in order, with a check after each step.
 - [The bunryu link](5-bunryu-contract.md): how the streaming server reports each output and how that becomes a status.
+- [Security](6-security.md): what to set up before you go live (sign-in limits, two-step verification, secrets), what Key Vault does not do, and the rules for changing it safely.
 
 ## If you change the code
 

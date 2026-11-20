@@ -64,6 +64,7 @@ is not an offline tool.
 | add destinations and check their status | [User guide](docs/1-user-guide.md)                  |
 | run Key Vault for your team             | [Setting up Key Vault](docs/3-setup.md)             |
 | connect a bunryu server                 | [The bunryu link](docs/5-bunryu-contract.md)        |
+| secure a deployment                     | [Security](docs/6-security.md)                      |
 | change the code                         | [Development](docs/4-development.md)                |
 | want the background and the terms       | [CONTEXT.md](CONTEXT.md) and [DESIGN.md](DESIGN.md) |
 

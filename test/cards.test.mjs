@@ -133,7 +133,7 @@ test('a card for a destination in trouble says what to try on the card, with no 
     assert.match(editor, /status-error/);
     assert.match(editor, /tint-error/);
     assert.match(editor, /Could not reach the platform/);
-    assert.match(editor, /Copy error details/);
+    assert.doesNotMatch(editor, /Copy error details/);
     // The note is already on the card, so the label has no hover and no "i", and the
     // encoder's words are never shown.
     assert.doesNotMatch(editor, /status-pill-has-hint|status-pill-hint/);
@@ -203,7 +203,7 @@ test('pills count destinations by state, and a missing input is flagged', () => 
 
     assert.match(keyStatusPillHtml(null, true), /Saving/);
     assert.equal(keyStatusPillHtml(null), '');
-    assert.equal(keyNoteTextHtml({ state: 'running', label: 'Live', text: '', copy: '' }), '');
+    assert.equal(keyNoteTextHtml({ state: 'running', label: 'Live', text: '' }), '');
 });
 
 test('destinations of an input that is off count as unreported, not as errors', () => {

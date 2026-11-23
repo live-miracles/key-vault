@@ -48,7 +48,7 @@ For every destination, during an event, without asking anyone:
 ## Rules that follow
 
 - Editor screens never show FFmpeg or other raw output. bunryu's redacted message is only the hover detail for owners and admins.
-- The advice on a failing stream is written in Key Vault for the media team (`ADVICE_PATTERNS` in `status-wording.ts`), not taken from bunryu: bunryu's own hints are for the streaming team. An unknown error gets one generic line. A Copy button puts the technical details on the clipboard to send to the streaming team.
+- The advice on a failing stream is written in Key Vault for the media team (`ADVICE_PATTERNS` in `status-wording.ts`), not taken from bunryu: bunryu's own hints are for the streaming team. An unknown error gets one generic line; the technical text is never shown to editors.
 - A status is only ever derived from bunryu's report. No manual color (`docs/adr/0002-a-status-is-never-set-by-hand.md`).
 - The rules for where a destination can go are one module used by the form and the server, so a wrong link cannot be stored by anything that skips the form (`docs/adr/0001-platform-rules-live-in-one-shared-module.md`).
 - Row ids are random UUIDs made by the database; nobody types or checks one.

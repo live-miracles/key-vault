@@ -89,7 +89,7 @@ Why the editors matter: the media team used to send links in a Google Sheet and 
 
 A row's color is only half the message. For an editor, a red or amber row must also say **what is probably wrong and what to try**, in plain words:
 
-- The advice is Key Vault's own (`ADVICE_PATTERNS` in `status-wording.ts`), because bunryu's hints are for the streaming team. Say what to check in terms of the key and the platform, and who to tell. Never show FFmpeg or other encoder text: a Copy button on the note puts the technical details (stream name, pipeline, bunryu's redacted message) on the clipboard instead, to paste to the streaming team.
+- The advice is Key Vault's own (`ADVICE_PATTERNS` in `status-wording.ts`), because bunryu's hints are for the streaming team. Say what to check in terms of the key and the platform, and who to tell. Never show FFmpeg or other encoder text, and keep the note simple: no buttons on it.
 - An error note is red with a cross icon, a warning note amber with a triangle, so trouble never reads as plain text (`keyNoteTextHtml`).
 - Only trouble (red or amber) is written out on the card. Calm states (Live, Not set up yet, Not sending) put their explanation in the status label's hover text, so cards stay short. A label with hover text, the same for everyone, carries a small "i" and a help cursor so people know there is more to read. A trouble label has neither, since the card already says it.
 - Show trouble on the card itself (`.dest-card`: the status label first, then the words under the name). A hover title does not exist on a phone, so it can only be extra.

@@ -4,7 +4,7 @@
 //
 // The advice is written here for the media team, not taken from bunryu: bunryu's own hints are
 // for the streaming team (hosts, ports, FFmpeg). It is a lookup on bunryu's redacted message, so
-// an unknown message gets the generic line and the raw text is never shown, only copyable.
+// an unknown message gets the generic line and the raw text is never shown.
 
 import type {
     InputStatus,
@@ -137,8 +137,6 @@ export interface KeyNote {
     label: string;
     text: string;
     detail?: string;
-    // The technical detail for a Copy button, to paste to the streaming team.
-    copy: string;
 }
 
 // What to say under a destination's name, or null when nothing can be said. Without a fresh
@@ -157,7 +155,6 @@ export function describeKeyNote(
             state: 'none',
             label: 'Not set up yet',
             text: 'The streaming team has not set up this link yet, or still has the old one.',
-            copy: '',
         };
     }
 
@@ -167,7 +164,6 @@ export function describeKeyNote(
             state: 'none',
             label: 'Not started yet',
             text: 'This destination starts sending once its input is live.',
-            copy: '',
         };
     }
     const inputLabel = inputName ? `“${inputName}”` : 'this input';
@@ -180,7 +176,7 @@ export function describeKeyNote(
         : '';
     if (status.state === 'running' || status.state === 'stopped') {
         if (wrongInput) {
-            return { state: 'warning', label: 'Check input', text: wrongInput, copy: '' };
+            return { state: 'warning', label: 'Check input', text: wrongInput };
         }
         return status.state === 'running'
             ? {
@@ -188,9 +184,8 @@ export function describeKeyNote(
                   label,
                   text: '',
                   detail: describeLiveFor(status.sinceMs, nowMs),
-                  copy: '',
               }
-            : { state: 'stopped', label, text: 'Set up, but not sending right now.', copy: '' };
+            : { state: 'stopped', label, text: 'Set up, but not sending right now.' };
     }
 
     const parts: string[] = [];
@@ -205,20 +200,10 @@ export function describeKeyNote(
             ? `The input ${inputLabel} is not arriving, so this is probably not a problem with the platform. Tell the streaming team.`
             : getStatusAdvice(status),
     );
-    const copy = status.message
-        ? [
-              `${key.name || 'Destination'} (${status.side} stream)`,
-              [status.pipeline, status.output].filter(Boolean).join(' → '),
-              status.message,
-          ]
-              .filter(Boolean)
-              .join(' | ')
-        : '';
     return {
         state: status.state === 'error' ? 'error' : 'warning',
         label,
         text: parts.join(' ').trim(),
-        copy,
     };
 }
 

@@ -121,10 +121,7 @@ export function keyStatusPillHtml(note: KeyNote | null, isPending = false): stri
 // What the status means and what to try, in a sentence under the name. Trouble reads as
 // trouble: red with a cross for an error, amber with a triangle for a warning.
 export function keyNoteTextHtml(note: KeyNote | null): string {
-    if (!note || !isTroubleNote(note) || (!note.text && !note.copy)) return '';
-    const copy = note.copy
-        ? `<button type="button" class="btn btn-ghost btn-square btn-xs text-accent shrink-0" title="Copy the error details to send to the streaming team" aria-label="Copy error details" data-action="copy-text" data-copy-value="${escapeHtml(note.copy)}">${iconSvg('copy')}</button>`
-        : '';
+    if (!note || !isTroubleNote(note) || !note.text) return '';
     const icon =
         note.state === 'error'
             ? iconSvg('error', 'h-4 w-4 shrink-0')
@@ -132,7 +129,7 @@ export function keyNoteTextHtml(note: KeyNote | null): string {
               ? iconSvg('warning', 'h-4 w-4 shrink-0')
               : '';
     const tone = icon ? ` dest-card-note-${note.state}` : '';
-    return `<p class="dest-card-note${tone}">${icon}<span class="dest-card-note-text">${escapeHtml(note.text)}</span>${copy}</p>`;
+    return `<p class="dest-card-note${tone}">${icon}<span class="dest-card-note-text">${escapeHtml(note.text)}</span></p>`;
 }
 
 // ===== The input list and its banners =====

@@ -83,7 +83,7 @@ test('a known error is explained in the media team’s words, without the raw te
     }
 });
 
-test('an error nobody has advice for gets a plain generic line and a copyable detail', () => {
+test('an error nobody has advice for gets a plain generic line', () => {
     const note = describeKeyNote(
         key({ name: undefined }),
         report({ K1: status('error', { message: 'ffmpeg exited 1' }) }),
@@ -91,12 +91,9 @@ test('an error nobody has advice for gets a plain generic line and a copyable de
     );
     assert.match(note.text, /stream key/);
     assert.doesNotMatch(note.text, /ffmpeg/i);
-    assert.equal(note.copy, 'Destination (main stream) | Hindi → YouTube | ffmpeg exited 1');
 
     const warning = describeKeyNote(key(), report({ K1: status('warning') }), NOW);
     assert.match(warning.text, /not smoothly/);
-    // Nothing to copy when bunryu sent no message.
-    assert.equal(warning.copy, '');
 });
 
 test('the note says when it is the backup that has the problem, and when bunryu gave up', () => {
@@ -116,7 +113,6 @@ test('the note says when it is the backup that has the problem, and when bunryu 
         note.text,
         /^Backup stream: Gave up after 5 failed attempts. Could not reach the platform/,
     );
-    assert.match(note.copy, /\(backup stream\)/);
 });
 
 test('a running stream keeps for how long out of sight, and a stopped one says it is not sending', () => {

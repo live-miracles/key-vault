@@ -245,6 +245,11 @@ export interface StatusReport {
     // At least one bunryu has reported within FRESH_MS. When false nothing can be said
     // about any destination: bunryu only runs during events, so silence is normal.
     online: boolean;
+    // bunryu has reported before, but none has within FRESH_MS. Each destination it knew is then
+    // "stopped" (off) instead of showing what it last did, and each it did not know is
+    // "not_configured", as the last report said. When no bunryu has ever reported, `online` and
+    // `off` are both false and nothing is claimed.
+    off?: boolean;
     instances: { instance: string; lastSeenAt: string; online: boolean }[];
     // By destination id. null: the destination has no link to look for.
     keys: Record<string, KeyStatus | null>;
@@ -266,9 +271,23 @@ export async function buildStatusReport(
             .filter((i) => nowMs - new Date(i.lastSeenAt).getTime() <= FRESH_MS)
             .map((i) => i.instance),
     );
+    // Off: bunryu has reported before, but not lately. Its stored rows are still the
+    // last thing it said about which links it has, so they are kept for that; what they said
+    // about running is not true any more, so each becomes a plain "stopped".
+    const off = fresh.size === 0 && instances.length > 0;
     const byHash = new Map<string, StatusRow[]>();
-    for (const row of rows) {
-        if (!fresh.has(row.instance)) continue;
+    for (const stored of rows) {
+        if (!fresh.has(stored.instance) && !off) continue;
+        const row: StatusRow = fresh.has(stored.instance)
+            ? stored
+            : {
+                  ...stored,
+                  status: 'stopped',
+                  message: '',
+                  failures: 0,
+                  stoppedAfterFailures: false,
+                  sinceMs: 0,
+              };
         const list = byHash.get(row.hash);
         if (list) list.push(row);
         else byHash.set(row.hash, [row]);
@@ -365,6 +384,7 @@ export async function buildStatusReport(
 
     return {
         online: fresh.size > 0,
+        off,
         instances: instances.map((i) => ({ ...i, online: fresh.has(i.instance) })),
         keys: result,
         inputs: inputStatus,

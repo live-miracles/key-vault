@@ -141,21 +141,40 @@ export interface KeyNote {
 
 // What to say under a destination's name, or null when nothing can be said. Without a fresh
 // report from bunryu nothing is claimed: bunryu only runs during events, so silence is normal.
+// The exception is a silent bunryu (`report.off`): then nothing is running, so a destination
+// bunryu knew is "Not sending", and the rest are "Not set up yet", as in its last report.
 export function describeKeyNote(
     key: { id: string; input: string; name?: string },
     report: StatusReport | null | undefined,
     nowMs = Date.now(),
     inputName = '',
 ): KeyNote | null {
-    if (!report?.online) return null;
+    if (!report?.online && !report?.off) return null;
     const status = report.keys?.[key.id];
     if (!status) return null;
     if (status.state === 'not_configured') {
         return {
             state: 'none',
             label: 'Not set up yet',
-            text: 'The streaming team has not set up this link yet, or still has the old one.',
+            text: report.off
+                ? 'The streaming team had not set up this link when bunryu last reported, or still had the old one.'
+                : 'The streaming team has not set up this link yet, or still has the old one.',
         };
+    }
+    // bunryu has stopped reporting: nothing is running, whatever it last said. The
+    // link being set up is still remembered from its last report.
+    if (report.off) {
+        return status.inputMismatch
+            ? {
+                  state: 'warning',
+                  label: 'Check input',
+                  text: `The streaming team has this link under “${status.pipeline}”, but this destination is for ${inputName ? `“${inputName}”` : 'this input'}. One of them is wrong.`,
+              }
+            : {
+                  state: 'stopped',
+                  label: 'Not sending',
+                  text: 'Set up, but bunryu is not running right now, so nothing is being sent.',
+              };
     }
 
     const input = getInputStatus(key.input, report, nowMs);
@@ -226,7 +245,7 @@ export function describeSide(
     report: StatusReport | null | undefined,
     nowMs = Date.now(),
 ): SideDot | null {
-    if (!report?.online) return null;
+    if (!report?.online && !report?.off) return null;
     const status = report.keys?.[key.id];
     const state = status?.sides?.[side];
     if (!status || !state) return null;
@@ -234,6 +253,7 @@ export function describeSide(
     if (state === 'not_configured') {
         return { state: 'stopped', label: `${name}: Not set up yet` };
     }
+    if (report.off) return { state: 'stopped', label: `${name}: Not sending` };
     const waiting =
         state !== 'running' &&
         !status.inputMismatch &&

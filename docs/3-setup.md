@@ -74,7 +74,7 @@ Check, within two minutes:
 - In Key Vault a destination whose main or backup address is configured in bunryu shows its status; hovering shows the pipeline, output and message (owners and admins). One not configured in bunryu says "Not set up yet".
 - Stop an output in bunryu: its destination turns indigo ("configured, not running"). Make one fail until bunryu gives up: red, with "stopped after N failed attempts".
 - The header shows "bunryu connected" with a green dot.
-- Stop bunryu: after about three minutes the statuses clear and the header says "bunryu last seen N min ago" (there is no warning: bunryu is only on during events).
+- Stop bunryu: after about three minutes every destination bunryu had says "Not sending" (off) and the rest still say "Not set up yet", as in its last report, and the header says "bunryu last seen N min ago" (there is no warning: bunryu is only on during events).
 
 If a destination you know is configured shows nothing, the address differs between the two systems (a trailing path, a different server, a changed key). Compare them; the hash is of the whole address.
 

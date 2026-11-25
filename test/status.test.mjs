@@ -216,7 +216,7 @@ test('names are compared ignoring case and runs of spaces, not the letter s', ()
     assert.equal(normalizeInputName('Mississippi'), 'mississippi');
 });
 
-test('a bunryu that stopped reporting is offline and its rows are ignored', async () => {
+test('a bunryu that stopped reporting is offline, and what it last did is not shown', async () => {
     const hash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
     const keys = [dest('K1')];
     const stale = new Date(NOW - FRESH_MS - 1000).toISOString();
@@ -231,8 +231,75 @@ test('a bunryu that stopped reporting is offline and its rows are ignored', asyn
 
     assert.equal(report.online, false);
     assert.equal(report.instances[0].online, false);
-    // Nothing is claimed from a bunryu that went quiet.
-    assert.equal(report.keys.K1.state, 'not_configured');
+    // Its "running" is not repeated: the link is remembered, but as off.
+    assert.equal(report.keys.K1.state, 'stopped');
+});
+
+// Once bunryu has stopped reporting it is off: nothing it last said about running is shown, but which
+// links it had is remembered from its last report.
+test('a bunryu that stopped reporting shows every link it knew as stopped, and the rest as not set up', async () => {
+    const known = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const keys = [dest('K1'), dest('K2', { streamKey: 'new-key' })];
+    const stale = new Date(NOW - FRESH_MS - 1000).toISOString();
+    const rows = [
+        row('running', { hash: known, message: 'was fine', sinceMs: 5, failures: 2 }),
+        row('error', { hash: known, stoppedAfterFailures: true, message: 'refused' }),
+    ];
+
+    const report = await buildStatusReport(
+        keys,
+        rows,
+        [{ instance: 'prod', lastSeenAt: stale }],
+        SECRET,
+        NOW,
+    );
+
+    assert.equal(report.online, false);
+    assert.equal(report.off, true);
+    // Known to bunryu: off, with nothing left of the last live state.
+    assert.equal(report.keys.K1.state, 'stopped');
+    assert.equal(report.keys.K1.message, '');
+    assert.equal(report.keys.K1.failures, 0);
+    assert.equal(report.keys.K1.stoppedAfterFailures, false);
+    // YouTube's backup address has no row in the last report, so it was not set up either.
+    assert.deepEqual(report.keys.K1.sides, { main: 'stopped', backup: 'not_configured' });
+    // Added after the last report: bunryu has not had it.
+    assert.equal(report.keys.K2.state, 'not_configured');
+});
+
+test('before any bunryu has reported nothing is off and nothing is claimed', async () => {
+    const report = await buildStatusReport([dest('K1')], [], [], SECRET, NOW);
+    assert.equal(report.online, false);
+    assert.equal(report.off, false);
+});
+
+test('a live bunryu is never off, even beside one that went quiet long ago', async () => {
+    const hash = await hashUrl(SECRET, streamUrl('yt', 'abcd-1234'));
+    const report = await buildStatusReport(
+        [dest('K1')],
+        [row('running', { hash, instance: 'prod' })],
+        [
+            { instance: 'dev', lastSeenAt: new Date(NOW - 86_400_000).toISOString() },
+            { instance: 'prod', lastSeenAt: new Date(NOW - 1000).toISOString() },
+        ],
+        SECRET,
+        NOW,
+    );
+    assert.equal(report.off, false);
+    assert.equal(report.keys.K1.state, 'running');
+});
+
+test('inputs are not remembered when bunryu is off', async () => {
+    const report = await buildStatusReport(
+        [],
+        [],
+        [{ instance: 'prod', lastSeenAt: new Date(NOW - FRESH_MS - 1000).toISOString() }],
+        SECRET,
+        NOW,
+        [inputRow('Hindi', 'running')],
+        [{ id: 'L1', name: 'Hindi' }],
+    );
+    assert.equal(report.inputs.L1, null);
 });
 
 test('with two instances only the live one counts', async () => {

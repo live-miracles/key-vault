@@ -7,6 +7,7 @@ import {
     describeSide,
     getInputStatus,
     getKeyDisplay,
+    isTroubleNote,
     reportedStatus,
     INPUT_OFF_AFTER_MS,
 } from '../frontend/src/status-wording.ts';
@@ -138,6 +139,53 @@ test('a link bunryu does not know is "not set up yet", but only while bunryu is 
     // A destination with no link has nothing for bunryu to know: the server sends no entry.
     assert.equal(describeKeyNote(key(), report({ K1: null }), NOW), null);
     assert.equal(describeKeyNote(key(), report({}), NOW), null);
+});
+
+// bunryu silent for a long time: the server sends `off`, every link it knew as stopped.
+test('with bunryu off, known links say "Not sending" and the rest "Not set up yet"', () => {
+    const off = (keys) => report(keys, { online: false, off: true });
+    const known = describeKeyNote(
+        key(),
+        off({ K1: status('stopped', { sides: { main: 'stopped', backup: null } }) }),
+        NOW,
+    );
+    assert.equal(known.state, 'stopped');
+    assert.equal(known.label, 'Not sending');
+    assert.match(known.text, /bunryu is not running/);
+    // Calm, so no alarm is raised for a server that is simply off.
+    assert.equal(isTroubleNote(known), false);
+
+    const unknown = describeKeyNote(key(), off({ K1: status('not_configured') }), NOW);
+    assert.equal(unknown.label, 'Not set up yet');
+    assert.match(unknown.text, /last reported/);
+
+    // A link remembered under the wrong input is still worth saying.
+    const wrong = describeKeyNote(
+        key(),
+        off({ K1: status('stopped', { pipeline: 'Tamil', inputMismatch: true }) }),
+        NOW,
+        'Hindi',
+    );
+    assert.equal(wrong.label, 'Check input');
+
+    // Not off and not online (a short silence, or never connected): still nothing is said.
+    const quiet = report({ K1: status('stopped') }, { online: false, off: false });
+    assert.equal(describeKeyNote(key(), quiet, NOW), null);
+});
+
+test('with bunryu off, each stream gets a grey dot', () => {
+    const r = report(
+        { K1: status('stopped', { sides: { main: 'stopped', backup: 'not_configured' } }) },
+        { online: false, off: true },
+    );
+    assert.deepEqual(describeSide(key(), 'main', r, NOW), {
+        state: 'stopped',
+        label: 'Main: Not sending',
+    });
+    assert.deepEqual(describeSide(key(), 'backup', r, NOW), {
+        state: 'stopped',
+        label: 'Backup: Not set up yet',
+    });
 });
 
 test('a destination whose link runs in another input is told to check the input', () => {

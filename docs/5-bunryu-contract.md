@@ -62,16 +62,19 @@ Sent by bunryu every 60 s, and immediately on a status change (rate-limited to o
 
 `getStatus` returns one status per destination. The browser only words it; it ranks nothing.
 
-| Condition                           | `state`          | Meaning              | Shown as                     |
-| ----------------------------------- | ---------------- | -------------------- | ---------------------------- |
-| No hash match                       | `not_configured` | Not set up yet       | no color                     |
-| Match, `running`                    | `running`        | Live                 | green                        |
-| Match, `warning`                    | `warning`        | Unstable             | amber                        |
-| Match, `error`                      | `error`          | Failing or gave up   | red                          |
-| Match, `stopped`                    | `stopped`        | Configured, not sent | indigo                       |
-| Last heartbeat older than 3 minutes | (report offline) | bunryu offline       | nothing is claimed, no alarm |
+| Condition                           | `state`           | Meaning              | Shown as              |
+| ----------------------------------- | ----------------- | -------------------- | --------------------- |
+| No hash match                       | `not_configured`  | Not set up yet       | no color              |
+| Match, `running`                    | `running`         | Live                 | green                 |
+| Match, `warning`                    | `warning`         | Unstable             | amber                 |
+| Match, `error`                      | `error`           | Failing or gave up   | red                   |
+| Match, `stopped`                    | `stopped`         | Configured, not sent | indigo                |
+| Last heartbeat older than 3 minutes | `stopped` (`off`) | bunryu is off        | indigo, "Not sending" |
+| Same, but the link was not in it    | `not_configured`  | Not set up yet       | no color              |
 
 bunryu only runs during events, so silence is normal and never shown as a problem.
+
+**A silent bunryu is not shown as running.** Once every bunryu that has reported has been silent for `FRESH_MS` (3 minutes), the report says `off: true`. A destination's last status can no longer be trusted, so each destination whose link was in bunryu's last report is `stopped` (the output is off) with no message or failure count, and each that was not is `not_configured`, exactly as the last report said. Which links bunryu has is remembered from the stored last heartbeat (kept for 30 days); what it was doing is not. Inputs are not remembered: no pipeline has a status while bunryu is off. Before any bunryu has ever reported, `off` is false and nothing is claimed. A live bunryu always wins: `off` is false while any bunryu is reporting.
 
 ## Secrets
 

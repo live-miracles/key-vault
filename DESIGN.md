@@ -95,7 +95,7 @@ A row's color is only half the message. For an editor, a red or amber row must a
 - Show trouble on the card itself (`.dest-card`: the status label first, then the words under the name). A hover title does not exist on a phone, so it can only be extra.
 - Hovering a row gives owners and admins bunryu's own (redacted) report; everyone else gets the note.
 - **Inputs.** A dot before each input in the list says whether its signal is arriving (`INPUT_LABELS` in `status-wording.ts`). An input in trouble gets a banner above its streams, and a failing stream under it says the platform is probably not the cause. A link in the wrong input is "Check input" and is said first, even when the stream runs. This depends on the input and pipeline having the same name.
-- "Not set up yet" means bunryu does not have this link. Say so; it is how an editor learns an update has not landed. Say nothing at all while bunryu is offline: it only runs during events.
+- "Not set up yet" means bunryu does not have this link. Say so; it is how an editor learns an update has not landed. When bunryu has been silent for 3 minutes it is off: destinations it knew say "Not sending" in neutral colors, never Live or a problem, and the rest keep "Not set up yet", as in bunryu's last report.
 
 ## Who changed what
 

@@ -1724,7 +1724,7 @@
 
 /* The bubble a tap shows on a phone, where a title never appears (see tips.ts). */
 .tap-tip {
-    @apply bg-surface-3 text-ink-muted border-hairline-strong pointer-events-none fixed z-[1000] max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border px-3 py-2 text-sm leading-snug shadow-lg;
+    @apply bg-surface-3 text-ink-muted border-hairline-strong pointer-events-none fixed z-[1000] max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border px-3 py-2 text-sm leading-snug whitespace-pre-line shadow-lg;
 }
 
 /* Refresh, bunryu's state and the account menu: in the bottom bar on a computer, in the top bar

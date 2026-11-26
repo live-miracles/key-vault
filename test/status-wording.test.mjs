@@ -334,6 +334,32 @@ test('main and backup each get a dot: green, amber, red or grey', () => {
     });
 });
 
+test('a dot names the bunryu its status comes from, when the report says', () => {
+    const sideInstances = { main: 'Studio 1', backup: null };
+    const r = report(
+        {
+            K1: status('running', {
+                sides: { main: 'running', backup: 'not_configured' },
+                sideInstances,
+            }),
+        },
+        { inputs: { L1: { status: 'running' } } },
+    );
+    assert.deepEqual(describeSide(key(), 'main', r, NOW), {
+        state: 'running',
+        label: 'Main: Live',
+        from: 'Reported by bunryu "Studio 1"',
+    });
+    // A stream bunryu has no output for has no one to name.
+    assert.equal('from' in describeSide(key(), 'backup', r, NOW), false);
+    // When bunryu has gone quiet, it is the last report that is named.
+    const quiet = { ...r, online: false, off: true };
+    assert.equal(
+        describeSide(key(), 'main', quiet, NOW).from,
+        'Last reported by bunryu "Studio 1"',
+    );
+});
+
 test('no dot where nothing can be said: no backup, no fresh report, an older server', () => {
     const r = report({ K1: status('running', { sides: { main: 'running', backup: null } }) });
     assert.equal(describeSide(key(), 'backup', r, NOW), null);

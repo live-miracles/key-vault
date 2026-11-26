@@ -89,7 +89,12 @@ function renderLinkChip({
     if (!value) return '';
     // Whether this stream is on: the same dot as an input's, before the word.
     const dotHtml = dot
-        ? `<span class="input-dot input-dot-${dot.state} mr-1.5" title="${escapeHtml(dot.label)}" role="img" aria-label="${escapeHtml(dot.label)}"></span>`
+        ? `<span class="input-dot input-dot-${dot.state} mr-1.5" title="${escapeHtml(
+              dot.from
+                  ? `${dot.label}
+${dot.from}`
+                  : dot.label,
+          )}" role="img" aria-label="${escapeHtml(dot.from ? `${dot.label}. ${dot.from}` : dot.label)}"></span>`
         : '';
     const title = duplicate ? `${value}\nAlso used by another destination` : value;
     const copy = disabled

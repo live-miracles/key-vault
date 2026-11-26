@@ -191,6 +191,9 @@ export interface KeyStatus {
     // Each stream on its own, so a card can show whether main and backup are on or off. The
     // fields above are the worse of the two.
     sides: { main: SideState; backup: SideState };
+    // The bunryu (its Server Name) whose output each stream's status comes from. null: none
+    // reports that stream. It is the one with the worst status when several run the address.
+    sideInstances?: { main: string | null; backup: string | null };
     message: string;
     failures: number;
     stoppedAfterFailures: boolean;
@@ -304,12 +307,16 @@ export async function buildStatusReport(
     const inputName = new Map(inputs.map((i) => [i.id, normalizeInputName(i.name)]));
 
     // The worst output bunryu runs for one address, or null when it runs none.
-    const statusOf = async (url: string, input?: string): Promise<KeyStatus | null> => {
+    const statusOf = async (
+        url: string,
+        input?: string,
+    ): Promise<(KeyStatus & { instance: string }) | null> => {
         if (!url) return null;
         const worst = worstOf(byHash.get(await hashUrl(hashSecret, url)) ?? []);
         if (!worst) return null;
         const expected = input === undefined ? undefined : inputName.get(input);
         return {
+            instance: worst.instance,
             state: worst.status,
             side: 'main',
             sides: { main: null, backup: null },
@@ -347,7 +354,7 @@ export async function buildStatusReport(
             mainStatus,
             backupStatus ? { ...backupStatus, side: 'backup' as const } : null,
         ]
-            .filter((s): s is KeyStatus => s !== null)
+            .filter((s): s is KeyStatus & { instance: string } => s !== null)
             .map((s) => ({ ...s, status: s.state as Status }));
         const worst = worstOf(candidates);
         if (!worst) {
@@ -365,8 +372,15 @@ export async function buildStatusReport(
             };
             continue;
         }
-        const { status: _status, ...status } = worst;
-        result[k.id] = { ...status, sides };
+        const { status: _status, instance: _instance, ...status } = worst;
+        result[k.id] = {
+            ...status,
+            sides,
+            sideInstances: {
+                main: mainStatus?.instance ?? null,
+                backup: backupStatus?.instance ?? null,
+            },
+        };
     }
 
     const inputStatus: StatusReport['inputs'] = {};

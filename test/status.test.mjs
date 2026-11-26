@@ -171,6 +171,38 @@ test('each side is reported on its own: a stopped backup, and no backup at all',
     assert.deepEqual(report.keys.K2.sides, { main: 'running', backup: null });
 });
 
+test('each stream says which bunryu it comes from, and the worst one when two run a link', async () => {
+    const mainHash = await hashUrl(SECRET, streamUrl('vc', 'abcd-1234'));
+    const backupHash = await hashUrl(SECRET, streamUrl('rtmp', 'rtmp://x.test/live/key'));
+    const withBackup = dest('K1', {
+        platform: 'vc',
+        backupPlatform: 'rtmp',
+        backupStreamKey: 'rtmp://x.test/live/key',
+    });
+    const seen = new Date(NOW - 1000).toISOString();
+    const report = await buildStatusReport(
+        [withBackup, dest('K2', { platform: 'vc' }), dest('K3', { streamKey: 'unknown-key' })],
+        [
+            row('running', { hash: mainHash, instance: 'Studio 1' }),
+            row('error', { hash: mainHash, instance: 'Studio 2' }),
+            row('running', { hash: backupHash, instance: 'Studio 1' }),
+        ],
+        [
+            { instance: 'Studio 1', lastSeenAt: seen },
+            { instance: 'Studio 2', lastSeenAt: seen },
+        ],
+        SECRET,
+        NOW,
+    );
+    // The worse of the two outputs for the main link is the one that is named.
+    assert.deepEqual(report.keys.K1.sideInstances, { main: 'Studio 2', backup: 'Studio 1' });
+    // No backup link, or a link no bunryu has: nothing to name.
+    assert.deepEqual(report.keys.K2.sideInstances, { main: 'Studio 2', backup: null });
+    assert.deepEqual(report.keys.K3.sideInstances, undefined);
+    // The name is not left loose on the status itself.
+    assert.equal('instance' in report.keys.K1, false);
+});
+
 test('a healthy main stream outranks a stopped backup, and a destination with no link has no status', async () => {
     const mainHash = await hashUrl(SECRET, streamUrl('vc', 'abcd-1234'));
     const backupHash = await hashUrl(SECRET, streamUrl('rtmp', 'rtmp://x.test/live/key'));

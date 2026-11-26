@@ -233,6 +233,9 @@ export interface SideDot {
     state: 'running' | 'warning' | 'error' | 'stopped';
     // Plain words for its hover text: "Backup: Not sending".
     label: string;
+    // Which bunryu this comes from, by its Server Name, when the report says: 'Reported by
+    // bunryu "Studio 1"'. Absent for a stream no bunryu has an output for.
+    from?: string;
 }
 
 // Whether one stream of a destination, the main or the backup, is on: a dot and its words.
@@ -253,13 +256,17 @@ export function describeSide(
     if (state === 'not_configured') {
         return { state: 'stopped', label: `${name}: Not set up yet` };
     }
-    if (report.off) return { state: 'stopped', label: `${name}: Not sending` };
+    const instance = status.sideInstances?.[side];
+    const from = instance
+        ? { from: `${report.off ? 'Last reported by' : 'Reported by'} bunryu "${instance}"` }
+        : {};
+    if (report.off) return { state: 'stopped', label: `${name}: Not sending`, ...from };
     const waiting =
         state !== 'running' &&
         !status.inputMismatch &&
         getInputStatus(key.input, report, nowMs)?.status === 'stopped';
-    if (waiting) return { state: 'stopped', label: `${name}: Not started yet` };
-    return { state, label: `${name}: ${NOTE_LABELS[state] || state}` };
+    if (waiting) return { state: 'stopped', label: `${name}: Not started yet`, ...from };
+    return { state, label: `${name}: ${NOTE_LABELS[state] || state}`, ...from };
 }
 
 // ===== Inputs =====

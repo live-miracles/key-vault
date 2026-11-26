@@ -66,6 +66,7 @@ import {
 import { registerServiceWorker } from './pwa.ts';
 import { onRouteChange, route } from './route.ts';
 import { initTheme, toggleTheme } from './theme.ts';
+import { initTips } from './tips.ts';
 import {
     closeCompare,
     loadOlderVersions,
@@ -215,6 +216,7 @@ async function start() {
     hydrateIcons();
     initTheme();
     initControls();
+    initTips();
     initKeyForm();
     initBunryuModal();
 

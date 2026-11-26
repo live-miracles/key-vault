@@ -120,7 +120,50 @@ export function renderDestinations(eventId: string) {
             if ((event.target as Element).closest('button, a, input, select, textarea')) return;
             showLinksMenu(event, card.dataset.keyId);
         });
+        watchLongPress(card);
     }
+}
+
+// A phone has no double-click, so holding a finger on a card opens the same menu.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
+
+function watchLongPress(card: HTMLElement) {
+    let timer: number | undefined;
+    let startX = 0;
+    let startY = 0;
+    const cancel = () => window.clearTimeout(timer);
+    let touched = false;
+    card.addEventListener('pointerdown', (event) => {
+        touched = event.pointerType === 'touch';
+        if (!touched) return;
+        if ((event.target as Element).closest('button, a, input, select, textarea')) return;
+        startX = event.clientX;
+        startY = event.clientY;
+        cancel();
+        timer = window.setTimeout(() => {
+            // The lift of the finger that follows must not count as a tap on something else.
+            const swallow = (click: Event) => click.stopPropagation();
+            document.addEventListener('click', swallow, { capture: true, once: true });
+            window.setTimeout(() => document.removeEventListener('click', swallow, true), 600);
+            showLinksMenu(
+                { clientX: startX, clientY: startY, preventDefault() {} },
+                card.dataset.keyId,
+            );
+        }, LONG_PRESS_MS);
+    });
+    card.addEventListener('pointermove', (event) => {
+        if (Math.hypot(event.clientX - startX, event.clientY - startY) > LONG_PRESS_SLOP) cancel();
+    });
+    for (const type of ['pointerup', 'pointercancel', 'pointerleave']) {
+        card.addEventListener(type, cancel);
+    }
+    // The phone's own menu would open on the same hold.
+    card.addEventListener('contextmenu', (event) => {
+        if (touched && !(event.target as Element).closest('input, textarea')) {
+            event.preventDefault();
+        }
+    });
 }
 
 export async function deleteKeyById(keyId: string | undefined) {
@@ -131,7 +174,7 @@ export async function deleteKeyById(keyId: string | undefined) {
     await actions.removeKey(key.id);
 }
 
-// ===== The menu that copies a destination's links (double-click a card) =====
+// ===== The menu that copies a destination's links (double-click or hold a card) =====
 
 let menuKeyId: string | null = null;
 
@@ -139,7 +182,10 @@ export function hideLinksMenu() {
     $('#key-links-menu')?.classList.add('hidden');
 }
 
-function showLinksMenu(event: MouseEvent, keyId: string | undefined) {
+function showLinksMenu(
+    event: Pick<MouseEvent, 'clientX' | 'clientY' | 'preventDefault'>,
+    keyId: string | undefined,
+) {
     event.preventDefault();
     const key = app.data.keys.find((k) => k.id === keyId);
     if (!key || key.pending) return hideLinksMenu();

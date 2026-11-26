@@ -1722,6 +1722,11 @@
     @apply text-ink-subtle cursor-help;
 }
 
+/* The bubble a tap shows on a phone, where a title never appears (see tips.ts). */
+.tap-tip {
+    @apply bg-surface-3 text-ink-muted border-hairline-strong pointer-events-none fixed z-[1000] max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border px-3 py-2 text-sm leading-snug shadow-lg;
+}
+
 /* Refresh, bunryu's state and the account menu: in the bottom bar on a computer, in the top bar
    on a phone (moved there by placeAppControls). */
 #top-bar:not(:has(#app-controls)) {
@@ -1795,5 +1800,74 @@
 
     .tabs {
         @apply flex-nowrap;
+    }
+}
+
+/* A finger is far less exact than a mouse, so on a touch screen the small controls grow: buttons
+   and tabs to about 44px (the card's icon buttons to 40px, as they sit side by side), and form
+   fields to 16px text, because a phone zooms the whole page in when a smaller one gets focus.
+   The tiny dots and badges keep their look but get a larger area to tap. */
+@media (pointer: coarse) {
+    .btn,
+    .btn-sm,
+    .tab,
+    .tabs-sm .tab,
+    .lang-item {
+        min-height: 2.75rem;
+    }
+    .btn-xs,
+    .dest-card .btn-xs {
+        @apply size-10 min-h-10;
+    }
+    .btn-sm.btn-square,
+    .btn-xs.btn-square {
+        min-width: 2.5rem;
+    }
+    .dest-card-tools {
+        @apply gap-0;
+    }
+    #key-links-menu .menu li > *,
+    #role-context-menu .menu li > * {
+        min-height: 2.75rem;
+        align-items: center;
+    }
+    .dest-watch {
+        @apply h-10 px-3;
+    }
+    .dest-link-name {
+        @apply py-2;
+    }
+    input,
+    select,
+    textarea,
+    .input,
+    .select,
+    .textarea,
+    .dest-search-input {
+        font-size: 1rem;
+    }
+    .input,
+    .select {
+        min-height: 2.75rem;
+    }
+    .dest-search-field {
+        @apply h-11;
+    }
+    .dest-search-input {
+        @apply self-stretch;
+    }
+    .status-pill-has-hint,
+    .input-dot[title] {
+        position: relative;
+    }
+    .status-pill-has-hint::after {
+        content: '';
+        position: absolute;
+        inset: -0.5rem -0.25rem;
+    }
+    .input-dot[title]::after {
+        content: '';
+        position: absolute;
+        inset: -0.75rem;
     }
 }

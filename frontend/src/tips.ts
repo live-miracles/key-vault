@@ -1,6 +1,7 @@
-// Tips for a touch screen. A computer shows a `title` when the pointer rests on it; a phone
-// never does. So on a screen with no hover, tapping a badge, an "i" or a link name that has a
-// `title` shows the same words in a small bubble, until the next tap, a scroll or a few seconds.
+// Tips for a touch screen. A computer shows a `title` when the mouse rests on it; a phone
+// never does. So when a finger taps a badge, an "i" or a link name that has a `title`, the same
+// words show in a small bubble, until the next tap, a scroll or a few seconds. A mouse click
+// never opens the bubble: the hover tip is already there.
 // Anything that does something when pressed (data-action, a link, a form control) is left alone:
 // its tap must do its job.
 
@@ -52,9 +53,12 @@ function showTip(elem: HTMLElement) {
 }
 
 export function initTips() {
-    // A computer with a mouse already shows the title on hover.
-    if (!window.matchMedia('(hover: none)').matches) return;
     document.addEventListener('click', (event) => {
+        // A mouse or a pen already gets the browser's own tip on hover, so a click from one must
+        // not add a second. This is decided per click, not per device: a laptop with a touch
+        // screen has both. A finger (or the keyboard, which has no hover) gets the bubble.
+        const pointer = (event as PointerEvent).pointerType;
+        if (pointer === 'mouse' || pointer === 'pen') return hideTip();
         const elem = tipOwner(event.target);
         if (!elem) return hideTip();
         // A second tap on the same thing puts the tip away.

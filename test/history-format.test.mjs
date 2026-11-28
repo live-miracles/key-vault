@@ -331,7 +331,7 @@ test('what changed since, and what a restore would do, in words', () => {
             row('key', 'added'),
             row('key', 'added'),
             row('key', 'deleted'),
-            row('role', 'changed'),
+            row('input', 'changed'),
             row('event', 'changed'),
         ]),
         '2 added, 1 deleted, 2 changed since',
@@ -352,10 +352,9 @@ test('what changed since, and what a restore would do, in words', () => {
         describeRestoreEffect([
             row('key', 'changed'),
             row('input', 'changed'),
-            row('role', 'deleted'),
             row('event', 'changed'),
         ]),
-        "Destinations: 1 changed; 1 input will change; 1 person's access will change; the event will be renamed.",
+        'Destinations: 1 changed; 1 input will change; the event will be renamed.',
     );
     // Nothing but the name: the sentence still starts with a capital.
     assert.equal(describeRestoreEffect([row('event', 'changed')]), 'The event will be renamed.');

@@ -119,6 +119,7 @@ export function createActions(app: AppStore) {
                             id: tempId,
                             event: form.event,
                             ...fields,
+                            addedBy: data.userEmail,
                             canChange: true,
                             pending: true,
                         } as RoleItem);

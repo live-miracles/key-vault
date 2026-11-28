@@ -22,6 +22,8 @@ export interface RoleRow {
     type: RoleType;
     // The input this person may see or edit; null is every input of the event.
     input: string | null;
+    // Who gave this person access (an email), or '' for one added before this was recorded.
+    addedBy: string;
 }
 
 export interface InputRow {
@@ -125,18 +127,18 @@ export interface ChangeRow {
 // What `recordChanges` is given: the store adds the id (and the time is passed with them all).
 export type NewChange = Omit<ChangeRow, 'id' | 'at'>;
 
-// An event as it was at some point, or is now.
+// An event as it was at some point, or is now. People's access is not part of a version: it is
+// recorded in the history, but comparing and restoring leave it as it is.
 export interface EventState {
     event: EventRow;
     inputs: InputRow[];
     keys: KeyRow[];
-    roles: RoleRow[];
 }
 
 // How a row of an event differs now from an earlier version. `status` is relative to now:
 // `added` means added since then, so restoring that version removes it.
 export interface RowDiff {
-    kind: 'event' | 'input' | 'key' | 'role';
+    kind: 'event' | 'input' | 'key';
     rowId: string;
     status: 'added' | 'deleted' | 'changed';
     // The row in the earlier version, null if it was added since.
@@ -156,8 +158,6 @@ export interface VersionSteps {
     deleteInputs: string[];
     upsertKeys: KeyRow[];
     deleteKeys: string[];
-    upsertRoles: RoleRow[];
-    deleteRoles: string[];
 }
 
 // ===== What the browser is sent =====
@@ -199,6 +199,8 @@ export interface EveryEventPerson {
     email: string;
     // Named on the server rather than added in the app.
     owner: boolean;
+    // Who added this admin, or '' for an owner or an admin moved over from an event role.
+    addedBy: string;
 }
 
 // A change with the names the History dialog needs to say what happened.

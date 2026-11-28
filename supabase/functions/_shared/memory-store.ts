@@ -192,6 +192,7 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
                 keys: state.keys,
                 roles: state.roles,
             });
+            // People's access is not part of a version: a restore leaves the roles alone.
             const row = find(draft.events, event);
             const upsert = <T extends { id: string }>(list: T[], item: T): T[] => {
                 const index = list.findIndex((entry) => entry.id === item.id);
@@ -207,9 +208,7 @@ export function createMemoryStore(initial: Partial<MemoryState> = {}): MemorySto
                 draft.inputs = upsert(draft.inputs, { ...input, name: `restoring ${input.id}` });
             }
             for (const key of steps.upsertKeys) draft.keys = upsert(draft.keys, key);
-            for (const role of steps.upsertRoles) draft.roles = upsert(draft.roles, role);
             draft.keys = without(draft.keys, steps.deleteKeys);
-            draft.roles = without(draft.roles, steps.deleteRoles);
             draft.inputs = without(draft.inputs, steps.deleteInputs);
             for (const input of steps.upsertInputs) {
                 Object.assign(find(draft.inputs, input.id), {

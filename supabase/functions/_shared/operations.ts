@@ -243,10 +243,10 @@ function ownerEmails(ctx: Context) {
 function everyEventPeople(data: Data, ctx: Context) {
     const owners = ownerEmails(ctx);
     return [
-        ...owners.map((email) => ({ email, owner: true })),
+        ...owners.map((email) => ({ email, owner: true, addedBy: '' })),
         ...data.admins
             .filter((a) => !owners.includes(a.email))
-            .map((a) => ({ email: a.email, owner: false })),
+            .map((a) => ({ email: a.email, owner: false, addedBy: a.addedBy })),
     ];
 }
 
@@ -524,7 +524,7 @@ export async function addRole(store: Store, ctx: Context, input: Operations['add
     requireInput(data, event, role.input);
     if (!access.canAddRole(event)) throw denied();
 
-    const created = await store.createRole({ event, ...role });
+    const created = await store.createRole({ event, ...role, addedBy: ctx.email });
     await record(store, ctx, [rowChange('role', event, null, { ...created })]);
     return roleView(access, created);
 }
@@ -542,7 +542,8 @@ export async function editRole(store: Store, ctx: Context, input: Operations['ed
 
     // A role stays in the event it was created in.
     await store.updateRole(id, role);
-    const saved = { id, event: old.event, ...role };
+    // Whoever first gave the access stays on record, whoever changes it later.
+    const saved = { id, event: old.event, ...role, addedBy: old.addedBy };
     if (!sameFields(old, saved, ['email', 'type', 'input'])) {
         await record(store, ctx, [rowChange('role', old.event, { ...old }, { ...saved })]);
     }
@@ -874,7 +875,6 @@ function currentState(data: Data, event: EventRow): EventState {
         event,
         inputs: own(data.inputs),
         keys: own(data.keys),
-        roles: own(data.roles),
     };
 }
 
@@ -906,7 +906,8 @@ async function versionOf(store: Store, ctx: Context, payload: Record<string, unk
     }
     const now = currentState(data, event);
     const then = stateAt(now, changes, atChange);
-    return { eventId, atChange, changes, now, then };
+    const roles = data.roles.filter((r) => r.event === eventId);
+    return { eventId, atChange, changes, now, then, roles };
 }
 
 export async function compareEvent(
@@ -920,8 +921,14 @@ export async function compareEvent(
 
 // What would stop `then` from being valid today. The rules may have changed since it was current,
 // so only what a restore writes is checked: a row it leaves alone is not its business. A
-// destination is checked against all the others of that version.
-function versionProblems(then: EventState, steps: VersionSteps): string[] {
+// destination is checked against all the others of that version. People's access is left as it
+// is, so an input someone's access is limited to cannot be removed.
+function versionProblems(
+    now: EventState,
+    then: EventState,
+    steps: VersionSteps,
+    roles: RoleRow[],
+): string[] {
     const problems: string[] = [];
     const inputIds = new Set(then.inputs.map((i) => i.id));
 
@@ -942,12 +949,12 @@ function versionProblems(then: EventState, steps: VersionSteps): string[] {
             (inputIds.has(key.input) ? null : 'Its input would not exist.');
         if (problem) problems.push(`${label}: ${problem}`);
     }
-    for (const role of steps.upsertRoles) {
-        if (role.email.length > MAX_EMAIL || !EMAIL_PATTERN.test(role.email)) {
-            problems.push(`"${role.email}" is not a valid email address.`);
-        } else if (role.input !== null && !inputIds.has(role.input)) {
-            problems.push(`${role.email}'s access would be to an input that does not exist.`);
-        }
+    for (const role of roles) {
+        if (role.input === null || !steps.deleteInputs.includes(role.input)) continue;
+        const input = now.inputs.find((i) => i.id === role.input)?.name ?? '';
+        problems.push(
+            `${role.email}'s access is limited to the input "${input}", which would be removed. Change their access first.`,
+        );
     }
     return problems;
 }
@@ -957,7 +964,11 @@ export async function restoreEventVersion(
     ctx: Context,
     input: Operations['restoreEventVersion']['input'],
 ) {
-    const { eventId, atChange, changes, now, then } = await versionOf(store, ctx, body(input));
+    const { eventId, atChange, changes, now, then, roles } = await versionOf(
+        store,
+        ctx,
+        body(input),
+    );
     if (!existedAt(changes, eventId, atChange)) {
         throw new ApiError(
             'conflict',
@@ -968,7 +979,7 @@ export async function restoreEventVersion(
     const steps = restoreSteps(then, now);
     if (stepCount(steps) === 0) return { changed: 0 };
 
-    const problems = versionProblems(then, steps);
+    const problems = versionProblems(now, then, steps, roles);
     if (problems.length > 0) {
         throw invalid(
             `This version cannot be restored as it is:\n${problems.map((p) => `• ${p}`).join('\n')}`,
@@ -1000,8 +1011,6 @@ export async function restoreEventVersion(
     steps.deleteInputs.forEach((id) => add('input', byId(now.inputs, id), null));
     steps.upsertKeys.forEach((k) => add('key', byId(now.keys, k.id), k));
     steps.deleteKeys.forEach((id) => add('key', byId(now.keys, id), null));
-    steps.upsertRoles.forEach((r) => add('role', byId(now.roles, r.id), r));
-    steps.deleteRoles.forEach((id) => add('role', byId(now.roles, id), null));
 
     // The rows and their record are written together: both happen or neither.
     try {

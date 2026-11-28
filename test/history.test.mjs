@@ -39,7 +39,6 @@ const state = (extra = {}) => ({
     event: { id: EVENT, name: 'Event' },
     inputs: [],
     keys: [],
-    roles: [],
     ...extra,
 });
 
@@ -67,7 +66,6 @@ test('an added row is removed again, an edited one comes back as it was, a delet
     for (const [kind, make, field, edited] of [
         ['input', (id) => input(id, 'Hindi', 1), 'name', 'Hindi 2'],
         ['key', (id) => key(id), 'name', 'Renamed'],
-        ['role', (id) => role(id, 'a@example.test'), 'email', 'b@example.test'],
     ]) {
         const list = `${kind}s`;
         const row = make(K);
@@ -134,9 +132,11 @@ test('an event is renamed back, and the order of its inputs comes back with it',
     );
 });
 
-test('only the changes of this event count: not other events, the admins, or the trash', () => {
+test('only the changes of this event count: not other events, the admins, people, or the trash', () => {
     const changes = log(
         () => change('key', 'added', null, key(K)),
+        // People's access is recorded, but is not part of a version.
+        () => change('role', 'added', null, role(R, 'a@example.test')),
         () => change('key', 'added', null, key(uuid(22), { event: OTHER }), { event: OTHER }),
         () =>
             change(
@@ -166,6 +166,7 @@ test('only the changes of this event count: not other events, the admins, or the
     const then = stateAt(now, changes, 0);
     assert.deepEqual(then.keys, []);
     assert.equal(then.event.name, 'Event');
+    assert.equal('roles' in then, false);
     // The trash entries are no version of their own that differs from the one before.
     assert.deepEqual(stateAt(now, changes, 1), now);
 });
@@ -197,17 +198,15 @@ test('differences are matched by id, and say what changed', () => {
         event: { id: EVENT, name: 'Old' },
         inputs: [input(A, 'English', 1), input(B, 'Hindi', 2)],
         keys: [key(K), key(uuid(22), { name: 'Gone' })],
-        roles: [role(R, 'a@example.test')],
     });
     const now = state({
         inputs: [input(A, 'English', 1), input(B, 'Hindi 2', 2), input(uuid(13), 'Tamil', 3)],
         keys: [key(K, { streamKey: 'zzzz-9999', remarks: 'note' }), key(uuid(23), { name: 'New' })],
-        roles: [],
     });
     assert.deepEqual(
         diffStates(then, now).map((d) => [d.kind, d.status, d.fields]),
-        // The event, then inputs, destinations and people; in each, rows of the earlier version
-        // in its order, then the ones added since.
+        // The event, then inputs and destinations; in each, rows of the earlier version in its
+        // order, then the ones added since.
         [
             ['event', 'changed', ['name']],
             ['input', 'changed', ['name']],
@@ -215,7 +214,6 @@ test('differences are matched by id, and say what changed', () => {
             ['key', 'changed', ['streamKey', 'remarks']],
             ['key', 'deleted', []],
             ['key', 'added', []],
-            ['role', 'deleted', []],
         ],
     );
     const changed = diffStates(then, now).find((d) => d.kind === 'key' && d.status === 'changed');
@@ -244,12 +242,10 @@ test('the steps back list only what differs, with the earlier rows to write and 
         event: { id: EVENT, name: 'Old' },
         inputs: [input(A, 'English', 1)],
         keys: [key(K), key(uuid(22), { name: 'Gone' })],
-        roles: [role(R, 'a@example.test')],
     });
     const now = state({
         inputs: [input(A, 'English', 1), input(B, 'Hindi', 2)],
         keys: [key(K, { name: 'Renamed' }), key(uuid(23), { name: 'New', input: B })],
-        roles: [role(R, 'a@example.test'), role(uuid(32), 'b@example.test')],
     });
     const steps = restoreSteps(then, now);
     assert.equal(steps.eventName, 'Old');
@@ -263,9 +259,8 @@ test('the steps back list only what differs, with the earlier rows to write and 
         ],
     );
     assert.deepEqual(steps.deleteKeys, [uuid(23)]);
-    assert.deepEqual(steps.upsertRoles, []);
-    assert.deepEqual(steps.deleteRoles, [uuid(32)]);
-    assert.equal(stepCount(steps), 6);
+    assert.equal('upsertRoles' in steps, false);
+    assert.equal(stepCount(steps), 5);
 
     // An unchanged name is not rewritten.
     assert.equal(restoreSteps(now, now).eventName, null);

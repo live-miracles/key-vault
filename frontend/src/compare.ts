@@ -10,9 +10,7 @@ import type {
     EventState,
     InputRow,
     KeyRow,
-    RoleRow,
     RowDiff,
-    RowSnapshot,
 } from '../../supabase/functions/_shared/types.ts';
 import { app } from './app.ts';
 import { ApiError } from './api-client.ts';
@@ -21,7 +19,6 @@ import { $, confirmAction } from './dom.ts';
 import { formatClock, formatDay, formatWhen } from './format.ts';
 import {
     KEY_FIELD_LABELS,
-    ROLE_FIELD_LABELS,
     describeLine,
     describeOperation,
     describeRestoreEffect,
@@ -33,7 +30,7 @@ import {
 } from './history-format.ts';
 import type { Line, Operation } from './history-format.ts';
 import { escapeHtml, iconSvg } from './html.ts';
-import { ROLE_LABELS, emptyData, inputsOf } from './model.ts';
+import { emptyData, inputsOf } from './model.ts';
 import type { InputItem, KeyItem, LoadedData } from './model.ts';
 
 const PAGE_SIZE = 200;
@@ -89,7 +86,6 @@ const INPUT_FIELD_LABELS: Record<string, string> = { name: 'name', position: 'or
 
 function fieldLabels(kind: RowDiff['kind']): Record<string, string> {
     if (kind === 'key') return KEY_FIELD_LABELS;
-    if (kind === 'role') return ROLE_FIELD_LABELS;
     if (kind === 'input') return INPUT_FIELD_LABELS;
     return { name: 'name' };
 }
@@ -114,7 +110,6 @@ function badgeHtml(status: RowDiff['status'], extra = ''): string {
 interface Shown {
     inputs: InputRow[];
     keys: KeyRow[];
-    roles: RoleRow[];
     data: LoadedData;
     byRow: Map<string, RowDiff>;
 }
@@ -124,14 +119,13 @@ function shownOf(then: EventState, diff: RowDiff[]): Shown {
         diff.filter((d) => d.kind === kind && d.status === 'added').map((d) => d.now as T);
     const inputs = [...then.inputs, ...addedSince<InputRow>('input')];
     const keys = [...then.keys, ...addedSince<KeyRow>('key')];
-    const roles = [...then.roles, ...addedSince<RoleRow>('role')];
     const data: LoadedData = {
         ...emptyData(),
         events: [{ ...then.event, can: NO_RIGHTS }],
         inputs: inputs.map((i): InputItem => ({ ...i, canAddKeys: false })),
         keys: keys.map((k): KeyItem => ({ ...k, canChange: false })),
     };
-    return { inputs, keys, roles, data, byRow: new Map(diff.map((d) => [d.rowId, d])) };
+    return { inputs, keys, data, byRow: new Map(diff.map((d) => [d.rowId, d])) };
 }
 
 // ===== Drawing the main area =====
@@ -223,28 +217,6 @@ function sectionsHtml(c: Compare, shown: Shown, nowMs: number): string {
         .join('');
 }
 
-function roleLine(shown: Shown, role: RoleRow | RowSnapshot): string {
-    const input = role.input ? shown.inputs.find((i) => i.id === role.input)?.name : null;
-    const access = input ? `only ${input}` : 'every input';
-    return `${escapeHtml(String(role.email))} · ${escapeHtml(ROLE_LABELS[String(role.type)] ?? String(role.type))}, ${escapeHtml(access)}`;
-}
-
-function peopleHtml(c: Compare, shown: Shown): string {
-    const roles = shown.roles.filter((r) => !c.diffOnly || shown.byRow.has(r.id));
-    if (roles.length === 0) return '';
-    const rows = roles
-        .map((role) => {
-            const diff = shown.byRow.get(role.id);
-            const now =
-                diff?.status === 'changed'
-                    ? ` <span class="cmp-now"><span class="cmp-when">Now</span> ${roleLine(shown, diff.now as RowSnapshot)}</span>`
-                    : '';
-            return `<li class="cmp-role${diff ? ` cmp-item-${diff.status}` : ''}">${diff ? badgeHtml(diff.status) : ''}<span class="cmp-then">${roleLine(shown, role)}</span>${now}</li>`;
-        })
-        .join('');
-    return `<section class="dest-section"><h3 class="dest-section-head"><span class="dest-section-name">People with access</span><span class="dest-section-count">${shown.roles.length}</span></h3><ul class="cmp-roles">${rows}</ul></section>`;
-}
-
 function mainHtml(c: Compare, nowMs: number): string {
     if (c.loading && !c.then) {
         return '<p class="history-empty"><span class="loading loading-dots loading-xs"></span></p>';
@@ -256,7 +228,7 @@ function mainHtml(c: Compare, nowMs: number): string {
         ? `<p class="cmp-eventname">${escapeHtml(String(renamed.then?.name ?? ''))} ${badgeHtml('changed', `now “${String(renamed.now?.name ?? '')}”`)}</p>`
         : '';
     const current = c.version === c.latest;
-    const body = [sectionsHtml(c, shown, nowMs), peopleHtml(c, shown)].join('');
+    const body = sectionsHtml(c, shown, nowMs);
     const empty =
         c.diff.length === 0
             ? current
@@ -303,8 +275,14 @@ function lineHtml(c: Compare, line: Line, nowMs: number): string {
         </li>`;
 }
 
+// The operations that made a version. A change to people's access is in the History list but
+// not part of a version, so it is left out of the timeline.
+function versionsOf(c: Compare): Operation[] {
+    return groupOperations(c.changes.filter((change) => change.kind !== 'role'));
+}
+
 function timelineHtml(c: Compare, nowMs: number): string {
-    const operations = groupOperations(c.changes);
+    const operations = versionsOf(c);
     const lines = foldOperations(operations);
     const oldest = operations[operations.length - 1];
     // An event added after history began has no version before that: it did not exist yet.
@@ -341,14 +319,14 @@ function timelineHtml(c: Compare, nowMs: number): string {
 // ===== The version shown, in words =====
 
 function operationAt(c: Compare, version: number): Operation | undefined {
-    return groupOperations(c.changes).find((o) => o.version === version);
+    return versionsOf(c).find((o) => o.version === version);
 }
 
 // "Current version", "After ravi deleted “Instagram English” · 18 Nov, 3:42 pm".
 function versionLabel(c: Compare, nowMs: number): string {
     if (c.version === c.latest) return 'Current version';
     if (c.version === 0) {
-        const oldest = groupOperations(c.changes).at(-1);
+        const oldest = versionsOf(c).at(-1);
         return `Start of history${oldest ? ` · before ${formatWhen(oldest.at, nowMs)}` : ''}`;
     }
     const operation = operationAt(c, c.version ?? -1);

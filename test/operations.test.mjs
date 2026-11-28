@@ -168,8 +168,8 @@ test('who has access to every event is sent to the people who see a Share list',
     const named = (ctx) => ({ ...ctx, ownerEmails: ['owner@example.test'] });
 
     const expected = [
-        { email: 'owner@example.test', owner: true },
-        { email: 'admin@example.test', owner: false },
+        { email: 'owner@example.test', owner: true, addedBy: '' },
+        { email: 'admin@example.test', owner: false, addedBy: 'owner@example.test' },
     ];
     assert.deepEqual((await ops.getAllData(store, everyone)).everyEvent, expected);
     assert.deepEqual((await ops.getAllData(store, named(admin))).everyEvent, expected);
@@ -1045,12 +1045,24 @@ test('people are recorded', async () => {
         type: 'viewer',
         input: null,
     });
+    // Who gave the access is whoever added them, and it stays so when someone else changes it.
+    assert.equal(role.addedBy, 'admin@example.test');
     const same = { id: role.id, email: 'new@example.test', type: 'viewer', input: null };
     await ops.editRole(store, admin, same); // unchanged
-    await ops.editRole(store, admin, { ...same, type: 'editor', input: HINDI });
+    const changed = await ops.editRole(store, owner, {
+        ...same,
+        type: 'editor',
+        input: HINDI,
+    });
+    assert.equal(changed.addedBy, 'admin@example.test');
     await ops.deleteRole(store, admin, { id: role.id });
 
-    const stored = { id: role.id, event: E1, email: 'new@example.test' };
+    const stored = {
+        id: role.id,
+        event: E1,
+        email: 'new@example.test',
+        addedBy: 'admin@example.test',
+    };
     const viewerRow = { ...stored, type: 'viewer', input: null };
     const editorRow = { ...stored, type: 'editor', input: HINDI };
     assert.deepEqual(
@@ -1225,15 +1237,18 @@ test('an event in the trash is compared and restored only once it is back', asyn
     assert.equal(compared.then.event.name, 'Event one');
 });
 
-// What an event holds, without who last edited a destination.
+const own = (rows, event) =>
+    rows.filter((r) => r.event === event).sort((a, b) => a.id.localeCompare(b.id));
+
+// What a version of an event holds, without who last edited a destination. People's access is
+// not part of a version.
 function held(store, event) {
-    const own = (rows) =>
-        rows.filter((r) => r.event === event).sort((a, b) => a.id.localeCompare(b.id));
     return structuredClone({
         event: store.state.events.find((e) => e.id === event),
-        inputs: own(store.state.inputs),
-        keys: own(store.state.keys).map(({ updatedBy, updatedAction, updatedAt, ...rest }) => rest),
-        roles: own(store.state.roles),
+        inputs: own(store.state.inputs, event),
+        keys: own(store.state.keys, event).map(
+            ({ updatedBy, updatedAction, updatedAt, ...rest }) => rest,
+        ),
     });
 }
 
@@ -1248,8 +1263,9 @@ async function messAbout(store, ctx = admin) {
     await ops.editKey(store, ctx, { ...key(K2, E1, tamil.id), name: 'Moved' });
     await ops.addKey(store, ctx, { ...NEW_KEY, input: tamil.id });
     await ops.deleteRole(store, ctx, { id: uuid(33) });
-    const person = { event: E1, email: 'new@example.test', type: 'viewer', input: tamil.id };
+    const person = { event: E1, email: 'new@example.test', type: 'viewer', input: null };
     await ops.addRole(store, ctx, person);
+    return tamil;
 }
 
 test('restoring a version makes the event equal to it, and no other event is touched', async () => {
@@ -1258,6 +1274,7 @@ test('restoring a version makes the event equal to it, and no other event is tou
     const other = held(store, E2);
     await messAbout(store);
     assert.notDeepEqual(held(store, E1), first);
+    const people = structuredClone(store.state.roles);
 
     const ctx = minutesLater(30);
     const result = await ops.restoreEventVersion(store, ctx, { event: E1, atChange: 0 });
@@ -1265,6 +1282,9 @@ test('restoring a version makes the event equal to it, and no other event is tou
 
     assert.deepEqual(held(store, E1), first);
     assert.deepEqual(held(store, E2), other);
+    // People's access is left as it is: the one removed stays removed, the one added stays.
+    assert.deepEqual(store.state.roles, people);
+    assert.ok(!store.state.changes.some((c) => c.batch && c.kind === 'role'));
     // The destination that was deleted is back under its own id, and the one added is gone.
     assert.ok(store.state.keys.some((k) => k.id === K1));
     assert.ok(!store.state.keys.some((k) => k.name === 'New'));
@@ -1321,6 +1341,36 @@ test('a restore is one entry that can be undone by restoring the version before 
     // The version before the restore is the event as it was before it, so this undoes it.
     await ops.restoreEventVersion(store, minutesLater(40), { event: E1, atChange: lastBefore });
     assert.deepEqual(held(store, E1), beforeRestore);
+});
+
+test('a restore that would remove an input someone’s access is limited to is refused', async () => {
+    const store = seed();
+    const tamil = await messAbout(store);
+    await ops.addRole(store, admin, {
+        event: E1,
+        email: 'tamil@example.test',
+        type: 'editor',
+        input: tamil.id,
+    });
+    const before = structuredClone(store.state);
+    const error = await failure(ops.restoreEventVersion(store, admin, { event: E1, atChange: 0 }));
+    assert.equal(error.code, 'invalid');
+    assert.match(error.message, /tamil@example\.test's access is limited to the input "Tamil"/);
+    assert.deepEqual(store.state, before);
+});
+
+test('people’s access is in the history, but is no version of its own', async () => {
+    const store = seed();
+    await ops.deleteRole(store, admin, { id: uuid(33) });
+    const [change] = await ops.getHistory(store, admin, { event: E1 });
+    assert.equal(change.kind, 'role');
+    assert.equal(change.action, 'deleted');
+    // Comparing with the version before it shows no difference, and restoring it changes nothing.
+    assert.deepEqual((await ops.compareEvent(store, admin, { event: E1, atChange: 0 })).diff, []);
+    assert.deepEqual(await ops.restoreEventVersion(store, admin, { event: E1, atChange: 0 }), {
+        changed: 0,
+    });
+    assert.ok(!store.state.roles.some((r) => r.id === uuid(33)));
 });
 
 test('a restore can swap two inputs’ names', async () => {

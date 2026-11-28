@@ -63,13 +63,15 @@ function avatar(email: string) {
 }
 
 // One operation as a row you can click to see the event as it was right after it. A change in
-// a deleted event or to the admins has no version to open, so it is only text.
+// a deleted event, to the admins or to people's access has no version to open, so it is only
+// text.
 function operationHtml(operation: Operation, text: string, nowMs: number): string {
     const inner = `
         ${avatar(operation.by)}
         <span class="history-text"><strong title="${escapeHtml(operation.by)}">${escapeHtml(who(operation.by))}</strong> ${escapeHtml(text)}</span>
         <time class="history-time" datetime="${escapeHtml(operation.at)}" title="${escapeHtml(formatWhen(operation.at, nowMs))}">${escapeHtml(formatClock(operation.at))}</time>`;
-    if (!isLive(operation.event)) return `<div class="history-row">${inner}</div>`;
+    const accessOnly = operation.changes.every((change) => change.kind === 'role');
+    if (!isLive(operation.event) || accessOnly) return `<div class="history-row">${inner}</div>`;
     return `<button type="button" class="history-row history-row-link" data-action="open-compare" data-event-id="${escapeHtml(operation.event ?? '')}" data-change="${operation.version}" title="See ${escapeHtml(operation.eventName || 'the event')} right after this change">${inner}</button>`;
 }
 

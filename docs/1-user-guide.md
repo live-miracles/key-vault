@@ -74,6 +74,8 @@ Beside a red card there is a small copy button. It copies the technical details 
 
 If a button you expect is missing, you do not have that role for this event: ask an admin to change it under **Share**.
 
+Under each person's email, **Share** says who gave them access ("Added by …"). It stays the person who first added them, even if someone else changes their role later. People added before Key Vault recorded this show no name.
+
 ### Admins
 
 Admins see two extra buttons at the bottom right.
@@ -87,7 +89,8 @@ Admins see two extra buttons at the bottom right.
 
 The version history shows the event as it was right after a change you pick on the right, with every difference from now marked: destinations added since, deleted since (faded) and changed since, with the old and the current value side by side. Stream keys are dots until you press the eye. **Only show differences** hides the rest.
 
-- **Restore this version** makes the whole event the way it was: its name, inputs and their order, destinations and the people who had access. You are told what will change first. Other events are not touched.
+- **Restore this version** makes the whole event the way it was: its name, inputs and their order, and destinations. You are told what will change first. Other events are not touched.
+- Who has access is not part of a version: History lists who gave or removed access, but a restore leaves people as they are now. If someone's access is limited to an input that the restore would remove, change their access first.
 - A restore is one line in History. To undo it, open the version just before it and restore that.
 - If something in the old version is no longer allowed (for example a platform that was removed), the restore is refused with the reasons and nothing is changed.
 - History only starts when it was switched on: an event cannot be restored to a point before that, or before it was created. To bring back a single destination, copy it by hand from the version view.

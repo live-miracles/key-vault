@@ -47,6 +47,7 @@ const toRole = (r: any): RoleRow => ({
     email: String(r.email).toLowerCase(),
     type: r.type,
     input: r.input_id,
+    addedBy: r.added_by,
 });
 
 const toAdmin = (a: any): AdminRow => ({
@@ -128,7 +129,7 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                 fetchAll((from, to) =>
                     db
                         .from('roles')
-                        .select('id, event_id, email, type, input_id, created_at')
+                        .select('id, event_id, email, type, input_id, added_by, created_at')
                         .order('id')
                         .range(from, to),
                 ),
@@ -322,8 +323,9 @@ export function createSupabaseStore(db: SupabaseClient): Store {
                         email: role.email,
                         type: role.type,
                         input_id: role.input,
+                        added_by: role.addedBy,
                     })
-                    .select('id, event_id, email, type, input_id')
+                    .select('id, event_id, email, type, input_id, added_by')
                     .single(),
             );
             return toRole(row);

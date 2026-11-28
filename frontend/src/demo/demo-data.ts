@@ -47,8 +47,9 @@ export async function buildDemoState(
         eventId: string,
         email: string,
         type: 'viewer' | 'editor',
+        addedBy: string,
         inputId: string | null = null,
-    ) => ({ id: uuid(), event: eventId, email, type, input: inputId });
+    ) => ({ id: uuid(), event: eventId, email, type, input: inputId, addedBy });
 
     const edited = (by: string, action: 'added' | 'edited', minutesAgo: number) => ({
         updatedBy: by,
@@ -194,10 +195,10 @@ export async function buildDemoState(
     });
 
     const roles = [
-        role(winter.id, 'ravi@example.org', 'editor', hindi.id),
-        role(winter.id, 'maya@example.org', 'editor', english.id),
-        role(winter.id, 'partner@example.org', 'viewer'),
-        role(spring.id, 'maya@example.org', 'editor'),
+        role(winter.id, 'ravi@example.org', 'editor', DEMO_EMAIL, hindi.id),
+        role(winter.id, 'maya@example.org', 'editor', 'ann@example.org', english.id),
+        role(winter.id, 'partner@example.org', 'viewer', 'ann@example.org'),
+        role(spring.id, 'maya@example.org', 'editor', DEMO_EMAIL),
     ];
     const admins: AdminRow[] = [
         { id: uuid(), email: 'ann@example.org', addedBy: DEMO_EMAIL },
@@ -228,6 +229,7 @@ export async function buildDemoState(
         email: 'old.vendor@example.org',
         type: 'viewer',
         input: null,
+        addedBy: ann,
     };
     const facebook = byName(winter.id, 'Facebook English');
     const srt = byName(winter.id, 'Channel 3 SRT Hindi');

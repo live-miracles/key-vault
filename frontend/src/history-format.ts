@@ -241,8 +241,8 @@ export function summarizeDiff(diff: RowDiff[]): string {
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 // What restoring would do, for the question before it: "Destinations: 2 removed, 1 brought
-// back and 3 changed; 1 input will change." Destinations are counted; inputs, people and the
-// name follow.
+// back and 3 changed; 1 input will change." Destinations are counted; inputs and the name
+// follow. People's access is not part of a version, so a restore never changes it.
 export function describeRestoreEffect(diff: RowDiff[]): string {
     const of = (kind: RowDiff['kind'], status: RowDiff['status']) =>
         diff.filter((d) => d.kind === kind && d.status === status).length;
@@ -259,9 +259,7 @@ export function describeRestoreEffect(diff: RowDiff[]): string {
     ].filter(Boolean);
     if (keyParts.length) parts.push(`destinations: ${listOf(keyParts)}`);
     const inputs = diff.filter((d) => d.kind === 'input').length;
-    const people = diff.filter((d) => d.kind === 'role').length;
     if (inputs) parts.push(`${plural(inputs, 'input')} will change`);
-    if (people) parts.push(`${plural(people, 'person')}'s access will change`);
     if (diff.some((d) => d.kind === 'event')) parts.push('the event will be renamed');
     if (parts.length === 0) return 'Nothing will change.';
     const sentence = parts.join('; ');

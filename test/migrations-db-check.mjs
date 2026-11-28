@@ -165,6 +165,8 @@ try {
     );
     // Emails compare without case.
     assert.equal(psql(`select count(*) from public.roles where email = 'V@EXAMPLE.TEST'`), '1');
+    // Who gave the access is empty unless the API says so.
+    assert.equal(psql(`select added_by from public.roles where email = 'v@example.test'`), '');
     // Admins and owners are not a role: admins are listed once for the app, by email, without case.
     for (const type of ['admin', 'owner']) {
         psql(

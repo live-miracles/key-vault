@@ -5,25 +5,17 @@
 // A version is "the event as it was right after change N", like a commit. It is found by
 // starting from the event as it is now and undoing every newer change, newest first.
 
-import type {
-    ChangeRow,
-    EventState,
-    InputRow,
-    KeyRow,
-    RoleRow,
-    RowDiff,
-    VersionSteps,
-} from './types.ts';
+import type { ChangeRow, EventState, InputRow, KeyRow, RowDiff, VersionSteps } from './types.ts';
 
 // What a key's "last edited" stamp says is not part of what the key is, so it never counts as
 // a difference.
 const STAMP_FIELDS = ['updatedBy', 'updatedAction', 'updatedAt'];
 
 // The changes that built or undid an event's rows. An event deleted or brought back from the
-// trash changed none of them (its rows stayed where they were), and a change to the admins is
-// not in any event.
+// trash changed none of them (its rows stayed where they were), a change to the admins is not in
+// any event, and people's access is recorded but is not part of a version.
 function undoable(change: ChangeRow, event: string): boolean {
-    if (change.event !== event || change.kind === 'admin') return false;
+    if (change.event !== event || change.kind === 'admin' || change.kind === 'role') return false;
     return !(change.kind === 'event' && ['deleted', 'restored'].includes(change.action));
 }
 
@@ -58,7 +50,6 @@ export function stateAt(now: EventState, changes: ChangeRow[], atChange: number)
             if (change.before) state.event = structuredClone(change.before) as typeof state.event;
         } else if (change.kind === 'input') state.inputs = undoRow(state.inputs, change);
         else if (change.kind === 'key') state.keys = undoRow(state.keys, change);
-        else state.roles = undoRow(state.roles, change);
     }
     state.inputs.sort(byPosition);
     return state;
@@ -124,8 +115,8 @@ function diffRows<T extends { id: string }>(
     return diffs;
 }
 
-// How the event now differs from `then`: its name, and its inputs, destinations and people
-// matched by id. Nothing is listed for a row that is the same.
+// How the event now differs from `then`: its name, and its inputs and destinations matched by
+// id. Nothing is listed for a row that is the same.
 export function diffStates(then: EventState, now: EventState): RowDiff[] {
     const event: RowDiff[] =
         then.event.name === now.event.name
@@ -144,7 +135,6 @@ export function diffStates(then: EventState, now: EventState): RowDiff[] {
         ...event,
         ...diffRows('input', then.inputs, now.inputs),
         ...diffRows('key', then.keys, now.keys, STAMP_FIELDS),
-        ...diffRows('role', then.roles, now.roles),
     ];
 }
 
@@ -159,8 +149,6 @@ export function restoreSteps(then: EventState, now: EventState): VersionSteps {
         deleteInputs: [],
         upsertKeys: [],
         deleteKeys: [],
-        upsertRoles: [],
-        deleteRoles: [],
     };
     for (const diff of diffStates(then, now)) {
         const remove = diff.status === 'added';
@@ -170,9 +158,6 @@ export function restoreSteps(then: EventState, now: EventState): VersionSteps {
         } else if (diff.kind === 'key') {
             if (remove) steps.deleteKeys.push(diff.rowId);
             else steps.upsertKeys.push(diff.then as KeyRow);
-        } else if (diff.kind === 'role') {
-            if (remove) steps.deleteRoles.push(diff.rowId);
-            else steps.upsertRoles.push(diff.then as RoleRow);
         }
     }
     return steps;
@@ -185,8 +170,6 @@ export function stepCount(steps: VersionSteps): number {
         steps.upsertInputs.length +
         steps.deleteInputs.length +
         steps.upsertKeys.length +
-        steps.deleteKeys.length +
-        steps.upsertRoles.length +
-        steps.deleteRoles.length
+        steps.deleteKeys.length
     );
 }

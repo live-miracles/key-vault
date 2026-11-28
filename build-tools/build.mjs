@@ -19,6 +19,18 @@ import * as esbuild from 'esbuild';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const outdir = path.join(root, 'dist');
 
+// A legacy Supabase key is a JWT whose payload names its role, base64-encoded, so the word
+// "service_role" never appears in it as text. Only the "anon" one is safe in the browser.
+function isPrivilegedLegacyKey(key) {
+    const parts = key.split('.');
+    if (parts.length !== 3 || !parts[0].startsWith('eyJ')) return false;
+    try {
+        return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'))?.role !== 'anon';
+    } catch {
+        return true;
+    }
+}
+
 // Only the publishable key may reach the browser: a secret or service-role key here would give
 // every visitor the whole database.
 export function backendConfigFromEnv(env) {
@@ -34,7 +46,11 @@ export function backendConfigFromEnv(env) {
     if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(supabaseUrl)) {
         throw new Error('KEY_VAULT_SUPABASE_URL must look like https://<project-ref>.supabase.co.');
     }
-    if (publishableKey.startsWith('sb_secret_') || publishableKey.includes('service_role')) {
+    if (
+        publishableKey.startsWith('sb_secret_') ||
+        publishableKey.includes('service_role') ||
+        isPrivilegedLegacyKey(publishableKey)
+    ) {
         throw new Error(
             'KEY_VAULT_SUPABASE_PUBLISHABLE_KEY must be the publishable key, not a secret.',
         );

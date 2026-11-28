@@ -57,7 +57,7 @@ A scanner or a reviewer may flag the points below. Each is deliberate, with the 
 - **Admins and owners see every event.** A small streaming team runs every event. Owners are fixed in a server setting and cannot be changed in the app, admin changes are recorded, an admin cannot remove themselves, and only admins read the history.
 - **History and the trash keep earlier stream keys for 30 days.** This lets an accidental deletion during a live event be undone. Only admins can restore, and the data is removed automatically when the 30 days end.
 - **Owners can reveal the server secret** in the bunryu dialog. bunryu needs it to derive its token and hash secret, and owners are the people who set bunryu up. The server allows owners only. The secret is fetched when the dialog opens, masked until revealed, and cleared from the page when it closes.
-- **The `ingest` function skips Supabase's user-token check** and uses a shared bearer token, because bunryu is a server and has no Google account. The token is derived from a secret of at least 32 characters and compared in constant time. The body is capped at 1 MB and 1,000 entries, and the function can only write status rows and returns no data. Whoever holds the token can post false statuses, but cannot read anything or learn a stream key.
+- **The `ingest` function skips Supabase's user-token check** and uses a shared bearer token, because bunryu is a server and has no Google account. The token is derived from a secret of at least 32 characters and compared in constant time. The body is capped at 1 MB and 1,000 entries, at most 20 bunryu servers are kept, and the function can only write status rows and returns no data. Whoever holds the token can post false statuses, but cannot read anything or learn a stream key.
 - **Supabase's Data API is on and reachable with the publishable key.** The server function uses the service role through that same API, so it has to stay on. A direct call with the publishable key gets nothing, because every table has row-level security with no policy and the public roles hold no privileges. A table added later starts closed.
 - **Editors see who else has access to their events**, admins and owners included. Everyone is a colleague and needs to know who to ask. They also see who added each person, since the list says "Added by …" under each email. Viewers do not receive the list.
 - **The duplicate check can say an address is "already added in this event"** when the match is in an input the person cannot open. It has to look across the event, because the same address in two inputs would break the stream. It confirms only that an address identical to the one just typed exists, and returns no name, input or key.
@@ -71,7 +71,7 @@ A scanner or a reviewer may flag the points below. Each is deliberate, with the 
 - **Multi-factor sign-in is Google's, not the app's.** Identity is delegated to Google, so your Workspace policy (2-Step Verification, session control, suspending leavers) applies. See the checklist above.
 - **The repository is public.** Security does not depend on the code being secret. No secret or key belongs in the repository or its history, and secrets live in the Supabase and Vercel settings.
 - **A build-time development dependency may carry an advisory.** The stylesheet build runs only on a developer or CI machine, on the project's own CSS, and is not shipped to users. The production dependencies are kept at no known vulnerabilities, and Dependabot tracks the rest.
-- **Changes may be pushed straight to the main branch** when one person maintains the project. Every push runs the tests, type checks and both builds, and the database deploy runs the tests again before it applies anything. When a second person can push, protect the branch (see the checklist).
+- **Changes may be pushed straight to the main branch** when one person maintains the project. Every push runs the tests, type checks, the migration check and both builds, and the database deploy runs the tests and the migration check again before it applies anything. When a second person can push, protect the branch (see the checklist).
 
 ## How to verify
 
@@ -100,7 +100,7 @@ These keep the properties above true. Follow them in every change.
 - **Escape all dynamic text** with `escapeHtml` and open links only through `safeUrl`. Add no inline script, inline style, `eval` or third-party script: the Content-Security-Policy forbids them. A new external host needs a deliberate change to `vercel.json`.
 - **Validate every field on the server** with a length limit, and take roles, platforms and kinds from fixed lists. Keep the destination rules in the shared module, so the form and the server cannot disagree.
 - **Record every write** in the change history, and keep it out of the browser's reach.
-- **Run the checks** (`npm test`, `npm run typecheck`, `npm run format:check`, and `npm run test:db` for database changes) before you push.
+- **Run the checks** (`npm test`, `npm run typecheck`, `npm run format:check`, and `npm run test:db` for database changes) before you push. Without Docker on your machine, GitHub Actions runs `npm run test:db` on every push and pull request.
 
 ## Reporting a problem
 

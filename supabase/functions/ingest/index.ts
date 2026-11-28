@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import { deriveSecrets } from '../_shared/secrets.ts';
 import { parseHeartbeat } from '../_shared/status.ts';
 
@@ -74,6 +74,14 @@ Deno.serve(async (request) => {
         p_inputs: heartbeat.inputs,
     });
     if (error) {
+        // At most 20 bunryu servers are kept (see the migration that set the limit). Many new
+        // Server Names at once may mean the ingest token is being misused: replace the secret.
+        if (error.message.includes('too many bunryu servers')) {
+            console.error(
+                `Refused a report from a new bunryu "${heartbeat.instance}": ${error.message}.`,
+            );
+            return respond({ error: 'Too many bunryu servers are reporting already.' }, 409);
+        }
         console.error('ingest_heartbeat failed:', error.message);
         return respond({ error: 'The heartbeat could not be stored.' }, 500);
     }

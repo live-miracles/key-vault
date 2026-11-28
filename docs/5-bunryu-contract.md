@@ -51,6 +51,7 @@ Sent by bunryu every 60 s, and immediately on a status change (rate-limited to o
 - **`inputs` is optional** and says whether each pipeline's signal is arriving, with the same four statuses: `running` the signal arrives normally, `warning` it arrives with an alert (low bitrate, packet loss), `error` the pipeline is meant to be live but nothing arrives, `stopped` the pipeline is off or not expected. An older bunryu sends none.
 - **One unusable entry does not fail the report.** An output with a malformed `hash` or an unknown `status`, or an input with a blank `pipeline` or an unknown `status`, is left out and the rest is stored. `ingest` answers `{ ok, stored, skipped }` and logs what it left out (Supabase function logs). A wrong `version`, an invalid `sentAt`, an `outputs` or `inputs` that is not a list, or more than 1000 entries still refuses the whole report with HTTP 400. Long names and messages are cut, not refused.
 - Only the latest heartbeat of each bunryu is kept (`ingest_heartbeat()` replaces an instance's rows in one transaction). An instance silent for 30 days is deleted.
+- **At most 20 bunryu servers are kept.** A report from a Server Name Key Vault already has is always stored. Once 20 are known, a report from a new one is refused with HTTP 409 and logged, until one has been silent for 30 days. Many unknown names at once may mean the ingest token is being misused: replace `KEY_VAULT_SECRET`.
 
 ## Matching
 

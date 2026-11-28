@@ -46,6 +46,11 @@ jobs:
             - name: Type check
               run: npm run typecheck
 
+            # Applies every migration to a fresh Postgres in Docker and checks the schema and
+            # the SQL functions.
+            - name: Check the database migrations
+              run: npm run test:db
+
             - name: Build the demo site
               run: npm run build:demo
 

@@ -17,7 +17,7 @@ This serves the demo at `http://localhost:2837` with live reload (set `PORT` to 
 npm test              # unit tests, no database needed
 npm run typecheck     # frontend and server
 npm run format:check
-npm run test:db       # applies the migration to a throwaway Postgres in Docker
+npm run test:db       # applies the migrations to a throwaway Postgres in Docker (CI runs it too)
 ```
 
 CI (`.github/workflows/deploy.yml`) runs the first three, builds both the demo and the real site, and fails on any of them. Run `npm run format` before you commit.

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Store } from './operations.ts';
 import type { PipelineRow, StatusRow } from './status.ts';
 import type {

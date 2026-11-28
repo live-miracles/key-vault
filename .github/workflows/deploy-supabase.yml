@@ -32,6 +32,9 @@ jobs:
 
             - run: npm test
 
+            # Nothing reaches the database unless every migration applies to a fresh Postgres.
+            - run: npm run test:db
+
             # GitHub-hosted runners have no IPv6 route and Supabase's direct database
             # host is IPv6-only, so link first: `db push` then goes through the IPv4
             # connection pooler.

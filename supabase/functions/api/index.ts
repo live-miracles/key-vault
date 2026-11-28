@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import { errorResponse, operationFrom } from '../_shared/http.ts';
 import { callOperation } from '../_shared/operations.ts';
 import { deriveSecrets } from '../_shared/secrets.ts';

@@ -418,6 +418,24 @@ try {
     assert.equal(psql(`select string_agg(instance, ',') from public.ingest_instances`), 'prod');
     assert.equal(psql(`select count(*) from public.stream_outputs where instance = 'dev'`), '0');
 
+    // At most 20 bunryu servers are kept: a new one is refused once 20 report, a known one never,
+    // and one silent for a month makes room.
+    for (let i = 2; i <= 20; i += 1) {
+        psql(`select public.ingest_heartbeat('server ${i}', now(), '[]'::jsonb)`);
+    }
+    assert.equal(psql(`select count(*) from public.ingest_instances`), '20');
+    const refused = psql(`select public.ingest_heartbeat('server 21', now(), '[]'::jsonb)`, {
+        fail: true,
+    });
+    assert.match(refused, /too many bunryu servers/);
+    psql(beat([output('a', 'running')]));
+    psql(
+        `update public.ingest_instances set last_seen_at = now() - interval '31 days' where instance = 'server 2'`,
+    );
+    psql(`select public.ingest_heartbeat('server 21', now(), '[]'::jsonb)`);
+    assert.equal(psql(`select count(*) from public.ingest_instances`), '20');
+    psql(`delete from public.ingest_instances where instance <> 'prod'`);
+
     // ---- access ----
     assert.equal(
         psql(

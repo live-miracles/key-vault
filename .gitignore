@@ -6,4 +6,8 @@ frontend/output.css
 .migration/
 supabase/.temp/
 supabase/.branches/
-.env.local
+# Secrets, and database dumps, which hold every stream key (see docs/3-setup.md, "Backups").
+.env
+.env.*
+*.dump
+/backup*.sql

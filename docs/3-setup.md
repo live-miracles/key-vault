@@ -88,4 +88,6 @@ Key Vault decides who may do what by the email address of the signed-in person. 
 
 ## Backups
 
-The free Supabase plan has no managed backups and pauses a project after a week without activity (bunryu's heartbeat prevents the pause while it runs). Take a dump before and after an event, for example with `npx supabase db dump --data-only -f backup.sql` (the file contains stream keys: store it like a secret).
+Key Vault takes no backups, and the free Supabase plan has none. Every destination's settings are also kept in bunryu or in the team's own sheets, so they can be entered again if the database is lost. An accidental deletion is undone in the app (History, 30 days). Do not take database dumps: a dump holds every stream key in plain text.
+
+The free plan also pauses a project after a week without activity. bunryu's heartbeat prevents the pause while it runs.

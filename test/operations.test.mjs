@@ -666,6 +666,12 @@ test('getStatus covers only the destinations the user may see', async () => {
     assert.equal(asEditor.keys[K1].state, 'not_configured');
     assert.deepEqual(Object.keys(asEditor.inputs), [ENGLISH]);
     assert.equal(asEditor.inputs[ENGLISH], null);
+
+    // Someone with no role is not even told which bunryu servers report.
+    const asStranger = await ops.getStatus(store, stranger);
+    assert.deepEqual(asStranger.keys, {});
+    assert.deepEqual(asStranger.instances, []);
+    assert.equal(asStranger.online, false);
 });
 
 test("YouTube's backup is looked for in bunryu too", async () => {

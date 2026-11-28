@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import { errorResponse, operationFrom } from '../_shared/http.ts';
+import { verifiedEmail } from '../_shared/identity.ts';
 import { callOperation } from '../_shared/operations.ts';
 import { deriveSecrets } from '../_shared/secrets.ts';
 import { createSupabaseStore } from '../_shared/supabase-store.ts';
@@ -62,14 +63,9 @@ Deno.serve(async (request) => {
 
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
     const { data: auth } = await admin.auth.getUser(token);
-    const email = (auth.user?.email || '').toLowerCase();
-    // Roles are matched by email, so the email must be one the identity provider verified.
-    // Google sign-in always is; this refuses any other sign-in method that was left switched
-    // on in Supabase and does not prove who owns the address.
-    const verified =
-        Boolean(auth.user?.email_confirmed_at) ||
-        Boolean(auth.user?.identities?.some((i) => i.identity_data?.email_verified === true));
-    if (!email || !verified) return fail('denied', 'Authentication is required.', 401);
+    // Roles are matched by email, so it is the one Google verified (see identity.ts).
+    const email = verifiedEmail(auth.user);
+    if (!email) return fail('denied', 'Authentication is required.', 401);
 
     const operation = operationFrom(new URL(request.url).pathname);
     let input: unknown;

@@ -298,6 +298,10 @@ export async function getStatus(
     ctx: Context,
 ): Promise<Operations['getStatus']['output']> {
     const { data, access } = await load(store, ctx);
+    // Someone with no access to any event is told nothing, not even which bunryu servers report.
+    if (!data.events.some((e) => access.canViewEvent(e.id))) {
+        return buildStatusReport([], [], [], ctx.hashSecret, ctx.nowMs);
+    }
     const visible = data.keys.filter((k) => access.canViewKey(k.event, k.input));
     const usedInputs = new Set(visible.map((k) => k.input));
     const inputs = data.inputs.filter((i) => usedInputs.has(i.id));

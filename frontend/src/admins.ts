@@ -6,7 +6,7 @@
 import type { AdminRow } from '../../supabase/functions/_shared/types.ts';
 import { app } from './app.ts';
 import { $ } from './dom.ts';
-import { escapeHtml, iconSvg } from './html.ts';
+import { addedByHtml, escapeHtml, iconSvg } from './html.ts';
 
 interface AdminList {
     owners: string[];
@@ -40,7 +40,6 @@ export function adminRowsHtml(current: AdminList): { owners: string; added: stri
         </li>`,
     );
     const added = current.admins.map((admin) => {
-        const by = admin.addedBy ? `Added by ${escapeHtml(admin.addedBy)}` : '';
         // Removing yourself would leave you locked out of this dialog, so the server refuses it.
         const remove = isMe(admin.email)
             ? ''
@@ -49,8 +48,10 @@ export function adminRowsHtml(current: AdminList): { owners: string; added: stri
         <li class="admin-row" data-admin-id="${escapeHtml(admin.id)}">
             ${avatar(admin.email)}
             <div class="role-body">
-                <span class="role-email"><span class="role-email-text" title="${escapeHtml(admin.email)}">${escapeHtml(admin.email)}</span>${you(admin.email)}</span>
-                <span class="role-meta">${by}</span>
+                <div class="role-who">
+                    <span class="role-email"><span class="role-email-text" title="${escapeHtml(admin.email)}">${escapeHtml(admin.email)}</span>${you(admin.email)}</span>
+                    ${addedByHtml(admin.addedBy)}
+                </div>
             </div>
             <div class="role-actions">${remove}</div>
         </li>`;

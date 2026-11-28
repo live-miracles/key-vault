@@ -10,6 +10,13 @@ export function escapeHtml(value: unknown): string {
         .replaceAll("'", '&#39;');
 }
 
+// "Added by ann@example.org", under a person's email in Share and in Admins. Nothing for
+// someone added before this was recorded.
+export function addedByHtml(addedBy: string): string {
+    if (!addedBy) return '';
+    return `<span class="role-added" title="${escapeHtml(addedBy)}">Added by ${escapeHtml(addedBy)}</span>`;
+}
+
 // Only http and https links may be opened from the page. `base` resolves a relative link.
 export function safeUrl(value: unknown, base = 'https://example.invalid/'): string {
     const text = String(value ?? '').trim();

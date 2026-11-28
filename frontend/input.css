@@ -766,7 +766,7 @@
         color: var(--color-ink-subtle);
         font-weight: 400;
     }
-    /* The email with, under it, who gave the access. */
+    /* The email with, under it, who gave the access. Share and Admins both use it. */
     .role-who {
         display: grid;
         min-width: 0;

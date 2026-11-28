@@ -6,7 +6,7 @@ import type { RoleType } from '../../supabase/functions/_shared/types.ts';
 import { inputLabelHtml } from './cards.ts';
 import { actions, app } from './app.ts';
 import { $, $$, confirmAction } from './dom.ts';
-import { escapeHtml, iconSvg } from './html.ts';
+import { addedByHtml, escapeHtml, iconSvg } from './html.ts';
 import { ROLE_LABELS, inputPosition, inputsOf } from './model.ts';
 import type { RoleItem } from './model.ts';
 import { route } from './route.ts';
@@ -112,12 +112,6 @@ function renderRoleEditRow(role: {
             </div>
         </li>
     `;
-}
-
-// Who gave the access, under the email. Nothing for someone added before this was recorded.
-function addedByHtml(addedBy: string): string {
-    if (!addedBy) return '';
-    return `<span class="role-added" title="${escapeHtml(addedBy)}">Added by ${escapeHtml(addedBy)}</span>`;
 }
 
 function renderRoleRow(r: RoleItem, isCurrentUser: boolean) {

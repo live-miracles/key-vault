@@ -27,7 +27,7 @@
         "typescript": "^5.9.3"
     },
     "dependencies": {
-        "@supabase/supabase-js": "^2.119.0"
+        "@supabase/supabase-js": "^2.119.2"
     },
     "overrides": {
         "@tailwindcss/typography": {

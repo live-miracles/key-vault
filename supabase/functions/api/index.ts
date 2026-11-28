@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
-import { errorResponse, operationFrom } from '../_shared/http.ts';
+import { errorResponse, operationFrom, readBody } from '../_shared/http.ts';
 import { verifiedEmail } from '../_shared/identity.ts';
 import { callOperation } from '../_shared/operations.ts';
 import { deriveSecrets } from '../_shared/secrets.ts';
@@ -56,11 +56,6 @@ Deno.serve(async (request) => {
     const token = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
     if (!token) return fail('denied', 'Authentication is required.', 401);
 
-    // Refuse an oversized body before reading it. No operation needs more than a few KB.
-    if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY_BYTES) {
-        return fail('invalid', 'The request is too large.', 413);
-    }
-
     const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
     const { data: auth } = await admin.auth.getUser(token);
     // Roles are matched by email, so it is the one Google verified (see identity.ts).
@@ -70,10 +65,9 @@ Deno.serve(async (request) => {
     const operation = operationFrom(new URL(request.url).pathname);
     let input: unknown;
     try {
-        const text = await request.text();
-        if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
-            return fail('invalid', 'The request is too large.', 413);
-        }
+        // No operation needs more than a few KB.
+        const text = await readBody(request, MAX_BODY_BYTES);
+        if (text === null) return fail('invalid', 'The request is too large.', 413);
         input = text ? JSON.parse(text) : undefined;
     } catch {
         return fail('invalid', 'The request body is invalid.', 400);

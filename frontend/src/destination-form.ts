@@ -11,6 +11,7 @@ import {
     buildSrtUrl,
     cleanStreamKeyInput,
     destinationNameProblem,
+    watchLinkProblem,
     detectKnownAddress,
     endpointProblem,
     findClash,
@@ -540,6 +541,9 @@ export async function saveKeyForm(event: Event) {
             : rule === 'fixed' && Boolean(backup.check);
     const backupProblem = checksBackup ? endpointFault(backup, false) : null;
     if (backupProblem) return stop(backupProblem.message, [selectorFor(backupProblem.field, '2')]);
+
+    const linkProblem = watchLinkProblem(fields.link);
+    if (linkProblem) return stop(linkProblem, ['#key-link-input']);
 
     const others = app.data.keys.filter((k) => k.event === eventId && k.id !== id);
     const clash = findClash(fields, others);

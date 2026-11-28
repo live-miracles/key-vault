@@ -334,7 +334,12 @@ export function createSupabaseStore(db: SupabaseClient): Store {
             check(
                 await db
                     .from('roles')
-                    .update({ email: role.email, type: role.type, input_id: role.input })
+                    .update({
+                        email: role.email,
+                        type: role.type,
+                        input_id: role.input,
+                        added_by: role.addedBy,
+                    })
                     .eq('id', id)
                     .select('id')
                     .single(),

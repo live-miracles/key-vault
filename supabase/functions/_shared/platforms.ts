@@ -388,6 +388,18 @@ export function destinationNameProblem(name: string): string | null {
     return null;
 }
 
+// The optional watch link is a web page people open, so only a whole http or https address.
+export function watchLinkProblem(link: string): string | null {
+    if (!link) return null;
+    try {
+        const { protocol } = new URL(link);
+        if (protocol === 'https:' || protocol === 'http:') return null;
+    } catch {
+        // Not a whole address, for example one pasted without https://.
+    }
+    return 'Paste the whole watch link, starting with https://';
+}
+
 export interface DestinationProblem extends Problem {
     part: 'main' | 'backup';
 }

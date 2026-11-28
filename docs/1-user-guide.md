@@ -74,7 +74,7 @@ Beside a red card there is a small copy button. It copies the technical details 
 
 If a button you expect is missing, you do not have that role for this event: ask an admin to change it under **Share**.
 
-Under each person's email, **Share** says who gave them access ("Added by …"). It stays the person who first added them, even if someone else changes their role later. People added before Key Vault recorded this show no name.
+Under each person's email, **Share** says who gave them access ("Added by …"). It stays the person who first added them, even if someone else changes their role later. If someone changes the email itself, they become the one who added that person. People added before Key Vault recorded this show no name.
 
 ### Admins
 

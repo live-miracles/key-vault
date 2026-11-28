@@ -400,6 +400,16 @@ test('destinations: editors write only their input, viewers nothing', async () =
         await refused(ops.addKey(store, editor, { ...fields(ENGLISH), streamKey: '' })),
         'invalid',
     );
+    assert.equal(
+        await refused(
+            ops.addKey(store, editor, {
+                ...fields(ENGLISH),
+                streamKey: 'abcd-7777',
+                link: 'javascript:alert(1)',
+            }),
+        ),
+        'invalid',
+    );
 
     assert.equal(
         await refused(ops.editKey(store, editor, { ...key(K2, E1, HINDI), name: 'x' })),
@@ -1043,6 +1053,24 @@ test('destinations are recorded, and an edit that changes nothing is not', async
     assert.equal(store.state.changes[0].after.streamKey, 'abcd-9999');
 });
 
+test('a role given a new email is added by whoever changed it', async () => {
+    const store = seed();
+    const role = await ops.addRole(store, admin, {
+        event: E1,
+        email: 'new@example.test',
+        type: 'viewer',
+        input: null,
+    });
+    const moved = await ops.editRole(store, owner, {
+        id: role.id,
+        email: 'other@example.test',
+        type: 'viewer',
+        input: null,
+    });
+    assert.equal(moved.addedBy, 'owner@example.test');
+    assert.equal(store.state.roles.find((r) => r.id === role.id).addedBy, 'owner@example.test');
+});
+
 test('people are recorded', async () => {
     const store = seed();
     const role = await ops.addRole(store, admin, {
@@ -1061,6 +1089,7 @@ test('people are recorded', async () => {
         input: HINDI,
     });
     assert.equal(changed.addedBy, 'admin@example.test');
+    assert.equal(store.state.roles.find((r) => r.id === role.id).addedBy, 'admin@example.test');
     await ops.deleteRole(store, admin, { id: role.id });
 
     const stored = {

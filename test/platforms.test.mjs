@@ -221,6 +221,15 @@ test('names use letters, numbers, spaces, - and _', () => {
     assert.match(p.destinationNameProblem('a/b'), /letters, numbers/);
 });
 
+test('a watch link is empty or a whole http or https address', () => {
+    assert.equal(p.watchLinkProblem(''), null);
+    assert.equal(p.watchLinkProblem('https://www.youtube.com/watch?v=abc'), null);
+    assert.equal(p.watchLinkProblem('http://example.org/live'), null);
+    assert.match(p.watchLinkProblem('www.youtube.com/watch?v=abc'), /starting with https:\/\//);
+    assert.match(p.watchLinkProblem('javascript:alert(1)'), /starting with https:\/\//);
+    assert.match(p.watchLinkProblem('rtmp://a.rtmp.youtube.com/live2/abc'), /https:\/\//);
+});
+
 test('finds an address another destination already uses, or a backup equal to the main', () => {
     const other = dest({
         platform: 'vc',

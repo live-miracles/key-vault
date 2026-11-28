@@ -11,6 +11,7 @@ import {
     findClash,
     isPlatform,
     normalizeBackup,
+    watchLinkProblem,
 } from './platforms.ts';
 import { diffStates, existedAt, restoreSteps, stateAt, stepCount } from './history.ts';
 import { buildStatusReport } from './status.ts';
@@ -63,7 +64,10 @@ export interface Store {
     createAdmin(email: string, addedBy: string): Promise<AdminRow>;
     deleteAdmin(id: string): Promise<void>;
     createRole(role: Omit<RoleRow, 'id'>): Promise<RoleRow>;
-    updateRole(id: string, role: Pick<RoleRow, 'email' | 'type' | 'input'>): Promise<void>;
+    updateRole(
+        id: string,
+        role: Pick<RoleRow, 'email' | 'type' | 'input' | 'addedBy'>,
+    ): Promise<void>;
     deleteRole(id: string): Promise<void>;
     createInput(event: string, name: string): Promise<InputRow>;
     updateInput(id: string, name: string): Promise<void>;
@@ -545,9 +549,11 @@ export async function editRole(store: Store, ctx: Context, input: Operations['ed
     if (!access.canChangeRole(old.event)) throw denied();
 
     // A role stays in the event it was created in.
-    await store.updateRole(id, role);
-    // Whoever first gave the access stays on record, whoever changes it later.
-    const saved = { id, event: old.event, ...role, addedBy: old.addedBy };
+    // Whoever first gave the access stays on record when someone else changes the role. A new
+    // email is a different person, so whoever typed it gave them the access.
+    const addedBy = role.email === old.email ? old.addedBy : ctx.email;
+    await store.updateRole(id, { ...role, addedBy });
+    const saved = { id, event: old.event, ...role, addedBy };
     if (!sameFields(old, saved, ['email', 'type', 'input'])) {
         await record(store, ctx, [rowChange('role', old.event, { ...old }, { ...saved })]);
     }
@@ -730,6 +736,8 @@ function checkKey(data: Data, key: KeyFields, exceptId = '') {
     if (!isPlatform(key.platform)) throw invalid("Please choose where you're streaming to.");
     const problem = destinationProblem(key);
     if (problem) throw invalid(problem.message);
+    const linkProblem = watchLinkProblem(key.link);
+    if (linkProblem) throw invalid(linkProblem);
 
     const others = data.keys.filter((k) => k.event === key.event && k.id !== exceptId);
     const clash = findClash(key, others);
@@ -949,6 +957,7 @@ function versionProblems(
             destinationNameProblem(key.name) ??
             (!isPlatform(key.platform) ? 'This platform is not available any more.' : null) ??
             (isPlatform(key.platform) ? destinationProblem(key)?.message : null) ??
+            watchLinkProblem(key.link) ??
             findClash(key, others)?.message ??
             (inputIds.has(key.input) ? null : 'Its input would not exist.');
         if (problem) problems.push(`${label}: ${problem}`);

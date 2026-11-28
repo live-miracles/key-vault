@@ -125,7 +125,12 @@ export function createActions(app: AppStore) {
                         } as RoleItem);
                     } else {
                         const role = data.roles.find((r) => r.id === form.id);
-                        if (role) Object.assign(role, fields);
+                        // A new email is a new person, given access by whoever typed it.
+                        const addedBy =
+                            role && role.email !== form.email.trim().toLowerCase()
+                                ? data.userEmail
+                                : role?.addedBy;
+                        if (role) Object.assign(role, fields, { addedBy });
                     }
                 },
                 () =>

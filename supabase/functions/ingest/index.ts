@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
+import { readBody } from '../_shared/http.ts';
 import { deriveSecrets } from '../_shared/secrets.ts';
 import { parseHeartbeat } from '../_shared/status.ts';
 
@@ -42,15 +43,10 @@ Deno.serve(async (request) => {
         return respond({ error: 'Authentication is required.' }, 401);
     }
 
-    if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY_BYTES) {
-        return respond({ error: 'The request body is too large.' }, 413);
-    }
-    const text = await request.text();
-    if (new TextEncoder().encode(text).length > MAX_BODY_BYTES)
-        return respond({ error: 'The request body is too large.' }, 413);
-
     let heartbeat;
     try {
+        const text = await readBody(request, MAX_BODY_BYTES);
+        if (text === null) return respond({ error: 'The request body is too large.' }, 413);
         heartbeat = parseHeartbeat(JSON.parse(text));
     } catch (error) {
         return respond(
